@@ -1467,13 +1467,14 @@ namespace AEIOU
 
         private void QueueShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
         {
-            if (length <= 0)
+            if (length <= 0 || endColExclusive <= startCol)
             {
                 return;
             }
 
             // 旧実装互換: 下方向シフトは末尾側から、上方向シフトは先頭側から処理する。
             // （同一列内で source/destination が重なるケースの移行ミスを防ぐため）
+            // 呼び出し側は source/destination がシート範囲内となるように引数を構築する。
             bool isShiftUpwardOrSame = destinationStartRow <= sourceStartRow;
 
             for (int col = startCol; col < endColExclusive; col++)
