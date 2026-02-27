@@ -1465,41 +1465,40 @@ namespace AEIOU
             gridViewManager.ExecuteOperation(operation);
         }
 
-        private void QueueCellWrites(IEnumerable<CellWriteEntry> writes)
-        {
-            foreach (CellWriteEntry write in writes)
-            {
-                QueueCellWrite(write.Row, write.Col, write.Value);
-            }
-        }
-
         private void QueueShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
         {
-            List<CellWriteEntry> writes = CollectShiftWrites(startCol, endColExclusive, sourceStartRow, length, destinationStartRow);
-            QueueCellWrites(writes);
-        }
-
-        private List<CellWriteEntry> CollectShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
-        {
-            List<CellWriteEntry> writes = new List<CellWriteEntry>();
-
             if (length <= 0)
             {
-                return writes;
+                return;
             }
+
+            // 旧実装互換: 下方向シフトは末尾側から、上方向シフトは先頭側から処理する。
+            // （同一列内で source/destination が重なるケースの移行ミスを防ぐため）
+            bool isShiftUpwardOrSame = destinationStartRow <= sourceStartRow;
 
             for (int col = startCol; col < endColExclusive; col++)
             {
-                for (int offset = 0; offset < length; offset++)
+                if (isShiftUpwardOrSame)
                 {
-                    int sourceRow = sourceStartRow + offset;
-                    int destinationRow = destinationStartRow + offset;
-                    string value = GetCellValue(col, sourceRow);
-                    writes.Add(new CellWriteEntry(destinationRow, col, value));
+                    for (int offset = 0; offset < length; offset++)
+                    {
+                        int sourceRow = sourceStartRow + offset;
+                        int destinationRow = destinationStartRow + offset;
+                        string value = GetCellValue(col, sourceRow);
+                        QueueCellWrite(destinationRow, col, value);
+                    }
+                }
+                else
+                {
+                    for (int offset = length - 1; offset >= 0; offset--)
+                    {
+                        int sourceRow = sourceStartRow + offset;
+                        int destinationRow = destinationStartRow + offset;
+                        string value = GetCellValue(col, sourceRow);
+                        QueueCellWrite(destinationRow, col, value);
+                    }
                 }
             }
-
-            return writes;
         }
 
         private struct CellWriteEntry
