@@ -1543,6 +1543,11 @@ namespace AEIOU
 
         private void ApplyCellWrites(string groupName, IList<CellWriteEntry> writes)
         {
+            if (writes == null || writes.Count == 0)
+            {
+                return;
+            }
+
             ExecuteWriteGroup(groupName, delegate
             {
                 foreach (CellWriteEntry write in writes)
