@@ -63,7 +63,7 @@ namespace AEIOU
         {
             ValidateCellIndex(col, row);
             string oldValue = _cells[col, row];
-            SetCell(col, row, newValue);
+            _cells[col, row] = newValue ?? "";
             return oldValue;
         }
 
