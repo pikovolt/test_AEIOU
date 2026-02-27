@@ -116,3 +116,11 @@
 - 決定: `GridViewManager` の集約APIで、セル値更新時の `null` を空文字へ正規化してから Model/View に反映する。
 - 理由: モデル正（空文字を正規値）とビュー表示値の不整合を防ぎ、更新口集約後の一貫性を確保するため。
 - 影響: `SetCellValue*` / `Apply*CellValue` 経路で `null` 混入時も Model/View が同一値（`""`）で同期される。
+
+## 2026-02-27 Phase 1 B区分追補（Paste Undo/Redo の決定性）
+
+- 決定: `PasteOperation` の Undo/Redo を `manager.CopyBuffer` の現在値に依存させず、実行時スナップショット（貼り付け前値/貼り付け値）で再適用する。
+- 理由: 貼り付け後にコピーバッファが変更・クリアされても、Undo/Redo の結果を決定的に保つため。
+- 影響:
+  - Undo は `_oldValues`、Redo は `_newValues` を使って復元される。
+  - `PasteOperation` の履歴再生がバッファ状態変化から独立し、操作単位の再現性が向上する。

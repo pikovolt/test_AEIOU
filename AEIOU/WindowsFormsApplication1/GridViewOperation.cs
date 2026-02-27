@@ -132,6 +132,7 @@ namespace AEIOU
         private int _col;
         private int _row;
         private String[,] _oldValues;
+        private String[,] _newValues;
 
         public PasteOperation(int row, int col)
         {
@@ -142,45 +143,66 @@ namespace AEIOU
 
         public override void Execute(GridViewManager manager)
         {
-            if (manager.CopyBuffer != null)
+            if (manager.CopyBuffer == null)
             {
-                // 範囲外の処理はしないよう、コピー範囲を計算
-                Rect copyRect = manager.CopyRect;
-                int maxHeight = Math.Min(copyRect.Height, manager.View.RowCount - _row);
-                int maxWidth = Math.Min(copyRect.Width, manager.View.ColumnCount - _col);
-                _oldValues = new String[maxHeight, maxWidth];
+                _oldValues = null;
+                _newValues = null;
+                return;
+            }
 
-                // コピー範囲の値を保存
-                for (int i = 0; i < maxHeight; i++)
+            // 範囲外の処理はしないよう、コピー範囲を計算
+            Rect copyRect = manager.CopyRect;
+            int maxHeight = Math.Min(copyRect.Height, manager.View.RowCount - _row);
+            int maxWidth = Math.Min(copyRect.Width, manager.View.ColumnCount - _col);
+            _oldValues = new String[maxHeight, maxWidth];
+            _newValues = new String[maxHeight, maxWidth];
+
+            // 貼り付け前/貼り付け値を保存して反映
+            for (int i = 0; i < maxHeight; i++)
+            {
+                for (int j = 0; j < maxWidth; j++)
                 {
-                    for (int j = 0; j < maxWidth; j++)
-                    {
-                        _oldValues[i, j] = manager.GetCellValue(_col + j, _row + i);
-                    }
+                    _oldValues[i, j] = manager.GetCellValue(_col + j, _row + i);
+                    _newValues[i, j] = manager.CopyBuffer[i, j];
+                    manager.SetCellValue(_col + j, _row + i, _newValues[i, j]);
                 }
-                PasteFromBuffer(_row, _col, manager);
             }
         }
 
         public override void Undo(GridViewManager manager)
         {
-            if (manager.CopyBuffer != null)
+            if (_oldValues == null)
             {
-                int rowCount = _oldValues.GetLength(0);
-                int columnCount = _oldValues.GetLength(1);
-                for (int i = 0; i < rowCount; i++)
+                return;
+            }
+
+            int rowCount = _oldValues.GetLength(0);
+            int columnCount = _oldValues.GetLength(1);
+            for (int i = 0; i < rowCount; i++)
+            {
+                for (int j = 0; j < columnCount; j++)
                 {
-                    for (int j = 0; j < columnCount; j++)
-                    {
-                        manager.SetCellValue(_col + j, _row + i, _oldValues[i, j]);
-                    }
+                    manager.SetCellValue(_col + j, _row + i, _oldValues[i, j]);
                 }
             }
         }
 
         public override void Redo(GridViewManager manager)
         {
-            Execute(manager);
+            if (_newValues == null)
+            {
+                return;
+            }
+
+            int rowCount = _newValues.GetLength(0);
+            int columnCount = _newValues.GetLength(1);
+            for (int i = 0; i < rowCount; i++)
+            {
+                for (int j = 0; j < columnCount; j++)
+                {
+                    manager.SetCellValue(_col + j, _row + i, _newValues[i, j]);
+                }
+            }
         }
     }
 
