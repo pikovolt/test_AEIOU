@@ -1498,10 +1498,13 @@ namespace AEIOU
 
                 gridViewManager.BeginGroup("削除");
 
-                for (int i = rect.Left; i <= rect.Right; i++)
+                // rect.Left～rect.Right で回しているため、ループ変数は「選択範囲内の相対位置」ではなく
+                // DataGridView 全体に対する「絶対列インデックス」。
+                // そのため SetValueOperation の列引数は col をそのまま渡す（rect.X + col にはしない）。
+                for (int col = rect.Left; col <= rect.Right; col++)
                 {
                     // 空白セルは無視する
-                    String new_value = GetCellValue(i, rect.Y);
+                    String new_value = GetCellValue(col, rect.Y);
                     if (new_value.Length == 0) continue;
 
                     if (isBackward)
@@ -1509,7 +1512,7 @@ namespace AEIOU
                         //セル内容の消去
                         new_value = "";
                         //使用状況を修正
-                        aryCellUsedCount[i]--;
+                        aryCellUsedCount[col]--;
                     }
                     else
                     {
@@ -1521,12 +1524,12 @@ namespace AEIOU
                         // セルの中身が空白になった場合は、使用状況を修正
                         if (new_value.Length == 0)
                         {
-                            aryCellUsedCount[i]--;
+                            aryCellUsedCount[col]--;
                         }
                     }
 
                     // アンドゥ情報の記録
-                    var operation = new SetValueOperation(rect.Y, i, new_value);
+                    var operation = new SetValueOperation(rect.Y, col, new_value);
                     gridViewManager.ExecuteOperation(operation);
 
                 }
