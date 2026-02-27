@@ -1429,7 +1429,7 @@ namespace AEIOU
 
         private void SetCellValue(int col, int row, string value)
         {
-            if (gridViewManager != null)
+            if (IsGridViewManagerBoundToCurrentModel())
             {
                 gridViewManager.SetCellValue(col, row, value);
             }
@@ -1450,7 +1450,7 @@ namespace AEIOU
 
         private int GetSheetColumnCount()
         {
-            if (gridViewManager != null)
+            if (IsGridViewManagerBoundToCurrentModel())
             {
                 return gridViewManager.ColumnCount;
             }
@@ -1460,7 +1460,7 @@ namespace AEIOU
 
         private int GetSheetRowCount()
         {
-            if (gridViewManager != null)
+            if (IsGridViewManagerBoundToCurrentModel())
             {
                 return gridViewManager.RowCount;
             }
@@ -1480,7 +1480,7 @@ namespace AEIOU
 
         private void SetHeaderValue(int col, string value)
         {
-            if (gridViewManager != null)
+            if (IsGridViewManagerBoundToCurrentModel())
             {
                 gridViewManager.SetHeaderValue(col, value);
             }
