@@ -848,7 +848,7 @@ namespace AEIOU
             }
 
             // 末端の領域を削除（空白にする）
-            Rect r = new Rect(Col, (GetSheetRowCount() - Row_count - 1), 1, Row_count);
+            Rect r = new Rect(Col, (GetSheetRowCount() - Row_count), 1, Row_count);
             deleteRect(r, false);
 
             gridViewManager.EndGroup();
@@ -917,7 +917,7 @@ namespace AEIOU
             }
 
             // 範囲末尾の不要領域を削除（空白にする）
-            Rect r = new Rect(0, GetSheetRowCount() - Count - 1, GetSheetColumnCount(), Count);
+            Rect r = new Rect(0, GetSheetRowCount() - Count, GetSheetColumnCount(), Count);
             deleteRect(r, false);
 
             gridViewManager.EndGroup();
