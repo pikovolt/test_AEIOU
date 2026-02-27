@@ -1378,7 +1378,9 @@ namespace AEIOU
 
         private bool IsGridViewManagerBoundToCurrentModel()
         {
-            return gridViewManager.Model == timingSheetModel;
+            return gridViewManager != null &&
+                   timingSheetModel != null &&
+                   gridViewManager.Model == timingSheetModel;
         }
 
         private string GetHeaderValue(int col)
