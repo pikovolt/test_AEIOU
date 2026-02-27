@@ -2589,7 +2589,7 @@ namespace AEIOU
             Copytext += "\tFrame\tseconds\r\n";
 
             // タイミングの書き出し
-            for (int i = 0; i < setting.RowLength; i++)
+            for (int i = 0; i < GetSheetRowCount(); i++)
             {
                 // 中抜き範囲は無視
                 bool bNuki = false;
@@ -2677,7 +2677,7 @@ namespace AEIOU
             Copytext = "{property:'Time Remap',scale:" + setting.Fps.ToString("f") + ",keys:[";
 
             //タイミングの書き出し
-            for (int i = 0; i < setting.RowLength; i++)
+            for (int i = 0; i < GetSheetRowCount(); i++)
             {
                 // 中抜き範囲は無視
                 bool bNuki = false;
@@ -3803,8 +3803,8 @@ namespace AEIOU
                 // ※fpsなどの設定は無視
                 FileStream outfs;
                 char[] header = { (char)0x11, 'S', 'h', 'i', 'r', 'a', 'h', 'e', 'i', 'T', 'i', 'm', 'e', 'S', 'h', 'e', 'e', 't' };
-                int col = setting.ColLength;
-                long row = setting.RowLength;
+                int col = GetSheetColumnCount();
+                long row = GetSheetRowCount();
                 try
                 {
                     outfs = new FileStream(dialog.FileName, FileMode.Create);
@@ -3883,8 +3883,8 @@ namespace AEIOU
         {
             FileStream inpfs;
             char[] header = { (char)0x11, 'S', 'h', 'i', 'r', 'a', 'h', 'e', 'i', 'T', 'i', 'm', 'e', 'S', 'h', 'e', 'e', 't' };
-            int col = setting.ColLength;
-            int row = setting.RowLength;
+            int col = GetSheetColumnCount();
+            int row = GetSheetRowCount();
             try
             {
                 inpfs = new FileStream(path, FileMode.Open);
