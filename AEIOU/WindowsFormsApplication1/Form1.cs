@@ -1500,8 +1500,10 @@ namespace AEIOU
             bool val = false;
 
             // チェック範囲は X,Y共に 0以上
-            if ((X >= 0 && X < timingSheetModel.ColumnCount) &&
-                (Y >= 0 && Y < timingSheetModel.RowCount))
+            int columnCount = GetSheetColumnCount();
+            int rowCount = GetSheetRowCount();
+            if ((X >= 0 && X < columnCount) &&
+                (Y >= 0 && Y < rowCount))
             {
                 // 値が入っていたら trueを返す
                 String str = GetCellValue(X, Y);
