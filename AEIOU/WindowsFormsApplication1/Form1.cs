@@ -819,7 +819,7 @@ namespace AEIOU
                 deleteRect(r, false);
             });
 
-            FinishWriteOperation(true);
+            dataGridView1.Invalidate();
 
         }
 
@@ -846,7 +846,7 @@ namespace AEIOU
                 deleteRect(r, false);
             });
 
-            FinishWriteOperation(true);
+            dataGridView1.Invalidate();
         }
 
         //----------------------------------------------------------------------------------------
@@ -877,7 +877,7 @@ namespace AEIOU
                 deleteRect(r, false);
             });
 
-            FinishWriteOperation(true);
+            dataGridView1.Invalidate();
 
         }
 
