@@ -717,7 +717,7 @@ namespace AEIOU
         }
 
         //---------------------------------------------------------------------------
-        private void copyToCell(int col, int row)
+        private void copyToCell(int col, int row, bool shouldInvalidate = true)
         {
             // PasteOperationのインスタンスを作成
             PasteOperation pasteOperation = new PasteOperation(row, col);
@@ -726,7 +726,10 @@ namespace AEIOU
             gridViewManager.ExecuteOperation(pasteOperation);
             
             // 描画更新(継続記号の更新の為)
-            dataGridView1.Invalidate();
+            if (shouldInvalidate)
+            {
+                dataGridView1.Invalidate();
+            }
         }
 
         //----------------------------------------------------------------------------------------
@@ -741,7 +744,7 @@ namespace AEIOU
         }
 
         //---------------------------------------------------------------------------
-        private void cutToBuf(Rect rect)
+        private void cutToBuf(Rect rect, bool shouldInvalidate = true)
         {
             // CutOperationのインスタンスを作成
             CutOperation cutOperation = new CutOperation(rect);
@@ -750,12 +753,15 @@ namespace AEIOU
             gridViewManager.ExecuteOperation(cutOperation);
 
             // 描画更新(継続記号の更新の為)
-            dataGridView1.Invalidate();
+            if (shouldInvalidate)
+            {
+                dataGridView1.Invalidate();
+            }
 
         }
 
         //----------------------------------------------------------------------------------------
-        private void deleteRect(Rect rect)
+        private void deleteRect(Rect rect, bool shouldInvalidate = true)
         {
             // DeleteOperationのインスタンスを作成
             DeleteOperation deleteOperation = new DeleteOperation(rect);
@@ -764,7 +770,10 @@ namespace AEIOU
             gridViewManager.ExecuteOperation(deleteOperation);
             
             // 描画更新(継続記号の更新の為)
-            dataGridView1.Invalidate();
+            if (shouldInvalidate)
+            {
+                dataGridView1.Invalidate();
+            }
 
             isFirstEdit = true;
         }
@@ -791,9 +800,11 @@ namespace AEIOU
 
             // 指定範囲に被る領域を削除（空白にする）
             Rect r = new Rect(Col, Row, 1, Row_count);
-            deleteRect(r);
+            deleteRect(r, false);
 
             gridViewManager.EndGroup();
+
+            dataGridView1.Invalidate();
 
         }
 
@@ -820,9 +831,11 @@ namespace AEIOU
 
             // 末端の領域を削除（空白にする）
             Rect r = new Rect(Col, (setting.RowLength - Row_count - 1), 1, Row_count);
-            deleteRect(r);
+            deleteRect(r, false);
 
             gridViewManager.EndGroup();
+
+            dataGridView1.Invalidate();
         }
 
         //----------------------------------------------------------------------------------------
@@ -852,9 +865,11 @@ namespace AEIOU
 
             // 指定範囲に被る領域を削除（空白にする）
             Rect r = new Rect(0, Row, setting.ColLength, Count);
-            deleteRect(r);
+            deleteRect(r, false);
 
             gridViewManager.EndGroup();
+
+            dataGridView1.Invalidate();
 
         }
 
@@ -885,9 +900,11 @@ namespace AEIOU
 
             // 範囲末尾の不要領域を削除（空白にする）
             Rect r = new Rect(0, setting.RowLength - Count - 1, setting.ColLength, Count);
-            deleteRect(r);
+            deleteRect(r, false);
 
             gridViewManager.EndGroup();
+
+            dataGridView1.Invalidate();
 
             isFirstEdit = true;
 
@@ -2358,8 +2375,8 @@ namespace AEIOU
                     int col = dataGridView1.CurrentCell.ColumnIndex - (mouseDownPoint.X - selectRange.X);
                     int row = dataGridView1.CurrentCell.RowIndex - (mouseDownPoint.Y - selectRange.Y);
                     gridViewManager.BeginGroup("選択元をカット＆ペースト");
-                    cutToBuf(selectRange);
-                    copyToCell(col, row);
+                    cutToBuf(selectRange, false);
+                    copyToCell(col, row, false);
                     gridViewManager.EndGroup();
                 }
             }
