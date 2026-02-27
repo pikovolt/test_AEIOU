@@ -1551,6 +1551,39 @@ namespace AEIOU
             }
         }
 
+        private bool TryGetArithmeticValue(CalcMode mode, int cellValue, int operand, out string calculatedValue)
+        {
+            calculatedValue = null;
+
+            switch (mode)
+            {
+                case CalcMode.Plus:
+                    calculatedValue = (cellValue + operand).ToString();
+                    return true;
+                case CalcMode.Minus:
+                    calculatedValue = (cellValue - operand).ToString();
+                    return true;
+                case CalcMode.Multiple:
+                    if (cellValue == 0)
+                    {
+                        return false;
+                    }
+
+                    calculatedValue = (cellValue * operand).ToString();
+                    return true;
+                case CalcMode.Divide:
+                    if (cellValue == 0)
+                    {
+                        return false;
+                    }
+
+                    calculatedValue = (cellValue / operand).ToString();
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         //----------------------------------------------------------------------------------------
         //----------------------------------------------------------------------------------------
         // 指定セルの入力有無をチェック
@@ -3669,10 +3702,8 @@ namespace AEIOU
                     MessageBox.Show("入力された値を数値に変換できませんでした."); return;
                 }
 
-                gridViewManager.BeginGroup("四則演算");
-                bool hasArithmeticUpdate = false;
-
                 Rect r = selectRange;
+                List<Tuple<int, int, string>> arithmeticWrites = new List<Tuple<int, int, string>>();
                 for (int c = r.Left; c <= r.Right; c++)
                 {
                     for (int i = r.Top; i <= r.Bottom; i++)
@@ -3693,62 +3724,26 @@ namespace AEIOU
                         catch (Exception ex)
                         {
                             MessageBox.Show("セルの値を数値に変換できませんでした.");
-
-                            // アンドゥを行い、途中までの入力結果を取り消す
-                            gridViewManager.EndGroup();
-                            if (hasArithmeticUpdate)
-                            {
-                                gridViewManager.Undo();
-                            }
-
                             return;
                         }
 
-                        SetValueOperation operation = null;
-                        switch (mode)
+                        string nextValue;
+                        if (TryGetArithmeticValue(mode, celNum, num, out nextValue))
                         {
-                            case CalcMode.Plus:
-                                // アンドゥ情報の記録
-                                operation = new SetValueOperation(i, c, (celNum + num).ToString());
-                                gridViewManager.ExecuteOperation(operation);
-                                hasArithmeticUpdate = true;
-                                //(*pColorBuf)[c,i] = versionNumber;
-                                break;
-                            case CalcMode.Minus:
-                                // アンドゥ情報の記録
-                                operation = new SetValueOperation(i, c, (celNum - num).ToString());
-                                gridViewManager.ExecuteOperation(operation);
-                                hasArithmeticUpdate = true;
-                                //(*pColorBuf)[c][i] = versionNumber;
-                                break;
-                            case CalcMode.Multiple:
-                                if (celNum != 0)
-                                {
-                                    operation = new SetValueOperation(i, c, (celNum * num).ToString());
-                                    gridViewManager.ExecuteOperation(operation);
-                                    hasArithmeticUpdate = true;
-                                    //(*pColorBuf)[c][i] = versionNumber;
-                                }
-                                break;
-                            case CalcMode.Divide:
-                                if (celNum != 0)
-                                {
-                                    operation = new SetValueOperation(i, c, (celNum / num).ToString());
-                                    gridViewManager.ExecuteOperation(operation);
-                                    hasArithmeticUpdate = true;
-                                    //(*pColorBuf)[c][i] = versionNumber;
-                                }
-                                break;
+                            arithmeticWrites.Add(Tuple.Create(i, c, nextValue));
                         }
                     }
                 }
 
-                gridViewManager.EndGroup();
+                ExecuteWriteGroup("四則演算", delegate
+                {
+                    foreach (Tuple<int, int, string> write in arithmeticWrites)
+                    {
+                        QueueCellWrite(row: write.Item1, col: write.Item2, value: write.Item3);
+                    }
+                });
 
-                isFirstEdit = true;
-
-                // 描画更新(継続記号の更新の為)
-                dataGridView1.Invalidate();
+                FinishWriteOperation(true);
             }
         }
 
@@ -3771,24 +3766,16 @@ namespace AEIOU
 
             int copyLength = (Len < maxCopyLength) ? Len : maxCopyLength;
 
-            gridViewManager.BeginGroup("複製");
-            try
+            ExecuteWriteGroup("複製", delegate
             {
                 //複製操作
                 for (int i = 0; i < copyLength; i++)
                 {
                     String val = GetCellValue(Col, Row + i);
-
-                    // アンドゥ情報の記録
-                    var operation = new SetValueOperation(Row + Len + i, Col, val);
-                    gridViewManager.ExecuteOperation(operation);
+                    QueueCellWrite(row: Row + Len + i, col: Col, value: val);
                     //(*pColorBuf)[Col][Row + Len + i] = versionNumber;
                 }
-            }
-            finally
-            {
-                gridViewManager.EndGroup();
-            }
+            });
 
             // 新しい選択範囲を設定
             Rect rect = selectRange;
@@ -3802,10 +3789,7 @@ namespace AEIOU
             // 範囲を保存
             selectRange = rect;
 
-            isFirstEdit = true;
-
-            // 描画更新(継続記号の更新の為)
-            dataGridView1.Invalidate();
+            FinishWriteOperation(true);
         }
 
         //----------------------------------------------------------------------------------------
