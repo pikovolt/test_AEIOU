@@ -1,6 +1,9 @@
 ﻿using System;
-using System.Drawing;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Windows.Forms;
+using System.Drawing;
 
 namespace AEIOU
 {
@@ -17,41 +20,56 @@ namespace AEIOU
         private bool isKaraCell = false;
         private bool isContinuousLine = false;
         private SheetBorder borderState = SheetBorder.None;
-
         public bool IsHeader
         {
-            set { isHeader = value; }
-            get { return isHeader; }
+            set
+            {
+                isHeader = value;
+            }
+            get
+            {
+                return isHeader;
+            }
         }
-
         public bool IsKaraCell
         {
-            set { isKaraCell = value; }
-            get { return isKaraCell; }
+            set
+            {
+                isKaraCell = value;
+            }
+            get
+            {
+                return isKaraCell;
+            }
         }
-
         public bool IsContinuousLine
         {
-            set { isContinuousLine = value; }
-            get { return isContinuousLine; }
+            set
+            {
+                isContinuousLine = value;
+            }
+            get
+            {
+                return isContinuousLine;
+            }
         }
-
         public SheetBorder BorderState
         {
-            set { borderState = value; }
-            get { return borderState; }
+            set
+            {
+                borderState = value;
+            }
+            get
+            {
+                return borderState;
+            }
         }
 
         // カスタム ペイント実装
-        protected override void Paint(
-            Graphics graphics,
-            Rectangle clipBounds,
-            Rectangle cellBounds,
-            int rowIndex,
-            DataGridViewElementStates elementState,
-            object value,
-            object formattedValue,
-            string errorText,
+        protected override void Paint(Graphics graphics,
+            Rectangle clipBounds, Rectangle cellBounds, int rowIndex,
+            DataGridViewElementStates elementState, object value,
+            object formattedValue, string errorText,
             DataGridViewCellStyle cellStyle,
             DataGridViewAdvancedBorderStyle advancedBorderStyle,
             DataGridViewPaintParts paintParts)
@@ -63,18 +81,26 @@ namespace AEIOU
             bool drawContentForeground =
                 (paintParts & DataGridViewPaintParts.ContentForeground) == DataGridViewPaintParts.ContentForeground;
 
-            base.Paint(
-                graphics,
-                clipBounds,
-                cellBounds,
-                rowIndex,
-                elementState,
-                value,
-                formattedValue,
-                errorText,
-                cellStyle,
-                advancedBorderStyle,
-                paintParts & ~DataGridViewPaintParts.ContentForeground);
+            // 背景の描画
+            if ((paintParts & DataGridViewPaintParts.Background) ==
+                DataGridViewPaintParts.Background)
+            {
+                using (SolidBrush cellBackground =
+                    isSelected
+                    ? new SolidBrush(cellStyle.SelectionBackColor)
+                    : new SolidBrush(cellStyle.BackColor))
+                {
+                    graphics.FillRectangle(cellBackground, cellBounds);
+                }
+            }
+
+            // 境界線の描画
+            if ((paintParts & DataGridViewPaintParts.Border) ==
+                DataGridViewPaintParts.Border)
+            {
+                PaintBorder(graphics, clipBounds, cellBounds, cellStyle,
+                    advancedBorderStyle);
+            }
 
             if (!drawContentForeground)
             {
@@ -116,7 +142,7 @@ namespace AEIOU
                 }
             }
 
-            // 1秒毎の基準線を描画
+            //１秒毎の基準線を描画
             if ((borderState & SheetBorder.EverySec) != SheetBorder.None)
             {
                 using (Pen linepen = new Pen(Color.Black, 3))
@@ -130,7 +156,7 @@ namespace AEIOU
                 }
             }
 
-            // ｎコマ毎の基準線を描画
+            //ｎコマ毎の基準線を描画
             if ((borderState & SheetBorder.EveryNFrames) != SheetBorder.None)
             {
                 using (Pen linepen = new Pen(Color.LightGray, 2))
@@ -144,7 +170,7 @@ namespace AEIOU
                 }
             }
 
-            // シート毎の基準線を描画
+            //シート毎の基準線を描画
             if ((borderState & SheetBorder.EverySheet) != SheetBorder.None)
             {
                 using (Pen linepen = new Pen(Color.Red, 3))
@@ -164,16 +190,14 @@ namespace AEIOU
 
             // 文字の描画
             // ※カラセルの場合は描画しない
-            if (formattedValue is string && !isKaraCell)
+            if (formattedValue is String && !isKaraCell)
             {
-                Color textColor = isSelected ? cellStyle.SelectionForeColor : cellStyle.ForeColor;
-                TextRenderer.DrawText(
-                    graphics,
+                TextRenderer.DrawText(graphics,
                     (string)formattedValue,
-                    cellStyle.Font,
-                    baseArea,
-                    textColor);
+                    this.DataGridView.Font,
+                    baseArea, cellStyle.ForeColor);
             }
         }
+
     }
 }
