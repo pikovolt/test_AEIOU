@@ -1344,11 +1344,21 @@ namespace AEIOU
 
         private string GetCellValue(int col, int row)
         {
+            if (IsGridViewManagerBoundToCurrentModel())
+            {
+                return gridViewManager.GetCellValue(col, row);
+            }
+
             return timingSheetModel.GetCell(col, row);
         }
 
         private bool TryGetCellValue(int col, int row, out string value)
         {
+            if (IsGridViewManagerBoundToCurrentModel())
+            {
+                return gridViewManager.TryGetCellValue(col, row, out value);
+            }
+
             return timingSheetModel.TryGetCell(col, row, out value);
         }
 
@@ -1368,7 +1378,9 @@ namespace AEIOU
 
         private bool IsGridViewManagerBoundToCurrentModel()
         {
-            return gridViewManager.Model == timingSheetModel;
+            return gridViewManager != null &&
+                   timingSheetModel != null &&
+                   gridViewManager.Model == timingSheetModel;
         }
 
         private string GetHeaderValue(int col)
