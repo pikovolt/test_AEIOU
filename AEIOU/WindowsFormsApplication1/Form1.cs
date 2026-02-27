@@ -1437,7 +1437,7 @@ namespace AEIOU
             {
                 string normalizedValue = value ?? "";
                 timingSheetModel.SetCell(col, row, normalizedValue);
-                dataGridView1[col, row].Value = normalizedValue;
+                gridViewManager.SetCellDisplayValue(col, row, normalizedValue);
             }
         }
 
