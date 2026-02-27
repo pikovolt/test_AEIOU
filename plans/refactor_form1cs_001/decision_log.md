@@ -171,3 +171,11 @@
 - 影響: 次PRで「何を追加確認すべきか」を事前共有でき、差分レビューの観点がぶれにくくなる。
 
 
+
+## 2026-02-27 Phase 1 Step 4着手（複製操作のUndoグループ化）
+
+- 決定: `duplicateToolStripMenuItem_Click` で `SetValueOperation` を複数発行する前に `gridViewManager.BeginGroup("複製")` を開始し、末尾の `EndGroup()` と対になるよう修正する。
+- 理由: 一括操作（B区分）のUndo単位を操作論理に合わせるため。グループ開始なしで `EndGroup()` のみ呼ぶ実装では履歴がまとまらず、操作再現性が低下する。
+- 影響:
+  - 複製操作が単一のUndo単位として記録され、既存の一括操作ポリシー（Begin/Endで囲む）と整合する。
+  - モデル更新経路は既存の `SetValueOperation`（= manager 経由更新）を維持し、Phase 1 の更新口統一方針に一致する。

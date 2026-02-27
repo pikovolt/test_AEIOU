@@ -3601,13 +3601,12 @@ namespace AEIOU
         {
             // 複製
 
-            int Col, Row, Cnt, Len;
+            int Col, Row, Len;
             Col = selectRange.Left;
             Row = selectRange.Top;
             Len = selectRange.Height;
 
-            // （回数は２回固定）
-            Cnt = 2;
+            gridViewManager.BeginGroup("複製");
 
             //複製操作
             for (int i = 0; i < Len; i++)
