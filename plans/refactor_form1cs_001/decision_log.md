@@ -99,3 +99,28 @@
   - ファイルI/O経路でもモデルとビューの更新口が統一される。
   - 範囲外データ混入時の処理継続性が向上する。
   - `checkCellValue` が意図通りの「有効範囲かつ非空」判定として機能する。
+
+## 2026-02-27 Phase 1 B区分着手（更新口の集約）
+
+- 決定: `GridViewOperation` から `Model` / `View` 直接更新を減らし、`GridViewManager` のセル更新API経由へ統一する。
+- 実装内容:
+  - `GridViewManager` に `GetCellValue` / `SetCellValue` / `SetCellValueWithUndo` / `ApplyUndoCellValue` / `ApplyRedoCellValue` を追加。
+  - `SetValueOperation`, `PasteOperation`, `CutOperation`, `DeleteOperation`, 共通ヘルパ (`CopyToBuffer` / `PasteFromBuffer` / `ClearSelection`) のセル更新を新APIへ置換。
+- 理由: Phase 1 の同期戦略（モデル正 + 反映口集約）を B区分（copy/delete 系一括操作）に拡張し、Phase 2 で `CellValueNeeded/Pushed` 接続点をさらに絞るため。
+- 影響:
+  - Undo/Redo を含むセル更新経路が `GridViewManager` に寄るため、同期漏れの検出/修正が容易になる。
+  - 既存の画面反映タイミングは維持され、挙動差分を最小化できる。
+
+## 2026-02-27 Phase 1 B区分修正（null正規化の統一）
+
+- 決定: `GridViewManager` の集約APIで、セル値更新時の `null` を空文字へ正規化してから Model/View に反映する。
+- 理由: モデル正（空文字を正規値）とビュー表示値の不整合を防ぎ、更新口集約後の一貫性を確保するため。
+- 影響: `SetCellValue*` / `Apply*CellValue` 経路で `null` 混入時も Model/View が同一値（`""`）で同期される。
+
+## 2026-02-27 Phase 1 B区分追補（Paste Undo/Redo の決定性）
+
+- 決定: `PasteOperation` の Undo/Redo を `manager.CopyBuffer` の現在値に依存させず、実行時スナップショット（貼り付け前値/貼り付け値）で再適用する。
+- 理由: 貼り付け後にコピーバッファが変更・クリアされても、Undo/Redo の結果を決定的に保つため。
+- 影響:
+  - Undo は `_oldValues`、Redo は `_newValues` を使って復元される。
+  - `PasteOperation` の履歴再生がバッファ状態変化から独立し、操作単位の再現性が向上する。
