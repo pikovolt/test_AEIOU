@@ -116,6 +116,7 @@
     <Compile Include="Settings.cs" />
     <Compile Include="TimingCell.cs" />
     <Compile Include="TimingColumn.cs" />
+    <Compile Include="TimingSheetModel.cs" />
     <Compile Include="UndoGroup.cs" />
     <Compile Include="UndoManager.cs" />
     <Compile Include="UndoOperation.cs" />
