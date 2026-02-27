@@ -1437,7 +1437,10 @@ namespace AEIOU
             {
                 string normalizedValue = value ?? "";
                 timingSheetModel.SetCell(col, row, normalizedValue);
-                gridViewManager.SetCellDisplayValue(col, row, normalizedValue);
+                if (gridViewManager != null)
+                {
+                    gridViewManager.SetCellDisplayValue(col, row, normalizedValue);
+                }
             }
         }
 
@@ -1488,7 +1491,10 @@ namespace AEIOU
             {
                 string normalizedValue = value ?? "";
                 timingSheetModel.SetHeader(col, normalizedValue);
-                gridViewManager.SetHeaderDisplayValue(col, normalizedValue);
+                if (gridViewManager != null)
+                {
+                    gridViewManager.SetHeaderDisplayValue(col, normalizedValue);
+                }
             }
         }
 
