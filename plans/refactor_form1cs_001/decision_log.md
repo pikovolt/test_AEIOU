@@ -310,3 +310,11 @@
 - 影響:
   - 記録内容自体は不変。
   - 履歴参照時の章番号整合性を回復し、レビュー指摘の再発を抑止。
+
+## 2026-02-27 Phase 1 Step4継続（B区分の書込ループ境界をモデルサイズ基準へ）
+
+- 決定: 行挿入/削除系（`insertCell`, `deleteCell`, `insertToAllCell`, `cutToAllCell`）のループ境界と削除矩形計算を、`setting.ColLength` / `setting.RowLength` 直参照から `TimingSheetModel` サイズ参照（`GetSheetColumnCount` / `GetSheetRowCount`）へ置換する。
+- 理由: Phase 1 方針の「モデル正」を徹底し、設定値と実モデルサイズの乖離が起きる経路で範囲計算が不一致になるリスクを下げるため。
+- 影響:
+  - B区分（一括操作）の更新処理で、サイズ取得口がモデル基準に統一される。
+  - VirtualMode 移行時にも、行列サイズの参照先を追加変更せずに流用しやすくなる。

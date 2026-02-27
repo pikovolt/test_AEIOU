@@ -804,7 +804,7 @@ namespace AEIOU
             // 指定セルの指定位置以降を、指定数だけ後ろに送る
             int i = Col;
             {
-                for (int j = (setting.RowLength - 1); j >= (Row + Row_count); j--)
+                for (int j = (GetSheetRowCount() - 1); j >= (Row + Row_count); j--)
                 {
                     // セル入力値をコピー
                     var new_value = GetCellValue(i, j - Row_count);
@@ -836,7 +836,7 @@ namespace AEIOU
             int i = Col;
             {
                 //for (int j = (setting.RowLength - 1); j >= (Row + Row_count); j--)
-                for (int j = Row + Row_count; j < setting.RowLength; j++)
+                for (int j = Row + Row_count; j < GetSheetRowCount(); j++)
                 {
                     // セル入力値をコピー
                     var new_value = GetCellValue(i, j);
@@ -848,7 +848,7 @@ namespace AEIOU
             }
 
             // 末端の領域を削除（空白にする）
-            Rect r = new Rect(Col, (setting.RowLength - Row_count - 1), 1, Row_count);
+            Rect r = new Rect(Col, (GetSheetRowCount() - Row_count - 1), 1, Row_count);
             deleteRect(r, false);
 
             gridViewManager.EndGroup();
@@ -862,9 +862,9 @@ namespace AEIOU
             gridViewManager.BeginGroup("行の挿入");
 
             // 指定セルの指定位置以降を、指定数だけ後ろに送る
-            for (int i = 0; i < setting.ColLength; i++)
+            for (int i = 0; i < GetSheetColumnCount(); i++)
             {
-                for (int row = (setting.RowLength - 1); row >= Row + Count; row--)
+                for (int row = (GetSheetRowCount() - 1); row >= Row + Count; row--)
                 {
                     // セル入力値をコピー
                     var new_value = GetCellValue(i, row - Count);
@@ -882,7 +882,7 @@ namespace AEIOU
             }
 
             // 指定範囲に被る領域を削除（空白にする）
-            Rect r = new Rect(0, Row, setting.ColLength, Count);
+            Rect r = new Rect(0, Row, GetSheetColumnCount(), Count);
             deleteRect(r, false);
 
             gridViewManager.EndGroup();
@@ -897,9 +897,9 @@ namespace AEIOU
             gridViewManager.BeginGroup("行の削除");
 
             //全てのセルの指定位置以降を、指定数だけ前に戻す
-            for (int i = 0; i < setting.ColLength; i++)
+            for (int i = 0; i < GetSheetColumnCount(); i++)
             {
-                for (int row = Row; (row + Count) < setting.RowLength; row++)
+                for (int row = Row; (row + Count) < GetSheetRowCount(); row++)
                 {
                     // セル入力値をコピー
                     var new_value = GetCellValue(i, row + Count);
@@ -917,7 +917,7 @@ namespace AEIOU
             }
 
             // 範囲末尾の不要領域を削除（空白にする）
-            Rect r = new Rect(0, setting.RowLength - Count - 1, setting.ColLength, Count);
+            Rect r = new Rect(0, GetSheetRowCount() - Count - 1, GetSheetColumnCount(), Count);
             deleteRect(r, false);
 
             gridViewManager.EndGroup();
@@ -1430,6 +1430,26 @@ namespace AEIOU
             return gridViewManager != null &&
                    timingSheetModel != null &&
                    gridViewManager.Model == timingSheetModel;
+        }
+
+        private int GetSheetColumnCount()
+        {
+            if (timingSheetModel != null)
+            {
+                return timingSheetModel.ColumnCount;
+            }
+
+            return setting.ColLength;
+        }
+
+        private int GetSheetRowCount()
+        {
+            if (timingSheetModel != null)
+            {
+                return timingSheetModel.RowCount;
+            }
+
+            return setting.RowLength;
         }
 
         private string GetHeaderValue(int col)
