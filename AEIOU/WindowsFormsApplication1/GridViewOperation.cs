@@ -38,6 +38,10 @@ namespace AEIOU
                 // DataGridViewの範囲内に収まるように調整
                 int maxHeight = Math.Min(bufferHeight, manager.RowCount - row);
                 int maxWidth = Math.Min(bufferWidth, manager.ColumnCount - col);
+                if (maxHeight <= 0 || maxWidth <= 0)
+                {
+                    return;
+                }
 
                 string[,] clippedValues = new string[maxHeight, maxWidth];
                 for (int i = 0; i < maxHeight; i++)
@@ -143,6 +147,13 @@ namespace AEIOU
             Rect copyRect = manager.CopyRect;
             int maxHeight = Math.Min(copyRect.Height, manager.RowCount - _row);
             int maxWidth = Math.Min(copyRect.Width, manager.ColumnCount - _col);
+            if (maxHeight <= 0 || maxWidth <= 0)
+            {
+                _oldValues = null;
+                _newValues = null;
+                return;
+            }
+
             Rect pasteRange = new Rect(_col, _row, maxWidth, maxHeight);
 
             _oldValues = manager.GetRangeValues(pasteRange);
