@@ -101,7 +101,8 @@ namespace AEIOU
 
         public override void Redo(GridViewManager manager)
         {
-            Execute(manager);
+            manager.Model.ApplyRedoCell(_column, _row, _newValue);
+            manager.View[_column, _row].Value = _newValue;
         }
     }
 

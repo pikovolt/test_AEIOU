@@ -615,9 +615,9 @@ namespace AEIOU
             }
 
             // 初期化 (行の生成 : 中身は空)
-            dataGridView1.RowCount = setting.RowLength;
-            for (int i = 0; i < setting.RowLength; i++)
-                for (int j = 0; j < setting.ColLength; j++)
+            dataGridView1.RowCount = rowCount;
+            for (int i = 0; i < rowCount; i++)
+                for (int j = 0; j < columnCount; j++)
                     SetCellValue(j, i, "");
 
         }
@@ -653,8 +653,7 @@ namespace AEIOU
             for (int i = 0; i < col; i++)
             {
                 aryCellUsedCount[i] = tempCellUsed[i];
-                dataGridView1.Columns[i].HeaderText = headerName[i];
-                timingSheetModel.SetHeader(i, headerName[i]);
+                SetHeaderValue(i, headerName[i]);
                 for (int j = 0; j < row; j++)
                 {
                     SetCellValue(i, j, temp[i, j]);

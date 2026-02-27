@@ -77,3 +77,12 @@
   - VirtualMode は OFF のまま維持し、Phase 2 で `CellValueNeeded/Pushed` に接続可能な更新口を先に固定する。
 - 理由: Phase 1 の必須要件（入力ホットパスの直参照削減・Undo/Redo互換維持）を小差分で満たすため。
 - 影響: `Form1` でのセル参照がモデル経由に寄り、今後の一括操作置換（B区分）を段階的に適用しやすくなる。
+
+## 2026-02-27 Phase 1移行点検（追補）
+
+- 決定: 初回PRの移行差分を再点検し、モデル同期の抜けを小修正する。
+- 修正内容:
+  - `SetValueOperation.Redo` が `Execute` 再呼び出しで `oldValue` を再取得してしまう経路を是正し、`ApplyRedoCell` 経由で newValue を再適用する形へ統一。
+  - `dataGridInitialize` の初期化ループを引数 `columnCount` / `rowCount` 基準へ統一し、モデル・ビューのサイズ整合を明示。
+  - ヘッダ復元時の反映を `SetHeaderValue` 経由に寄せ、更新口を一本化。
+- 理由: VirtualMode 前段の Phase 1 では「モデル正」の更新口を固定し、再実行経路での値取り違えリスクを最小化するため。
