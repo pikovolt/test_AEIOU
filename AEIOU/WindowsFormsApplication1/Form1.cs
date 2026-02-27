@@ -1465,6 +1465,31 @@ namespace AEIOU
             gridViewManager.ExecuteOperation(operation);
         }
 
+        private bool QueueCellWriteIfChanged(int row, int col, string value)
+        {
+            string normalizedValue = value ?? "";
+            string currentValue = GetCellValue(col, row);
+            if (currentValue == normalizedValue)
+            {
+                return false;
+            }
+
+            QueueCellWrite(row, col, normalizedValue);
+            return true;
+        }
+
+        private bool SetCellValueIfChanged(int col, int row, string value)
+        {
+            string normalizedValue = value ?? "";
+            if (GetCellValue(col, row) == normalizedValue)
+            {
+                return false;
+            }
+
+            SetCellValue(col, row, normalizedValue);
+            return true;
+        }
+
         private void QueueShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
         {
             if (length <= 0 || endColExclusive <= startCol)
@@ -2903,8 +2928,12 @@ namespace AEIOU
                 if (clip[i].IndexOf("Time Remap") != -1) break;
             }
 
+            bool hasWrite = false;
+
             // リマップ情報を読む
-            i+=2;
+            ExecuteWriteGroup("AEペースト", delegate
+            {
+                i+=2;
             for (; i < clip.Length; i++)
             {
                 String[] buf = clip[i].Split('\t');
@@ -2923,14 +2952,21 @@ namespace AEIOU
                     continue;
                 }
 
-                if (currentValue.Length == 0)
+                if (QueueCellWriteIfChanged(row: frm, col: col, value: (t + setting.FirstFrame).ToString()))
                 {
-                    aryCellUsedCount[col]++;
+                    if (currentValue.Length == 0)
+                    {
+                        aryCellUsedCount[col]++;
+                    }
+                    hasWrite = true;
                 }
-                SetCellValue(col, frm, (t + setting.FirstFrame).ToString());
             }
+            });
 
-            isFirstEdit = true;
+            if (hasWrite)
+            {
+                isFirstEdit = true;
+            }
 
             // 描画更新(継続記号の更新の為)
             dataGridView1.Invalidate();
@@ -3962,7 +3998,7 @@ namespace AEIOU
                     if (current != val)
                     {
                         current = val;
-                        SetCellValue(i, j, val.ToString());
+                        SetCellValueIfChanged(col: i, row: j, value: val.ToString());
                     }
                 }
             }
@@ -3978,6 +4014,9 @@ namespace AEIOU
 
             // ストリームを閉じる
             inpfs.Close();
+
+            // 読み込み結果は確定状態とし、Undo履歴をクリアする（旧実装互換）。
+            flushUndoHistory();
         }
 
         //----------------------------------------------------------------------------------------
