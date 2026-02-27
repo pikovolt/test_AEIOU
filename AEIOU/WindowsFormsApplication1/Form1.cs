@@ -1357,9 +1357,14 @@ namespace AEIOU
             dataGridView1[col, row].Value = value;
         }
 
+        private bool IsGridViewManagerBoundToCurrentModel()
+        {
+            return gridViewManager.Model == timingSheetModel;
+        }
+
         private string GetHeaderValue(int col)
         {
-            if (gridViewManager.Model != null)
+            if (IsGridViewManagerBoundToCurrentModel())
             {
                 return gridViewManager.GetHeaderValue(col);
             }
@@ -1369,7 +1374,7 @@ namespace AEIOU
 
         private void SetHeaderValue(int col, string value)
         {
-            if (gridViewManager.Model != null)
+            if (IsGridViewManagerBoundToCurrentModel())
             {
                 gridViewManager.SetHeaderValue(col, value);
             }

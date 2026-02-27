@@ -136,3 +136,11 @@
 - 影響:
   - 列名編集・列挿入削除後のヘッダ復元が同一APIで扱える。
   - ヘッダ値に `null` が混入した場合でもモデルと表示が同一値で維持される。
+
+## 2026-02-27 Phase 1 Step 5移行ミス修正（モデル参照ずれ防止）
+
+- 決定: `Form1` のヘッダ read/write で `GridViewManager.Model != null` だけを条件に manager API を使う判定を廃止し、`gridViewManager.Model == timingSheetModel` の一致判定に変更する。
+- 理由: `InitializeWork(InitializeTarget.Timing)` で `timingSheetModel` を再生成した直後は manager が旧モデル参照を保持しうるため、非一致状態で manager API を使うとヘッダ更新先が旧モデルへずれるリスクがある。
+- 影響:
+  - モデル再生成直後でも、ヘッダ read/write は常に現行 `timingSheetModel` を参照できる。
+  - manager と現行モデルが一致した後は従来どおり manager API 経由で更新口を統一できる。
