@@ -144,3 +144,30 @@
 - 影響:
   - モデル再生成直後でも、ヘッダ read/write は常に現行 `timingSheetModel` を参照できる。
   - manager と現行モデルが一致した後は従来どおり manager API 経由で更新口を統一できる。
+
+## 2026-02-27 Phase 1継続（SetCellValue の adapter 経由化）
+
+- 決定: `Form1.SetCellValue` は `GridViewManager` が現行 `TimingSheetModel` にバインド済みの場合、`gridViewManager.SetCellValue` を優先して呼ぶ。
+- 理由: Phase 1 の同期戦略（モデル正 + 反映口の集約）に合わせ、`DataGridView` 直接反映を `Form1` 内で分散させないため。
+- 影響: 単一セル更新・列シフト・AE貼り付け等、`SetCellValue` を経由する書込が adapter 経由に統一される。
+
+## 2026-02-27 Phase 1移行ミス修正（Timing初期化時のmanager再バインド）
+
+- 決定: `InitializeWork(InitializeTarget.Timing)` で `timingSheetModel` 再生成直後に、`gridViewManager.InitializeWork(dataGridView1, timingSheetModel)` を実行して manager の参照先を即時更新する。
+- 理由: 直前PRでは `Form1.SetCellValue` が manager 経由を優先するため、Timing再初期化直後に manager が旧モデルを保持しているとフォールバック経路に依存しやすく、移行意図（adapter 経路の一貫化）とずれるため。
+- 影響: リサイズ/再初期化中も manager と現行モデルの整合が保たれ、`SetCellValue`・`SetHeaderValue` の更新口が安定する。
+
+## 2026-02-27 Phase 1再点検（Timing初期化時のUndo履歴保持）
+
+- 決定: `InitializeWork(InitializeTarget.Timing)` では `gridViewManager.InitializeWork(...)` を呼ばず、`gridViewManager.Model = timingSheetModel` の再バインドのみ行う。
+- 理由: `InitializeWork(...)` は Undo/Redo 履歴・コピー状態を再初期化する副作用があり、Timing再初期化だけを意図した経路で履歴が失われる移行ミスになるため。
+- 影響: モデル参照ずれは防ぎつつ、`InitializeTarget.Timing` 単体呼び出し時の Undo 履歴ポリシーを従来どおり維持できる。
+
+
+## 2026-02-27 PR再監査（追加フォローアップの明文化）
+
+- 決定: 移行ミス修正後の残課題として、read経路境界・Timing初期化時copy buffer方針・検証証跡運用をフォローアップ項目として plan/worklog に明示する。
+- 理由: Phase 1 の実装差分は小さいが、Phase 2 接続時に曖昧さが残ると再発しやすいため、早期に監査観点を固定する。
+- 影響: 次PRで「何を追加確認すべきか」を事前共有でき、差分レビューの観点がぶれにくくなる。
+
+
