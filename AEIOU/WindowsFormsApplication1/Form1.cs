@@ -1307,9 +1307,17 @@ namespace AEIOU
             // 遡って状態を確認
             for (int i = Y; i >= 0; i--)
             {
-                // 空白は無視、カラセルを見付けたら falseを返す
-                if (GetCellValue(X, i) == "") continue;
-                if (GetCellValue(X, i) == setting.KaraCell) return false;
+                string currentValue;
+                if (!TryGetCellValue(X, i, out currentValue) || currentValue == "")
+                {
+                    continue;
+                }
+
+                // カラセルを見付けたら false を返す
+                if (currentValue == setting.KaraCell)
+                {
+                    return false;
+                }
 
                 // タイミングの入力を見付けたら trueを返す
                 return true;
@@ -1395,6 +1403,12 @@ namespace AEIOU
             }
 
             return timingSheetModel.TryGetCell(col, row, out value);
+        }
+
+        private bool IsCellEmpty(int col, int row)
+        {
+            string value;
+            return !TryGetCellValue(col, row, out value) || value == "";
         }
 
         private void SetCellValue(int col, int row, string value)
@@ -3302,7 +3316,7 @@ namespace AEIOU
                 // 入力
                 for (int i = 0; i < cnt; i += Math.Abs(step))
                 {
-                    if (GetCellValue(col, row + i) == "")
+                    if (IsCellEmpty(col, row + i))
                     {
                         aryCellUsedCount[col]++;
                     }
@@ -3504,7 +3518,12 @@ namespace AEIOU
             String[] temp = new String[Cnt];
             for(i = 0; i < Cnt; i++)
             {
-                String val = GetCellValue(Col, Row + i);
+                string val;
+                if (!TryGetCellValue(Col, Row + i, out val))
+                {
+                    continue;
+                }
+
                 if(val == "") continue;
                 temp[targetCount++] = val;
             }
@@ -3514,7 +3533,16 @@ namespace AEIOU
             //選択範囲内の記述を逆順に適応
             for (i = 0; i < Cnt; i++)
             {
-                if (GetCellValue(Col, Row + i) == "") continue;
+                string currentValue;
+                if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
+                {
+                    continue;
+                }
+
+                if (targetCount <= 0)
+                {
+                    break;
+                }
 
                 // アンドゥ情報の記録
                 var operation = new SetValueOperation(Row + i, Col, temp[--targetCount]);

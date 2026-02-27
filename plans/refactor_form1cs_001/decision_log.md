@@ -262,3 +262,27 @@
 - 影響:
   - 値更新・Undo/Redo・選択更新ロジックは変更なし。
   - 再描画タイミングのみを末尾集約に寄せ、重複発火を削減する。
+
+## 2026-02-27 Phase 1 Step4継続（連番/反転の読取経路統一）
+
+- 決定: `sequentialNumberToolStripMenuItem_Click` / `reverseToolStripMenuItem_Click` の空セル判定を `TryGetCellValue` ベースに寄せ、`GetCellValue(...) == ""` 直比較を削減する。
+- 理由: B区分（一括操作）の read 経路を model adapter 経由に統一し、範囲外や未初期化の分岐を同一ルールで扱うため。
+- 影響:
+  - 連番作成の使用数カウント判定は `IsCellEmpty` ヘルパー経由で統一される。
+  - 反転処理の値収集/適用時に `TryGetCellValue` を利用し、読取境界が明確化される。
+
+## 2026-02-27 PR再精査（reverse の読取/適用判定の同一化）
+
+- 決定: `reverseToolStripMenuItem_Click` の2ndパス（適用側）でも `TryGetCellValue` を直接使い、1stパス（収集側）と同一条件で空判定する。
+- 理由: 将来の判定条件変更時に `IsCellEmpty` と分岐が乖離すると、収集件数と適用件数の不整合が起きるリスクがあるため。
+- 影響:
+  - 収集/適用の判定基準が同一化され、`temp[--targetCount]` の境界を保守しやすくなる。
+  - 防御的に `targetCount <= 0` ガードを追加し、想定外の差異が出ても範囲外アクセスを回避する。
+
+## 2026-02-27 PR再精査フォローアップ（checkContinuty の読取一本化）
+
+- 決定: 描画ホットパスの `checkContinuty` で同一セルへの二重 `GetCellValue` 呼び出しをやめ、`TryGetCellValue` 1回 + ローカル変数判定へ置換する。
+- 理由: 読取経路を model adapter 側へ揃えつつ、CellPainting 経路での重複読取を減らし判定条件の一貫性を高めるため。
+- 影響:
+  - 空セル/範囲外は `TryGetCellValue == false or ""` として同一扱い。
+  - KaraCell 判定と通常入力判定は従来仕様を維持。
