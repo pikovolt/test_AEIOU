@@ -63,12 +63,8 @@ namespace AEIOU
                 }
             }
 
-            bool bSelected = false;
-            if ((e.PaintParts & DataGridViewPaintParts.SelectionBackground) == DataGridViewPaintParts.SelectionBackground &&
-                (e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected)
-            {
-                bSelected = true;
-            }
+            bool bSelected =
+                (e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected;
 
             bool bDragSource = false;
             if (isRectDrag &&

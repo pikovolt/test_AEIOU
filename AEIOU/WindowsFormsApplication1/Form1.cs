@@ -1343,6 +1343,7 @@ namespace AEIOU
 
             //背景色を設定
             e.CellStyle.BackColor = bgColor;
+            e.CellStyle.SelectionBackColor = bgColor;
 
             //値の取得範囲を制限
             //※ヘッダー部で値取得すると、中身がnullの為に例外が発生する
