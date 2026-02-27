@@ -13,7 +13,12 @@ namespace AEIOU
         {
             _view = view;
             _setting = setting;
-            _cellValueGetter = cellValueGetter ?? throw new ArgumentNullException("cellValueGetter");
+            if (cellValueGetter == null)
+            {
+                throw new ArgumentNullException("cellValueGetter");
+            }
+
+            _cellValueGetter = cellValueGetter;
         }
 
         public void ApplyTimingCellState(DataGridViewCellPaintingEventArgs e, SheetBorder borderState, bool isContinuousLine)

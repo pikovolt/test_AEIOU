@@ -294,3 +294,11 @@
 - 影響:
   - `IsKaraCell` / `IsContinuousLine` 判定が、入力ホットパスと同じ参照境界で評価される。
   - `GridCellRenderer` は `Func<int,int,string>` を受け取る構成となり、値取得の依存が明示化される。
+
+## 2026-02-27 PR再精査（移行ミス修正: throw expression 互換性）
+
+- 決定: `GridCellRenderer` コンストラクタの null チェックを `?? throw` から従来構文（`if (...) throw`）へ修正する。
+- 理由: 本リポジトリは .NET 3.5 / 旧 C# コンパイラ互換を前提にしており、throw expression（C# 7 以降）はビルド不能となる移行ミスのため。
+- 影響:
+  - 実行時挙動（null 時に `ArgumentNullException` を送出）は維持。
+  - 言語バージョン依存を除去し、既存ツールチェーン互換を回復。
