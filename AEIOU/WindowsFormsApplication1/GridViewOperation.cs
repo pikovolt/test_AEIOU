@@ -24,14 +24,7 @@ namespace AEIOU
         public void CopyToBuffer(Rect range, GridViewManager manager)
         {
             manager.CopyRect = range;
-            manager.CopyBuffer = new string[range.Height, range.Width];
-            for (int i = 0; i < range.Height; i++)
-            {
-                for (int j = 0; j < range.Width; j++)
-                {
-                    manager.CopyBuffer[i, j] = manager.GetCellValue(range.X + j, range.Y + i);
-                }
-            }
+            manager.CopyBuffer = manager.GetRangeValues(range);
         }
 
         public void PasteFromBuffer(int row, int col, GridViewManager manager)
@@ -46,27 +39,23 @@ namespace AEIOU
                 int maxHeight = Math.Min(bufferHeight, manager.RowCount - row);
                 int maxWidth = Math.Min(bufferWidth, manager.ColumnCount - col);
 
-                // DataGridViewに書き戻す
+                string[,] clippedValues = new string[maxHeight, maxWidth];
                 for (int i = 0; i < maxHeight; i++)
                 {
                     for (int j = 0; j < maxWidth; j++)
                     {
-                        manager.SetCellValue(col + j, row + i, manager.CopyBuffer[i, j]);
+                        clippedValues[i, j] = manager.CopyBuffer[i, j];
                     }
                 }
+
+                manager.SetRangeValues(col, row, clippedValues);
             }
         }
 
 
         public void ClearSelection(Rect range, GridViewManager manager)
         {
-            for (int i = 0; i < range.Height; i++)
-            {
-                for (int j = 0; j < range.Width; j++)
-                {
-                    manager.SetCellValue(range.X + j, range.Y + i, "");
-                }
-            }
+            manager.ClearRangeValues(range);
         }
 
     }
@@ -219,27 +208,14 @@ namespace AEIOU
 
         public override void Execute(GridViewManager manager)
         {
-            _oldValues = new String[_cutRange.Height, _cutRange.Width];
-            for (int i = 0; i < _cutRange.Height; i++)
-            {
-                for (int j = 0; j < _cutRange.Width; j++)
-                {
-                    _oldValues[i, j] = manager.GetCellValue(_cutRange.X + j, _cutRange.Y + i);
-                }
-            }
+            _oldValues = manager.GetRangeValues(_cutRange);
             CopyToBuffer(_cutRange, manager);
             ClearSelection(_cutRange, manager);
         }
 
         public override void Undo(GridViewManager manager)
         {
-            for (int i = 0; i < _cutRange.Height; i++)
-            {
-                for (int j = 0; j < _cutRange.Width; j++)
-                {
-                    manager.SetCellValue(_cutRange.X + j, _cutRange.Y + i, _oldValues[i, j]);
-                }
-            }
+            manager.SetRangeValues(_cutRange.X, _cutRange.Y, _oldValues);
         }
 
         public override void Redo(GridViewManager manager)
@@ -262,26 +238,13 @@ namespace AEIOU
 
         public override void Execute(GridViewManager manager)
         {
-            _oldValues = new String[_deleteRange.Height, _deleteRange.Width];
-            for (int i = 0; i < _deleteRange.Height; i++)
-            {
-                for (int j = 0; j < _deleteRange.Width; j++)
-                {
-                    _oldValues[i, j] = manager.GetCellValue(_deleteRange.X + j, _deleteRange.Y + i);
-                }
-            }
+            _oldValues = manager.GetRangeValues(_deleteRange);
             ClearSelection(_deleteRange, manager);
         }
 
         public override void Undo(GridViewManager manager)
         {
-            for (int i = 0; i < _deleteRange.Height; i++)
-            {
-                for (int j = 0; j < _deleteRange.Width; j++)
-                {
-                    manager.SetCellValue(_deleteRange.X + j, _deleteRange.Y + i, _oldValues[i, j]);
-                }
-            }
+            manager.SetRangeValues(_deleteRange.X, _deleteRange.Y, _oldValues);
         }
 
         public override void Redo(GridViewManager manager)

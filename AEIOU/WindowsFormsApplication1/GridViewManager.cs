@@ -191,6 +191,44 @@ namespace AEIOU
             _view.Columns[col].HeaderText = NormalizeCellValue(value);
         }
 
+        public string[,] GetRangeValues(Rect range)
+        {
+            string[,] values = new string[range.Height, range.Width];
+            for (int rowOffset = 0; rowOffset < range.Height; rowOffset++)
+            {
+                for (int colOffset = 0; colOffset < range.Width; colOffset++)
+                {
+                    values[rowOffset, colOffset] = GetCellValue(range.X + colOffset, range.Y + rowOffset);
+                }
+            }
+
+            return values;
+        }
+
+        public void SetRangeValues(int startCol, int startRow, string[,] values)
+        {
+            int rowCount = values.GetLength(0);
+            int columnCount = values.GetLength(1);
+            for (int rowOffset = 0; rowOffset < rowCount; rowOffset++)
+            {
+                for (int colOffset = 0; colOffset < columnCount; colOffset++)
+                {
+                    SetCellValue(startCol + colOffset, startRow + rowOffset, values[rowOffset, colOffset]);
+                }
+            }
+        }
+
+        public void ClearRangeValues(Rect range)
+        {
+            for (int rowOffset = 0; rowOffset < range.Height; rowOffset++)
+            {
+                for (int colOffset = 0; colOffset < range.Width; colOffset++)
+                {
+                    SetCellValue(range.X + colOffset, range.Y + rowOffset, "");
+                }
+            }
+        }
+
         private string NormalizeCellValue(string value)
         {
             return value ?? "";
