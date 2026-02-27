@@ -133,6 +133,18 @@ namespace AEIOU
             _view[col, row].Value = normalizedValue;
         }
 
+        public string GetHeaderValue(int col)
+        {
+            return _model.GetHeader(col);
+        }
+
+        public void SetHeaderValue(int col, string value)
+        {
+            string normalizedValue = NormalizeCellValue(value);
+            _model.SetHeader(col, normalizedValue);
+            _view.Columns[col].HeaderText = normalizedValue;
+        }
+
         private string NormalizeCellValue(string value)
         {
             return value ?? "";

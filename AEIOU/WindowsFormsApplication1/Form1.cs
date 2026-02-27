@@ -611,7 +611,7 @@ namespace AEIOU
                 col.Width = columnWidth;
                 col.SortMode = DataGridViewColumnSortMode.NotSortable; //ヘッダークリックによるソート動作を禁止
                 this.dataGridView1.Columns.Add(col);
-                timingSheetModel.SetHeader(i, cellName);
+                SetHeaderValue(i, cellName);
             }
 
             // 初期化 (行の生成 : 中身は空)
@@ -1359,13 +1359,26 @@ namespace AEIOU
 
         private string GetHeaderValue(int col)
         {
+            if (gridViewManager.Model != null)
+            {
+                return gridViewManager.GetHeaderValue(col);
+            }
+
             return timingSheetModel.GetHeader(col);
         }
 
         private void SetHeaderValue(int col, string value)
         {
-            timingSheetModel.SetHeader(col, value);
-            dataGridView1.Columns[col].HeaderText = value;
+            if (gridViewManager.Model != null)
+            {
+                gridViewManager.SetHeaderValue(col, value);
+            }
+            else
+            {
+                string normalizedValue = value ?? "";
+                timingSheetModel.SetHeader(col, normalizedValue);
+                dataGridView1.Columns[col].HeaderText = normalizedValue;
+            }
         }
 
         //----------------------------------------------------------------------------------------

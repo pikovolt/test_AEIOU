@@ -124,3 +124,15 @@
 - 影響:
   - Undo は `_oldValues`、Redo は `_newValues` を使って復元される。
   - `PasteOperation` の履歴再生がバッファ状態変化から独立し、操作単位の再現性が向上する。
+
+## 2026-02-27 Phase 1 Step 5着手（ヘッダ更新口の集約）
+
+- 決定: 列ヘッダの参照/更新を `GridViewManager` 経由に集約し、`Form1` の `GetHeaderValue` / `SetHeaderValue` は manager API優先で使用する。
+- 実装内容:
+  - `GridViewManager` に `GetHeaderValue` / `SetHeaderValue` を追加。
+  - `dataGridInitialize` の初期ヘッダ設定を `SetHeaderValue` 経由へ切替。
+  - `SetHeaderValue` 内で `null` を空文字へ正規化し、Model/View 同期の一貫性を維持。
+- 理由: Phase 1 の更新口統一方針をヘッダ操作にも適用し、Phase 2 での VirtualMode 接続時に同期境界を明確化するため。
+- 影響:
+  - 列名編集・列挿入削除後のヘッダ復元が同一APIで扱える。
+  - ヘッダ値に `null` が混入した場合でもモデルと表示が同一値で維持される。
