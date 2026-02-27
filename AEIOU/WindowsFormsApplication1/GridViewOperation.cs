@@ -143,19 +143,19 @@ namespace AEIOU
             Rect copyRect = manager.CopyRect;
             int maxHeight = Math.Min(copyRect.Height, manager.RowCount - _row);
             int maxWidth = Math.Min(copyRect.Width, manager.ColumnCount - _col);
-            _oldValues = new String[maxHeight, maxWidth];
-            _newValues = new String[maxHeight, maxWidth];
+            Rect pasteRange = new Rect(_col, _row, maxWidth, maxHeight);
 
-            // 貼り付け前/貼り付け値を保存して反映
+            _oldValues = manager.GetRangeValues(pasteRange);
+            _newValues = new String[maxHeight, maxWidth];
             for (int i = 0; i < maxHeight; i++)
             {
                 for (int j = 0; j < maxWidth; j++)
                 {
-                    _oldValues[i, j] = manager.GetCellValue(_col + j, _row + i);
                     _newValues[i, j] = manager.CopyBuffer[i, j];
-                    manager.SetCellValue(_col + j, _row + i, _newValues[i, j]);
                 }
             }
+
+            manager.SetRangeValues(_col, _row, _newValues);
         }
 
         public override void Undo(GridViewManager manager)
@@ -165,15 +165,7 @@ namespace AEIOU
                 return;
             }
 
-            int rowCount = _oldValues.GetLength(0);
-            int columnCount = _oldValues.GetLength(1);
-            for (int i = 0; i < rowCount; i++)
-            {
-                for (int j = 0; j < columnCount; j++)
-                {
-                    manager.SetCellValue(_col + j, _row + i, _oldValues[i, j]);
-                }
-            }
+            manager.SetRangeValues(_col, _row, _oldValues);
         }
 
         public override void Redo(GridViewManager manager)
@@ -183,15 +175,7 @@ namespace AEIOU
                 return;
             }
 
-            int rowCount = _newValues.GetLength(0);
-            int columnCount = _newValues.GetLength(1);
-            for (int i = 0; i < rowCount; i++)
-            {
-                for (int j = 0; j < columnCount; j++)
-                {
-                    manager.SetCellValue(_col + j, _row + i, _newValues[i, j]);
-                }
-            }
+            manager.SetRangeValues(_col, _row, _newValues);
         }
     }
 
