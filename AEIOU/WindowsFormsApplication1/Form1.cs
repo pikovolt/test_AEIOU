@@ -2677,12 +2677,11 @@ namespace AEIOU
 
                 // タイミング情報をセルに書き込む
                 // ※書き込むセルが空欄の場合は、使用カウントを＋１
-                DataGridViewCell cell = dataGridView1[col, frm];
-                if (cell.Value.ToString().Length == 0)
+                if (GetCellValue(col, frm).Length == 0)
                 {
                     aryCellUsedCount[col]++;
                 }
-                cell.Value = (t + setting.FirstFrame).ToString();
+                SetCellValue(col, frm, (t + setting.FirstFrame).ToString());
             }
 
             isFirstEdit = true;

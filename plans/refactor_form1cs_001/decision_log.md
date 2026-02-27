@@ -86,3 +86,12 @@
   - `dataGridInitialize` の初期化ループを引数 `columnCount` / `rowCount` 基準へ統一し、モデル・ビューのサイズ整合を明示。
   - ヘッダ復元時の反映を `SetHeaderValue` 経由に寄せ、更新口を一本化。
 - 理由: VirtualMode 前段の Phase 1 では「モデル正」の更新口を固定し、再実行経路での値取り違えリスクを最小化するため。
+
+
+## 2026-02-27 Phase 1継続（ファイルI/O書込経路のモデル経由化）
+
+- 決定: `pasteFromAEToolStripMenuItem_Click` のセル更新を `DataGridViewCell.Value` 直書きから `SetCellValue` 呼び出しへ切り替える。
+- 理由: Phase 1 方針（モデル正）に沿って、C区分（ファイルI/O）の接続点を先にモデルAPIへ寄せるため。
+- 影響:
+  - 貼り付け処理でも `TimingSheetModel` と `DataGridView` の同期経路が統一される。
+  - `aryCellUsedCount` 更新判定は `GetCellValue` で実施し、既存の空判定仕様を維持する。
