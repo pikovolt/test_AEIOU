@@ -3290,7 +3290,7 @@ namespace AEIOU
             // カレントセルの位置を空ける
             {
                 // カレントセル位置を空けるように位置をずらす
-                int firstColIndex = (setting.ColLength - 1) - 1;
+                int firstColIndex = GetSheetColumnCount() - 2;
                 int rowCount = GetSheetRowCount();
                 for (int i = firstColIndex; i >= col; i--)
                 {
@@ -3317,7 +3317,8 @@ namespace AEIOU
             {
                 // カレントセル位置を埋めるように位置をずらす
                 int rowCount = GetSheetRowCount();
-                for (int i = col; i < setting.ColLength - 1; i++)
+                int lastShiftTarget = GetSheetColumnCount() - 1;
+                for (int i = col; i < lastShiftTarget; i++)
                 {
                     CopyColumn(i + 1, i, rowCount);
                 }
