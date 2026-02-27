@@ -282,7 +282,8 @@ namespace AEIOU
         {
             //変換した値を取得
             int value = code + convShift(alt, ctrl, shift);
-            if (Keymap.TryGetValue(value, out int convertedValue))
+            int convertedValue;
+            if (Keymap.TryGetValue(value, out convertedValue))
             {
                 value = convertedValue;
             }
@@ -294,7 +295,8 @@ namespace AEIOU
         {
             // 変換前の値を取得
             int value = code;
-            if (KeymapRev.TryGetValue(value, out int originalValue))
+            int originalValue;
+            if (KeymapRev.TryGetValue(value, out originalValue))
             {
                 value = originalValue;
             }
@@ -315,7 +317,8 @@ namespace AEIOU
         {
             // 変換前の値を取得
             int value = code;
-            if (KeymapRev.TryGetValue(value, out int originalValue))
+            int originalValue;
+            if (KeymapRev.TryGetValue(value, out originalValue))
             {
                 value = originalValue;
             }
