@@ -1,4 +1,5 @@
-﻿using System.Windows.Forms;
+﻿using System;
+using System.Windows.Forms;
 
 namespace AEIOU
 {
@@ -6,11 +7,13 @@ namespace AEIOU
     {
         private readonly DataGridView _view;
         private readonly Settings _setting;
+        private readonly Func<int, int, string> _cellValueGetter;
 
-        public GridCellRenderer(DataGridView view, Settings setting)
+        public GridCellRenderer(DataGridView view, Settings setting, Func<int, int, string> cellValueGetter)
         {
             _view = view;
             _setting = setting;
+            _cellValueGetter = cellValueGetter ?? throw new ArgumentNullException("cellValueGetter");
         }
 
         public void ApplyTimingCellState(DataGridViewCellPaintingEventArgs e, SheetBorder borderState, bool isContinuousLine)
@@ -21,7 +24,7 @@ namespace AEIOU
                 return;
             }
 
-            string value = _view[e.ColumnIndex, e.RowIndex].Value.ToString();
+            string value = _cellValueGetter(e.ColumnIndex, e.RowIndex);
             cell.BorderState = borderState;
             cell.IsKaraCell = (value == _setting.KaraCell);
             cell.IsContinuousLine = (value == "" && isContinuousLine);

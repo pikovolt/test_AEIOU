@@ -286,3 +286,11 @@
 - 影響:
   - 空セル/範囲外は `TryGetCellValue == false or ""` として同一扱い。
   - KaraCell 判定と通常入力判定は従来仕様を維持。
+
+## 2026-02-27 Phase 1継続（CellPainting読取のモデル経由化）
+
+- 決定: `GridCellRenderer` のセル値読取を `DataGridViewCell.Value` 直参照から、`Form1.GetCellValue` 経由（= `GridViewManager` / `TimingSheetModel` 参照口）へ切り替える。
+- 理由: Phase 1 の「読取経路をモデルAPIへ寄せる」方針を描画判定にも適用し、`CellPainting` での参照口を将来の VirtualMode 接続点に揃えるため。
+- 影響:
+  - `IsKaraCell` / `IsContinuousLine` 判定が、入力ホットパスと同じ参照境界で評価される。
+  - `GridCellRenderer` は `Func<int,int,string>` を受け取る構成となり、値取得の依存が明示化される。
