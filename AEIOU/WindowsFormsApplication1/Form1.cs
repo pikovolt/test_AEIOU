@@ -1540,6 +1540,20 @@ namespace AEIOU
             gridViewManager.ExecuteOperation(operation);
         }
 
+        private struct CellWriteEntry
+        {
+            public int Row;
+            public int Col;
+            public string Value;
+
+            public CellWriteEntry(int row, int col, string value)
+            {
+                Row = row;
+                Col = col;
+                Value = value;
+            }
+        }
+
         private void FinishWriteOperation(bool shouldInvalidate)
         {
             isFirstEdit = true;
@@ -3703,7 +3717,7 @@ namespace AEIOU
                 }
 
                 Rect r = selectRange;
-                List<Tuple<int, int, string>> arithmeticWrites = new List<Tuple<int, int, string>>();
+                List<CellWriteEntry> arithmeticWrites = new List<CellWriteEntry>();
                 for (int c = r.Left; c <= r.Right; c++)
                 {
                     for (int i = r.Top; i <= r.Bottom; i++)
@@ -3730,16 +3744,16 @@ namespace AEIOU
                         string nextValue;
                         if (TryGetArithmeticValue(mode, celNum, num, out nextValue))
                         {
-                            arithmeticWrites.Add(Tuple.Create(i, c, nextValue));
+                            arithmeticWrites.Add(new CellWriteEntry(i, c, nextValue));
                         }
                     }
                 }
 
                 ExecuteWriteGroup("四則演算", delegate
                 {
-                    foreach (Tuple<int, int, string> write in arithmeticWrites)
+                    foreach (CellWriteEntry write in arithmeticWrites)
                     {
-                        QueueCellWrite(row: write.Item1, col: write.Item2, value: write.Item3);
+                        QueueCellWrite(row: write.Row, col: write.Col, value: write.Value);
                     }
                 });
 
