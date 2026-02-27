@@ -1745,11 +1745,48 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        private bool tryExecuteShortcut(ToolStripItemCollection items, Keys keyData)
+        {
+            foreach (ToolStripItem item in items)
+            {
+                ToolStripMenuItem menuItem = item as ToolStripMenuItem;
+                if (menuItem == null)
+                {
+                    continue;
+                }
+
+                if (menuItem.Enabled &&
+                    menuItem.ShortcutKeys != Keys.None &&
+                    menuItem.ShortcutKeys == keyData)
+                {
+                    menuItem.PerformClick();
+                    return true;
+                }
+
+                if (menuItem.HasDropDownItems && tryExecuteShortcut(menuItem.DropDownItems, keyData))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        //----------------------------------------------------------------------------------------
         // KeyDownイベントハンドラ
         private void dataGridView1_KeyDown(object sender, KeyEventArgs e)
         {
-            bool isCellEdit = false;
             int keyValue = setting.keys.convKey(e.KeyValue, e.Alt, e.Control, e.Shift);
+            Keys convertedKeyData = (Keys)keyValue;
+            if (tryExecuteShortcut(contextMenuStrip1.Items, convertedKeyData) ||
+                tryExecuteShortcut(contextMenuStrip1.Items, e.KeyData))
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
+            bool isCellEdit = false;
             switch (keyValue & 0x0ff)
             {
                 case 8:     // BackSpace
