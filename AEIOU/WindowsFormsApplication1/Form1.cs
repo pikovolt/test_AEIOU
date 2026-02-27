@@ -1498,6 +1498,27 @@ namespace AEIOU
             }
         }
 
+        private void CopyColumn(int sourceCol, int destinationCol, int rowCount)
+        {
+            aryCellUsedCount[destinationCol] = aryCellUsedCount[sourceCol];
+            SetHeaderValue(destinationCol, GetHeaderValue(sourceCol));
+
+            for (int row = 0; row < rowCount; row++)
+            {
+                SetCellValue(destinationCol, row, GetCellValue(sourceCol, row));
+            }
+        }
+
+        private void ClearColumn(int col, int rowCount)
+        {
+            aryCellUsedCount[col] = 0;
+            SetHeaderValue(col, "");
+            for (int row = 0; row < rowCount; row++)
+            {
+                SetCellValue(col, row, "");
+            }
+        }
+
         //----------------------------------------------------------------------------------------
         //----------------------------------------------------------------------------------------
         // 指定セルの入力有無をチェック
@@ -3269,20 +3290,14 @@ namespace AEIOU
             // カレントセルの位置を空ける
             {
                 // カレントセル位置を空けるように位置をずらす
-                int firstColIndex = (setting.ColLength - 1) - 1;
+                int firstColIndex = GetSheetColumnCount() - 2;
                 int rowCount = GetSheetRowCount();
                 for (int i = firstColIndex; i >= col; i--)
                 {
-                    aryCellUsedCount[i + 1] = aryCellUsedCount[i];
-                    SetHeaderValue(i + 1, GetHeaderValue(i));
-                    for (int j = 0; j < rowCount; j++)
-                        SetCellValue(i + 1, j, GetCellValue(i, j));
+                    CopyColumn(i, i + 1, rowCount);
                 }
                 // 開いた場所を空欄にする
-                aryCellUsedCount[col] = 0;
-                SetHeaderValue(col, "");
-                for (int i = 0; i < rowCount; i++)
-                    SetCellValue(col, i, "");
+                ClearColumn(col, rowCount);
             }
 
             // アンドゥ履歴をフラッシュ
@@ -3302,12 +3317,10 @@ namespace AEIOU
             {
                 // カレントセル位置を埋めるように位置をずらす
                 int rowCount = GetSheetRowCount();
-                for (int i = col; i < setting.ColLength - 1; i++)
+                int lastShiftTarget = GetSheetColumnCount() - 1;
+                for (int i = col; i < lastShiftTarget; i++)
                 {
-                    aryCellUsedCount[i] = aryCellUsedCount[i + 1];
-                    SetHeaderValue(i, GetHeaderValue(i + 1));
-                    for (int j = 0; j < rowCount; j++)
-                        SetCellValue(i, j, GetCellValue(i + 1, j));
+                    CopyColumn(i + 1, i, rowCount);
                 }
             }
 
