@@ -1941,7 +1941,7 @@ namespace AEIOU
                         else if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.None))
                         {
                             // 選択範囲のセル内容を消去
-                            deleteRect(getSelectedRect());
+                            deleteRect(getSelectedRect(), false);
 
                             isFirstEdit = true;
 
@@ -2384,7 +2384,7 @@ namespace AEIOU
                     int row = dataGridView1.CurrentCell.RowIndex - (mouseDownPoint.Y - selectRange.Y);
                     gridViewManager.BeginGroup("選択元をコピー＆ペースト");
                     copyToBuf(selectRange);
-                    copyToCell(col, row);
+                    copyToCell(col, row, false);
                     gridViewManager.EndGroup();
                 }
                 else
@@ -2942,7 +2942,7 @@ namespace AEIOU
         {
             // 切り取り
             copyRect = getSelectedRect();
-            cutToBuf(copyRect);
+            cutToBuf(copyRect, false);
             isFirstEdit = true;
 
             // 描画更新(継続記号の更新の為)
@@ -2955,7 +2955,7 @@ namespace AEIOU
             // 貼り付け
             int col = dataGridView1.CurrentCell.ColumnIndex;
             int row = dataGridView1.CurrentCell.RowIndex;
-            copyToCell(col, row);
+            copyToCell(col, row, false);
             isFirstEdit = true;
 
             // 描画更新(継続記号の更新の為)
@@ -3368,7 +3368,7 @@ namespace AEIOU
 
                 //範囲の消去
                 {
-                    deleteRect(selectRange);
+                    deleteRect(selectRange, false);
                 }
 
                 //番号入力
