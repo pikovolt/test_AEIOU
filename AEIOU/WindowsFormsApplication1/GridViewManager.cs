@@ -94,5 +94,40 @@ namespace AEIOU
             _undoManager.Redo(this);
         }
 
+        public string GetCellValue(int col, int row)
+        {
+            return _model.GetCell(col, row);
+        }
+
+        public bool TryGetCellValue(int col, int row, out string value)
+        {
+            return _model.TryGetCell(col, row, out value);
+        }
+
+        public void SetCellValue(int col, int row, string value)
+        {
+            _model.SetCell(col, row, value);
+            _view[col, row].Value = value;
+        }
+
+        public string SetCellValueWithUndo(int col, int row, string value)
+        {
+            string oldValue = _model.SetCellWithUndo(col, row, value);
+            _view[col, row].Value = value;
+            return oldValue;
+        }
+
+        public void ApplyUndoCellValue(int col, int row, string value)
+        {
+            _model.ApplyUndoCell(col, row, value);
+            _view[col, row].Value = value;
+        }
+
+        public void ApplyRedoCellValue(int col, int row, string value)
+        {
+            _model.ApplyRedoCell(col, row, value);
+            _view[col, row].Value = value;
+        }
+
     }
 }
