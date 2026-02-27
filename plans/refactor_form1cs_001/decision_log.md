@@ -195,3 +195,9 @@
 - 影響:
   - 複製操作の行末近傍での実行時に、範囲外アクセス例外を回避できる。
   - 実際に複製できた件数（`copyLength`）に合わせて選択範囲の高さを更新し、表示上の選択状態と実データを一致させる。
+
+## 2026-02-27 Phase 1読取経路の統一（GridViewManager優先）
+
+- 決定: `Form1.GetCellValue` / `Form1.TryGetCellValue` は、`GridViewManager` が現行 `TimingSheetModel` にバインド済みの場合に manager 経由を優先する。
+- 理由: Phase 1 の同期戦略（adapter 経由で反映口を限定）に合わせ、読取側も同一境界へ寄せるため。
+- 影響: `Form1` のセル値アクセスは read/write ともに manager 優先の対称構造となり、Phase 2（VirtualMode 接続）での参照口一本化を進めやすくなる。
