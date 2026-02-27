@@ -443,3 +443,17 @@
 - 影響:
   - 手動スモーク完了後も、P1-3は「接続性判定 + 証跡運用固定」が完了するまで未クローズとする。
   - 次回PRで `CellValueNeeded/Pushed` スパイク結果を記録した時点で、追加API要否を最終決定する。
+
+## 2026-02-27 Phase 1最終確認（P1-3）: 追加API要否の最終結論
+
+- 決定: `CellValueNeeded/Pushed` の最小接続にあたり、Phase 2 着手時点で **追加 API は不要（No）** とする。
+- 理由:
+  - read は既存の `GetCellValue` / `TryGetCellValue` で接続可能。
+  - write は既存の `SetCellValue`（model + display の正規化反映）で接続可能。
+  - `GridViewManager` / `TimingSheetModel` で列行サイズ・セル read/write・Undo/Redo 連携 API が既に揃っている。
+- 影響:
+  - Phase 2 では「新 API 設計」ではなく「イベント配線と責務移譲」に集中できる。
+  - P1-3 の未了条件（接続性判定・要否結論化）をクローズし、Phase 1 を完了扱いにできる。
+- 但し書き:
+  - 本判定は GUI 実行なしの静的スパイク結果を含む。`dotnet` / `msbuild` 不在のため、
+    実機実行の接続検証は Phase 2 初手で再確認する。
