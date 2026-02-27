@@ -2993,6 +2993,11 @@ namespace AEIOU
 
             ApplyCellWrites("AEペースト", writes);
 
+            if (writes.Count > 0)
+            {
+                isFirstEdit = true;
+            }
+
             // 描画更新(継続記号の更新の為)
             dataGridView1.Invalidate();
 
@@ -3570,9 +3575,6 @@ namespace AEIOU
                 }
                 count *= loop;
 
-                // 先に対象範囲を空にし、その後で一括書込する（Undo境界は既存どおり1操作）
-                deleteRect(selectRange, false);
-
                 List<CellWriteEntry> writes = new List<CellWriteEntry>();
 
                 //番号入力
@@ -3611,7 +3613,12 @@ namespace AEIOU
                     }
                 }
 
-                ApplyCellWrites("繰り返し", writes);
+                // 範囲クリアと反映を同一groupにまとめ、Undo境界を1操作に維持する
+                ExecuteWriteGroup("繰り返し", delegate
+                {
+                    deleteRect(selectRange, false);
+                    QueueCellWrites(writes);
+                });
 
                 FinishWriteOperation(true);
             }
