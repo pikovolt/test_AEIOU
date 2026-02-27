@@ -429,7 +429,7 @@ namespace AEIOU
             gridSelectionService = new GridSelectionService(dataGridView1, setting);
             gridScrollService = new GridScrollService(dataGridView1, setting);
             gridCellStyleResolver = new GridCellStyleResolver();
-            gridCellRenderer = new GridCellRenderer(dataGridView1, setting);
+            gridCellRenderer = new GridCellRenderer(dataGridView1, setting, GetCellValue);
 
             // 読み込みファイル指定がある場合 ファイル読込を行う
             if (cmds.Length > 1 && File.Exists(cmds[1]))

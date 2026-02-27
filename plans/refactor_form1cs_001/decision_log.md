@@ -286,3 +286,27 @@
 - 影響:
   - 空セル/範囲外は `TryGetCellValue == false or ""` として同一扱い。
   - KaraCell 判定と通常入力判定は従来仕様を維持。
+
+## 2026-02-27 Phase 1継続（CellPainting読取のモデル経由化）
+
+- 決定: `GridCellRenderer` のセル値読取を `DataGridViewCell.Value` 直参照から、`Form1.GetCellValue` 経由（= `GridViewManager` / `TimingSheetModel` 参照口）へ切り替える。
+- 理由: Phase 1 の「読取経路をモデルAPIへ寄せる」方針を描画判定にも適用し、`CellPainting` での参照口を将来の VirtualMode 接続点に揃えるため。
+- 影響:
+  - `IsKaraCell` / `IsContinuousLine` 判定が、入力ホットパスと同じ参照境界で評価される。
+  - `GridCellRenderer` は `Func<int,int,string>` を受け取る構成となり、値取得の依存が明示化される。
+
+## 2026-02-27 PR再精査（移行ミス修正: throw expression 互換性）
+
+- 決定: `GridCellRenderer` コンストラクタの null チェックを `?? throw` から従来構文（`if (...) throw`）へ修正する。
+- 理由: 本リポジトリは .NET 3.5 / 旧 C# コンパイラ互換を前提にしており、throw expression（C# 7 以降）はビルド不能となる移行ミスのため。
+- 影響:
+  - 実行時挙動（null 時に `ArgumentNullException` を送出）は維持。
+  - 言語バージョン依存を除去し、既存ツールチェーン互換を回復。
+
+## 2026-02-27 PRコメント対応（worklog採番の整合回復）
+
+- 決定: `worklog_20260227_001.md` の 18番セクション配下見出しを `22-1` / `22-2` から `18-1` / `18-2` に修正する。
+- 理由: セクション本文は18番の内容であり、`22` は編集時の採番ずれで説明コストを増やすため。
+- 影響:
+  - 記録内容自体は不変。
+  - 履歴参照時の章番号整合性を回復し、レビュー指摘の再発を抑止。
