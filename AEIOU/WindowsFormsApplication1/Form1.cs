@@ -1501,6 +1501,7 @@ namespace AEIOU
                 // rect.Left～rect.Right で回しているため、ループ変数は「選択範囲内の相対位置」ではなく
                 // DataGridView 全体に対する「絶対列インデックス」。
                 // そのため SetValueOperation の列引数は col をそのまま渡す（rect.X + col にはしない）。
+                // 複数列選択でも Left～Right の各列を1回ずつ処理するため、列ずれは発生しない。
                 for (int col = rect.Left; col <= rect.Right; col++)
                 {
                     // 空白セルは無視する
