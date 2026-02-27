@@ -95,3 +95,12 @@
 - 影響:
   - 貼り付け処理でも `TimingSheetModel` と `DataGridView` の同期経路が統一される。
   - `aryCellUsedCount` 更新判定は `GetCellValue` で実施し、既存の空判定仕様を維持する。
+
+
+## 2026-02-27 Phase 1補強（AE貼り付けの範囲外入力ガード）
+
+- 決定: AE貼り付け時の空判定を `TryGetCellValue` ベースに変更し、範囲外フレームはスキップする。
+- 理由: `TimingSheetModel` の例外方針（範囲外は `Try*` で吸収）に合わせ、ファイルI/O経路の移行漏れを防ぐため。
+- 影響:
+  - 範囲外キーを含む貼り付けデータでも処理継続できる。
+  - 範囲内セルの更新経路は引き続き `SetCellValue` に統一される。

@@ -1346,6 +1346,11 @@ namespace AEIOU
             return timingSheetModel.GetCell(col, row);
         }
 
+        private bool TryGetCellValue(int col, int row, out string value)
+        {
+            return timingSheetModel.TryGetCell(col, row, out value);
+        }
+
         private void SetCellValue(int col, int row, string value)
         {
             timingSheetModel.SetCell(col, row, value);
@@ -2677,7 +2682,12 @@ namespace AEIOU
 
                 // タイミング情報をセルに書き込む
                 // ※書き込むセルが空欄の場合は、使用カウントを＋１
-                if (GetCellValue(col, frm).Length == 0)
+                if (!TryGetCellValue(col, frm, out string currentValue))
+                {
+                    continue;
+                }
+
+                if (currentValue.Length == 0)
                 {
                     aryCellUsedCount[col]++;
                 }
