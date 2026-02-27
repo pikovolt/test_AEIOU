@@ -334,3 +334,17 @@
 - 影響:
   - 例外発生時でも Undo グループ整合性を維持できる。
   - 通常時の操作結果・Undo単位は従来どおり維持される。
+
+## 2026-02-27 Phase 1継続（モデル境界の契約明確化 + I/O参照口統一の着手）
+
+- 決定: `TimingSheetModel` の `GetCell` / `SetCell` / `SetCellWithUndo` / `GetHeader` / `SetHeader` に範囲検証を追加し、`TryGetCell` を「範囲外吸収用API」、通常 `Get/Set` を「呼び出し側前提API」として振る舞いを明確化する。
+- 理由: Phase 1 契約（例外方針の統一）に合わせ、境界違反を早期に検出できるようにするため。
+- 影響:
+  - 通常経路の誤ったインデックス使用が即時に顕在化し、VirtualMode移行前の不整合検知がしやすくなる。
+  - `TryGetCell` の用途（境界吸収）が明確になり、呼び出し側の使い分けが統一しやすくなる。
+
+- 決定: STS保存/読込と AEコピー系の行列走査で、`setting.RowLength/ColLength` の直接参照から `GetSheetRowCount/GetSheetColumnCount` を優先する。
+- 理由: モデルを正とする Phase 1 同期戦略に合わせ、参照口を `TimingSheetModel` 系APIへ寄せるため。
+- 影響:
+  - ファイルI/O とエクスポート系のループ境界がモデル行列サイズに追従し、参照経路の一貫性が向上する。
+  - 既存の入出力フォーマットは維持しつつ、Phase 2 接続時の差分を縮小できる。

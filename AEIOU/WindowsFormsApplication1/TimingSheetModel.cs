@@ -37,6 +37,7 @@ namespace AEIOU
 
         public string GetCell(int col, int row)
         {
+            ValidateCellIndex(col, row);
             return _cells[col, row];
         }
 
@@ -54,11 +55,13 @@ namespace AEIOU
 
         public void SetCell(int col, int row, string value)
         {
+            ValidateCellIndex(col, row);
             _cells[col, row] = value ?? "";
         }
 
         public string SetCellWithUndo(int col, int row, string newValue)
         {
+            ValidateCellIndex(col, row);
             string oldValue = _cells[col, row];
             SetCell(col, row, newValue);
             return oldValue;
@@ -76,12 +79,30 @@ namespace AEIOU
 
         public string GetHeader(int col)
         {
+            ValidateColumnIndex(col);
             return _headers[col];
         }
 
         public void SetHeader(int col, string header)
         {
+            ValidateColumnIndex(col);
             _headers[col] = header ?? "";
+        }
+
+        private void ValidateCellIndex(int col, int row)
+        {
+            if (!IsInRange(col, row))
+            {
+                throw new ArgumentOutOfRangeException("col,row", "Cell index is out of range.");
+            }
+        }
+
+        private void ValidateColumnIndex(int col)
+        {
+            if (col < 0 || col >= ColumnCount)
+            {
+                throw new ArgumentOutOfRangeException("col", "Column index is out of range.");
+            }
         }
 
         private bool IsInRange(int col, int row)
