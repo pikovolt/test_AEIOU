@@ -3525,7 +3525,16 @@ namespace AEIOU
             //選択範囲内の記述を逆順に適応
             for (i = 0; i < Cnt; i++)
             {
-                if (IsCellEmpty(Col, Row + i)) continue;
+                string currentValue;
+                if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
+                {
+                    continue;
+                }
+
+                if (targetCount <= 0)
+                {
+                    break;
+                }
 
                 // アンドゥ情報の記録
                 var operation = new SetValueOperation(Row + i, Col, temp[--targetCount]);
