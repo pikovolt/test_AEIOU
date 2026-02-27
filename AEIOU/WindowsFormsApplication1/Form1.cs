@@ -544,6 +544,7 @@ namespace AEIOU
                 // シートの入力情報（タイミング）の初期化
                 // ※バージョンの扱いをどうするのかは未定
                 timingSheetModel = new TimingSheetModel(setting.ColLength, setting.RowLength);
+                gridViewManager.InitializeWork(dataGridView1, timingSheetModel);
                 dataGridInitialize(setting.ColLength, setting.RowLength, 50, false);    // 列, 行, 列幅
                 aryCellUsedCount = new int[setting.ColLength];
                 for (int i = 0; i < setting.RowLength; i++)
@@ -1353,8 +1354,16 @@ namespace AEIOU
 
         private void SetCellValue(int col, int row, string value)
         {
-            timingSheetModel.SetCell(col, row, value);
-            dataGridView1[col, row].Value = value;
+            if (IsGridViewManagerBoundToCurrentModel())
+            {
+                gridViewManager.SetCellValue(col, row, value);
+            }
+            else
+            {
+                string normalizedValue = value ?? "";
+                timingSheetModel.SetCell(col, row, normalizedValue);
+                dataGridView1[col, row].Value = normalizedValue;
+            }
         }
 
         private bool IsGridViewManagerBoundToCurrentModel()
