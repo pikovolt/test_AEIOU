@@ -1550,11 +1550,21 @@ namespace AEIOU
 
             ExecuteWriteGroup(groupName, delegate
             {
-                foreach (CellWriteEntry write in writes)
-                {
-                    QueueCellWrite(row: write.Row, col: write.Col, value: write.Value);
-                }
+                QueueCellWrites(writes);
             });
+        }
+
+        private void QueueCellWrites(IList<CellWriteEntry> writes)
+        {
+            if (writes == null || writes.Count == 0)
+            {
+                return;
+            }
+
+            foreach (CellWriteEntry write in writes)
+            {
+                QueueCellWrite(row: write.Row, col: write.Col, value: write.Value);
+            }
         }
 
         private void FinishWriteOperation(bool shouldInvalidate)
@@ -2944,12 +2954,10 @@ namespace AEIOU
                 if (clip[i].IndexOf("Time Remap") != -1) break;
             }
 
-            bool hasWrite = false;
+            List<CellWriteEntry> writes = new List<CellWriteEntry>();
 
             // リマップ情報を読む
-            ExecuteWriteGroup("AEペースト", delegate
-            {
-                i+=2;
+            i += 2;
             for (; i < clip.Length; i++)
             {
                 String[] buf = clip[i].Split('\t');
@@ -2961,6 +2969,8 @@ namespace AEIOU
                 //if ((((double)setting.Fps * val) - ((double)t)) >= 0.5) t += 1; // コマ数の四捨五入
                 int t = (int)Math.Round(setting.Fps * val);
 
+                string writeValue = (t + setting.FirstFrame).ToString();
+
                 // タイミング情報をセルに書き込む
                 // ※書き込むセルが空欄の場合は、使用カウントを＋１
                 if (!TryGetCellValue(col, frm, out string currentValue))
@@ -2968,18 +2978,22 @@ namespace AEIOU
                     continue;
                 }
 
-                if (QueueCellWriteIfChanged(row: frm, col: col, value: (t + setting.FirstFrame).ToString()))
+                if (currentValue == writeValue)
                 {
-                    if (currentValue.Length == 0)
-                    {
-                        aryCellUsedCount[col]++;
-                    }
-                    hasWrite = true;
+                    continue;
                 }
-            }
-            });
 
-            if (hasWrite)
+                if (currentValue.Length == 0)
+                {
+                    aryCellUsedCount[col]++;
+                }
+
+                writes.Add(new CellWriteEntry(frm, col, writeValue));
+            }
+
+            ApplyCellWrites("AEペースト", writes);
+
+            if (writes.Count > 0)
             {
                 isFirstEdit = true;
             }
@@ -3561,49 +3575,49 @@ namespace AEIOU
                 }
                 count *= loop;
 
+                List<CellWriteEntry> writes = new List<CellWriteEntry>();
+
+                //番号入力
+                int row = selectRange.Top;
+                for (int num = start, col = selectRange.Left; col <= selectRange.Right; col++)
+                {
+                    for (int i = 0; i < count; i++)
+                    {
+                        int targetRow = row + (i * step);
+                        string valueToWrite;
+
+                        if (insert_str == "")
+                        {
+                            //挿入番号なし
+                            valueToWrite = num.ToString();
+                            num += skip;
+                            if (num > end) num = start;
+                        }
+                        else if ((i % 2) == 0)
+                        {
+                            //挿入番号あり（開始＃～終了＃）
+                            //※連番と挿入番号が交互なのでカウンタを1/2にして番号計算
+                            valueToWrite = num.ToString();
+                            num += skip;
+                            if (num > end) num = start;
+                        }
+                        else
+                        {
+                            //挿入番号あり（挿入＃）
+                            valueToWrite = insert_str;
+                        }
+
+                        writes.Add(new CellWriteEntry(targetRow, col, valueToWrite));
+                        aryCellUsedCount[col]++;
+                        //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
+                    }
+                }
+
+                // 範囲クリアと反映を同一groupにまとめ、Undo境界を1操作に維持する
                 ExecuteWriteGroup("繰り返し", delegate
                 {
-                    //範囲の消去
                     deleteRect(selectRange, false);
-
-                    //番号入力
-                    int row = selectRange.Top;
-                    for (int num = start, col = selectRange.Left; col <= selectRange.Right; col++)
-                    {
-                        for (int i = 0; i < count; i++)
-                        {
-
-                            if (insert_str == "")
-                            {
-                                //挿入番号なし
-                                QueueCellWrite(row: row + (i * step), col: col, value: num.ToString());
-
-                                aryCellUsedCount[col]++;
-                                //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
-                                num += skip;
-                                if (num > end) num = start;
-                            }
-                            else if ((i % 2) == 0)
-                            {
-                                //挿入番号あり（開始＃～終了＃）
-                                //※連番と挿入番号が交互なのでカウンタを1/2にして番号計算
-                                QueueCellWrite(row: row + (i * step), col: col, value: num.ToString());
-
-                                aryCellUsedCount[col]++;
-                                //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
-                                num += skip;
-                                if (num > end) num = start;
-                            }
-                            else
-                            {
-                                //挿入番号あり（挿入＃）
-                                QueueCellWrite(row: row + (i * step), col: col, value: insert_str);
-
-                                aryCellUsedCount[col]++;
-                                //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
-                            }
-                        }
-                    }
+                    QueueCellWrites(writes);
                 });
 
                 FinishWriteOperation(true);
