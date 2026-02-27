@@ -88,28 +88,14 @@
 - 理由: VirtualMode 前段の Phase 1 では「モデル正」の更新口を固定し、再実行経路での値取り違えリスクを最小化するため。
 
 
-## 2026-02-27 Phase 1継続（ファイルI/O書込経路のモデル経由化）
+## 2026-02-27 Phase 1 C区分監査（統合）
 
-- 決定: `pasteFromAEToolStripMenuItem_Click` のセル更新を `DataGridViewCell.Value` 直書きから `SetCellValue` 呼び出しへ切り替える。
-- 理由: Phase 1 方針（モデル正）に沿って、C区分（ファイルI/O）の接続点を先にモデルAPIへ寄せるため。
+- 決定: AE貼り付け～入力有無判定までをモデル基準に統一する。
+  - `pasteFromAEToolStripMenuItem_Click` の書込を `SetCellValue` 経由に変更。
+  - AE貼り付け時は `TryGetCellValue` で範囲外フレームをスキップ。
+  - `checkCellValue` の範囲判定を `X < timingSheetModel.ColumnCount` / `Y < timingSheetModel.RowCount` に是正。
+- 理由: Phase 1 方針（モデル正・範囲外は `Try*` 吸収）に対する移行漏れと判定不整合を同時に解消するため。
 - 影響:
-  - 貼り付け処理でも `TimingSheetModel` と `DataGridView` の同期経路が統一される。
-  - `aryCellUsedCount` 更新判定は `GetCellValue` で実施し、既存の空判定仕様を維持する。
-
-
-## 2026-02-27 Phase 1補強（AE貼り付けの範囲外入力ガード）
-
-- 決定: AE貼り付け時の空判定を `TryGetCellValue` ベースに変更し、範囲外フレームはスキップする。
-- 理由: `TimingSheetModel` の例外方針（範囲外は `Try*` で吸収）に合わせ、ファイルI/O経路の移行漏れを防ぐため。
-- 影響:
-  - 範囲外キーを含む貼り付けデータでも処理継続できる。
-  - 範囲内セルの更新経路は引き続き `SetCellValue` に統一される。
-
-
-## 2026-02-27 追加点検（`checkCellValue` の範囲判定是正）
-
-- 決定: `checkCellValue` の範囲判定を `X < ColumnCount` / `Y < RowCount` の正方向判定へ修正し、判定基準をモデルサイズに揃える。
-- 理由: 追加点検で、既存条件が比較方向誤り（`ColumnCount < X`）になっており、実質的に有効範囲判定として機能しない移行リスクを確認したため。
-- 影響:
-  - `checkCellValue` の戻り値が期待どおり「有効セルかつ非空セル」で評価される。
-  - Phase 1 方針（モデル正）に合わせ、範囲判定が `TimingSheetModel` 基準に統一される。
+  - ファイルI/O経路でもモデルとビューの更新口が統一される。
+  - 範囲外データ混入時の処理継続性が向上する。
+  - `checkCellValue` が意図通りの「有効範囲かつ非空」判定として機能する。
