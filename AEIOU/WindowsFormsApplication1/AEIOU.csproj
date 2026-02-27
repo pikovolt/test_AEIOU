@@ -90,6 +90,7 @@
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
     <Compile Include="GridRect.cs" />
+    <Compile Include="GridCellRenderer.cs" />
     <Compile Include="GridCellStyleResolver.cs" />
     <Compile Include="GridScrollService.cs" />
     <Compile Include="GridSelectionService.cs" />

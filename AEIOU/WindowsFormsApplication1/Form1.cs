@@ -313,6 +313,7 @@ namespace AEIOU
         GridSelectionService gridSelectionService;
         GridScrollService gridScrollService;
         GridCellStyleResolver gridCellStyleResolver;
+        GridCellRenderer gridCellRenderer;
 
         // 繰り返しダイアログ
         private RepeatInputBox _repeatInputDialog;
@@ -427,6 +428,7 @@ namespace AEIOU
             gridSelectionService = new GridSelectionService(dataGridView1, setting);
             gridScrollService = new GridScrollService(dataGridView1, setting);
             gridCellStyleResolver = new GridCellStyleResolver();
+            gridCellRenderer = new GridCellRenderer(dataGridView1, setting);
 
             // 読み込みファイル指定がある場合 ファイル読込を行う
             if (cmds.Length > 1 && File.Exists(cmds[1]))
@@ -1312,29 +1314,9 @@ namespace AEIOU
             //※ヘッダー部で値取得すると、中身がnullの為に例外が発生する
             if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
             {   // セルのタイミング入力部分
-                String str = dataGridView1[e.ColumnIndex, e.RowIndex].Value.ToString();
-
-                //基準線描画位置の計算
-                (dataGridView1[e.ColumnIndex, e.RowIndex] as TimingCell).BorderState = calcBorderState(e);
-
-                // カラセル(×印)
-                if (str == setting.KaraCell)
-                {
-                    (dataGridView1[e.ColumnIndex, e.RowIndex] as TimingCell).IsKaraCell = true;
-                }
-                else
-                {
-                    (dataGridView1[e.ColumnIndex, e.RowIndex] as TimingCell).IsKaraCell = false;
-                }
-                // 継続記号
-                if (str == "" && bLine)
-                {
-                    (dataGridView1[e.ColumnIndex, e.RowIndex] as TimingCell).IsContinuousLine = true;
-                }
-                else
-                {
-                    (dataGridView1[e.ColumnIndex, e.RowIndex] as TimingCell).IsContinuousLine = false;
-                }
+                //基準線描画位置の計算と TimingCell 状態更新
+                SheetBorder borderState = calcBorderState(e);
+                gridCellRenderer.ApplyTimingCellState(e, borderState, bLine);
 
             }
             else
@@ -1343,10 +1325,7 @@ namespace AEIOU
             }
 
             //描画を要求
-            e.Paint(e.ClipBounds, e.PaintParts);
-
-            //描画完了の通知
-            e.Handled = true;
+            gridCellRenderer.PaintCell(e);
 
         }
 
@@ -1621,17 +1600,8 @@ namespace AEIOU
                         int top = rect.X - 1;
                         top = (top < 0) ? 0 : top;      // 先頭が 0を下回る場合は 補正する
 
-                        // カーソルのカレント位置を設定
-                        dataGridView1.CurrentCell = dataGridView1[top, rect.Y];
-
-                        // 新しい選択範囲を設定
-                        for (int i = 0; i < rect.Height; i++)
-                            for (int j = 0; j < rect.Width; j++)
-                                dataGridView1[top + j, rect.Y + i].Selected = true;
-
-                        // 範囲を保存
-                        rect.X = top;
-                        selectRange = rect;
+                        // カーソル位置・選択範囲更新を委譲
+                        selectRange = gridSelectionService.MoveSelection(rect, top, rect.Y);
 
                         // 描画更新(アクティブセルの色分けの為)
                         dataGridView1.Invalidate();
@@ -1692,17 +1662,8 @@ namespace AEIOU
                             }
                             top = (top < 0) ? 0 : top;      // 先頭が 0を下回る場合は 補正する
 
-                            // カーソルのカレント位置を設定
-                            dataGridView1.CurrentCell = dataGridView1[rect.X, top];
-
-                            // 新しい選択範囲を設定
-                            for (int i = 0; i < rect.Height; i++)
-                                for (int j = 0; j < rect.Width; j++)
-                                    dataGridView1[rect.X + j, top + i].Selected = true;
-
-                            // 範囲を保存
-                            rect.Y = top;
-                            selectRange = rect;
+                            // カーソル位置・選択範囲更新を委譲
+                            selectRange = gridSelectionService.MoveSelection(rect, rect.X, top);
 
                         }
                     }
@@ -1750,17 +1711,8 @@ namespace AEIOU
                         int limit = setting.ColLength - rect.Width;
                         top = (top > limit) ? limit : top;      // 先頭が 終端-選択幅(水平方向) を超える場合は 補正する
 
-                        // カーソルのカレント位置を設定
-                        dataGridView1.CurrentCell = dataGridView1[top, rect.Y];
-
-                        // 新しい選択範囲を設定
-                        for (int i = 0; i < rect.Height; i++)
-                            for (int j = 0; j < rect.Width; j++)
-                                dataGridView1[top + j, rect.Y + i].Selected = true;
-
-                        // 範囲を保存
-                        rect.X = top;
-                        selectRange = rect;
+                        // カーソル位置・選択範囲更新を委譲
+                        selectRange = gridSelectionService.MoveSelection(rect, top, rect.Y);
 
                         // 描画更新(アクティブセルの色分けの為)
                         dataGridView1.Invalidate();
@@ -1821,17 +1773,8 @@ namespace AEIOU
                             int limit = setting.RowLength - rect.Height;
                             top = (top > limit) ? limit : top;  // 先頭が 終端-選択幅(垂直方向) を超える場合は 補正する
 
-                            // カーソルのカレント位置を設定
-                            dataGridView1.CurrentCell = dataGridView1[rect.X, top];
-
-                            // 新しい選択範囲を設定
-                            for (int i = 0; i < rect.Height; i++)
-                                for (int j = 0; j < rect.Width; j++)
-                                    dataGridView1[rect.X + j, top + i].Selected = true;
-
-                            // 範囲を保存
-                            rect.Y = top;
-                            selectRange = rect;
+                            // カーソル位置・選択範囲更新を委譲
+                            selectRange = gridSelectionService.MoveSelection(rect, rect.X, top);
 
                             // 画面2/3より下に移動した場合の画面送り
                             scrollingForward();
@@ -2089,17 +2032,8 @@ namespace AEIOU
                             int limit = setting.RowLength - rect.Height;
                             top = (top > limit) ? limit : top;  // 先頭が 終端-選択幅(垂直方向) を超える場合は 補正する
 
-                            // カーソルのカレント位置を設定
-                            dataGridView1.CurrentCell = dataGridView1[rect.X, top];
-
-                            // 新しい選択範囲を設定
-                            for (int i = 0; i < rect.Height; i++)
-                                for (int j = 0; j < rect.Width; j++)
-                                    dataGridView1[rect.X + j, top + i].Selected = true;
-
-                            // 範囲を保存
-                            rect.Y = top;
-                            selectRange = rect;
+                            // カーソル位置・選択範囲更新を委譲
+                            selectRange = gridSelectionService.MoveSelection(rect, rect.X, top);
                         }
 
                         isFirstEdit = true;
@@ -2156,17 +2090,8 @@ namespace AEIOU
                             int limit = setting.RowLength - rect.Height;
                             top = (top > limit) ? limit : top;  // 先頭が 終端-選択幅(垂直方向) を超える場合は 補正する
 
-                            // カーソルのカレント位置を設定
-                            dataGridView1.CurrentCell = dataGridView1[rect.X, top];
-
-                            // 新しい選択範囲を設定
-                            for (int i = 0; i < rect.Height; i++)
-                                for (int j = 0; j < rect.Width; j++)
-                                    dataGridView1[rect.X + j, top + i].Selected = true;
-
-                            // 範囲を保存
-                            rect.Y = top;
-                            selectRange = rect;
+                            // カーソル位置・選択範囲更新を委譲
+                            selectRange = gridSelectionService.MoveSelection(rect, rect.X, top);
                         }
 
                         isFirstEdit = true;
@@ -2245,17 +2170,8 @@ namespace AEIOU
                             int btm = setting.RowLength - rect.Height;
                             top = (top > btm) ? btm : top;  // 先頭が 終端-選択幅(垂直方向) を超える場合は 補正する
 
-                            // カーソルのカレント位置を設定
-                            dataGridView1.CurrentCell = dataGridView1[rect.X, top];
-
-                            // 新しい選択範囲を設定
-                            for (int i = 0; i < rect.Height; i++)
-                                for (int j = 0; j < rect.Width; j++)
-                                    dataGridView1[rect.X + j, top + i].Selected = true;
-
-                            // 範囲を保存
-                            rect.Y = top;
-                            selectRange = rect;
+                            // カーソル位置・選択範囲更新を委譲
+                            selectRange = gridSelectionService.MoveSelection(rect, rect.X, top);
 
                             // 画面2/3より下に移動した場合の画面送り
                             scrollingForward();

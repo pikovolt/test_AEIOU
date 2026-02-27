@@ -58,17 +58,23 @@ namespace AEIOU
             int btm = _setting.RowLength - rect.Height;
             top = (top > btm) ? btm : top;
 
-            _view.CurrentCell = _view[rect.X, top];
+            return MoveSelection(rect, rect.X, top);
+        }
+
+        public Rect MoveSelection(Rect rect, int x, int y)
+        {
+            _view.CurrentCell = _view[x, y];
 
             for (int i = 0; i < rect.Height; i++)
             {
                 for (int j = 0; j < rect.Width; j++)
                 {
-                    _view[rect.X + j, top + i].Selected = true;
+                    _view[x + j, y + i].Selected = true;
                 }
             }
 
-            rect.Y = top;
+            rect.X = x;
+            rect.Y = y;
             return rect;
         }
     }
