@@ -179,3 +179,11 @@
 - 影響:
   - 複製操作が単一のUndo単位として記録され、既存の一括操作ポリシー（Begin/Endで囲む）と整合する。
   - モデル更新経路は既存の `SetValueOperation`（= manager 経由更新）を維持し、Phase 1 の更新口統一方針に一致する。
+
+## 2026-02-27 PR再精査（複製Undoグループの例外安全性）
+
+- 決定: `duplicateToolStripMenuItem_Click` の `BeginGroup("複製")` 導入箇所を `try/finally` で囲み、例外発生時でも `EndGroup()` が必ず実行されるように修正する。
+- 理由: 移行前はグループ未使用だったため、途中例外でも Undo グループスタック破損は起きなかった。移行後は `BeginGroup` 追加により、`EndGroup` 未到達時にグループが積み残るリスクが新規発生するため。
+- 影響:
+  - 複製中に範囲外アクセス等の例外が起きても `GridViewManager` のグループスタック整合性を維持できる。
+  - 既存の複製ロジック（`SetValueOperation` 経由更新）は維持され、Phase 1 方針との整合は保たれる。

@@ -3607,19 +3607,23 @@ namespace AEIOU
             Len = selectRange.Height;
 
             gridViewManager.BeginGroup("複製");
-
-            //複製操作
-            for (int i = 0; i < Len; i++)
+            try
             {
-                String val = GetCellValue(Col, Row + i);
+                //複製操作
+                for (int i = 0; i < Len; i++)
+                {
+                    String val = GetCellValue(Col, Row + i);
 
-                // アンドゥ情報の記録
-                var operation = new SetValueOperation(Row + Len + i, Col, val);
-                gridViewManager.ExecuteOperation(operation);
-                //(*pColorBuf)[Col][Row + Len + i] = versionNumber;
+                    // アンドゥ情報の記録
+                    var operation = new SetValueOperation(Row + Len + i, Col, val);
+                    gridViewManager.ExecuteOperation(operation);
+                    //(*pColorBuf)[Col][Row + Len + i] = versionNumber;
+                }
             }
-
-            gridViewManager.EndGroup();
+            finally
+            {
+                gridViewManager.EndGroup();
+            }
 
             // 新しい選択範囲を設定
             Rect rect = selectRange;
