@@ -1496,6 +1496,9 @@ namespace AEIOU
             // 選択範囲を取得
             Rect rect = getSelectedRect();
 
+            // 選択範囲をクリア（※元実装の動作を維持）
+            dataGridView1.ClearSelection();
+
             // 先頭位置の計算(※下端のはみ出しチェック)
             int len = cursorMoveWithNakaNuki();
             if (len > 0)

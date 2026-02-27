@@ -58,7 +58,6 @@ namespace AEIOU
             int btm = _setting.RowLength - rect.Height;
             top = (top > btm) ? btm : top;
 
-            _view.ClearSelection();
             _view.CurrentCell = _view[rect.X, top];
 
             for (int i = 0; i < rect.Height; i++)
