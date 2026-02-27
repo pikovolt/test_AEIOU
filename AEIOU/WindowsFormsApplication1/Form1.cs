@@ -3538,6 +3538,7 @@ namespace AEIOU
                 }
 
                 gridViewManager.BeginGroup("四則演算");
+                bool hasArithmeticUpdate = false;
 
                 Rect r = selectRange;
                 for (int c = r.Left; c <= r.Right; c++)
@@ -3563,7 +3564,10 @@ namespace AEIOU
 
                             // アンドゥを行い、途中までの入力結果を取り消す
                             gridViewManager.EndGroup();
-                            gridViewManager.Undo();
+                            if (hasArithmeticUpdate)
+                            {
+                                gridViewManager.Undo();
+                            }
 
                             return;
                         }
@@ -3575,12 +3579,14 @@ namespace AEIOU
                                 // アンドゥ情報の記録
                                 operation = new SetValueOperation(i, c, (celNum + num).ToString());
                                 gridViewManager.ExecuteOperation(operation);
+                                hasArithmeticUpdate = true;
                                 //(*pColorBuf)[c,i] = versionNumber;
                                 break;
                             case CalcMode.Minus:
                                 // アンドゥ情報の記録
                                 operation = new SetValueOperation(i, c, (celNum - num).ToString());
                                 gridViewManager.ExecuteOperation(operation);
+                                hasArithmeticUpdate = true;
                                 //(*pColorBuf)[c][i] = versionNumber;
                                 break;
                             case CalcMode.Multiple:
@@ -3588,6 +3594,7 @@ namespace AEIOU
                                 {
                                     operation = new SetValueOperation(i, c, (celNum * num).ToString());
                                     gridViewManager.ExecuteOperation(operation);
+                                    hasArithmeticUpdate = true;
                                     //(*pColorBuf)[c][i] = versionNumber;
                                 }
                                 break;
@@ -3596,6 +3603,7 @@ namespace AEIOU
                                 {
                                     operation = new SetValueOperation(i, c, (celNum / num).ToString());
                                     gridViewManager.ExecuteOperation(operation);
+                                    hasArithmeticUpdate = true;
                                     //(*pColorBuf)[c][i] = versionNumber;
                                 }
                                 break;
