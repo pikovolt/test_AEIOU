@@ -1465,6 +1465,19 @@ namespace AEIOU
             gridViewManager.ExecuteOperation(operation);
         }
 
+        private bool QueueCellWriteIfChanged(int row, int col, string value)
+        {
+            string normalizedValue = value ?? "";
+            string currentValue = GetCellValue(col, row);
+            if (currentValue == normalizedValue)
+            {
+                return false;
+            }
+
+            QueueCellWrite(row, col, normalizedValue);
+            return true;
+        }
+
         private void QueueShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
         {
             if (length <= 0 || endColExclusive <= startCol)
@@ -2903,8 +2916,12 @@ namespace AEIOU
                 if (clip[i].IndexOf("Time Remap") != -1) break;
             }
 
+            bool hasWrite = false;
+
             // リマップ情報を読む
-            i+=2;
+            ExecuteWriteGroup("AEペースト", delegate
+            {
+                i+=2;
             for (; i < clip.Length; i++)
             {
                 String[] buf = clip[i].Split('\t');
@@ -2927,10 +2944,17 @@ namespace AEIOU
                 {
                     aryCellUsedCount[col]++;
                 }
-                SetCellValue(col, frm, (t + setting.FirstFrame).ToString());
+                if (QueueCellWriteIfChanged(row: frm, col: col, value: (t + setting.FirstFrame).ToString()))
+                {
+                    hasWrite = true;
+                }
             }
+            });
 
-            isFirstEdit = true;
+            if (hasWrite)
+            {
+                isFirstEdit = true;
+            }
 
             // 描画更新(継続記号の更新の為)
             dataGridView1.Invalidate();
@@ -3948,8 +3972,12 @@ namespace AEIOU
             setting.RowLength = row;
             InitializeWork(false);
 
+            bool hasWrite = false;
+
             // セル
-            byte[] cell = new byte[sizeof(UInt16)];
+            ExecuteWriteGroup("STS読込", delegate
+            {
+                byte[] cell = new byte[sizeof(UInt16)];
             for (int i = 0; i < col; i++)
             {
                 UInt16 current = 0;
@@ -3962,10 +3990,14 @@ namespace AEIOU
                     if (current != val)
                     {
                         current = val;
-                        SetCellValue(i, j, val.ToString());
+                        if (QueueCellWriteIfChanged(row: j, col: i, value: val.ToString()))
+                        {
+                            hasWrite = true;
+                        }
                     }
                 }
-            }
+                }
+            });
 
             // 各セルの名称を入力
             for (int i = 0; i < col; i++)
@@ -3978,6 +4010,11 @@ namespace AEIOU
 
             // ストリームを閉じる
             inpfs.Close();
+
+            if (hasWrite)
+            {
+                isFirstEdit = true;
+            }
         }
 
         //----------------------------------------------------------------------------------------
