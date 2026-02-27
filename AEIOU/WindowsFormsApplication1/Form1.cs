@@ -1532,6 +1532,8 @@ namespace AEIOU
             }
         }
 
+        // SetValueOperation の引数順（row, col, value）を明示して、
+        // 既存コードの Col/Row 変数名との取り違えを防ぐ。
         private void QueueCellWrite(int row, int col, string value)
         {
             var operation = new SetValueOperation(row, col, value);
@@ -3410,7 +3412,7 @@ namespace AEIOU
                             aryCellUsedCount[col]++;
                         }
 
-                        QueueCellWrite(row + i, col, frm.ToString());
+                        QueueCellWrite(row: row + i, col: col, value: frm.ToString());
 
                         //(*pColorBuf)[Col][Row + 1] = versionNumber;
                         frm += frmStep;
@@ -3476,7 +3478,7 @@ namespace AEIOU
                             if (insert_str == "")
                             {
                                 //挿入番号なし
-                                QueueCellWrite(row + (i * step), col, num.ToString());
+                                QueueCellWrite(row: row + (i * step), col: col, value: num.ToString());
 
                                 aryCellUsedCount[col]++;
                                 //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
@@ -3487,7 +3489,7 @@ namespace AEIOU
                             {
                                 //挿入番号あり（開始＃～終了＃）
                                 //※連番と挿入番号が交互なのでカウンタを1/2にして番号計算
-                                QueueCellWrite(row + (i * step), col, num.ToString());
+                                QueueCellWrite(row: row + (i * step), col: col, value: num.ToString());
 
                                 aryCellUsedCount[col]++;
                                 //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
@@ -3497,7 +3499,7 @@ namespace AEIOU
                             else
                             {
                                 //挿入番号あり（挿入＃）
-                                QueueCellWrite(row + (i * step), col, insert_str);
+                                QueueCellWrite(row: row + (i * step), col: col, value: insert_str);
 
                                 aryCellUsedCount[col]++;
                                 //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
@@ -3562,7 +3564,7 @@ namespace AEIOU
                         // フレーム毎に値を調べて、変換前を見つけたら、変換後に書き換え
                         if (currentValue == A)
                         {
-                            QueueCellWrite(Row + i, Col, B);
+                            QueueCellWrite(row: Row + i, col: Col, value: B);
                             //(*pColorBuf)[Col][Row + i] = versionNumber;
                         }
 
@@ -3613,7 +3615,7 @@ namespace AEIOU
                         break;
                     }
 
-                    QueueCellWrite(Row + i, Col, temp[--targetCount]);
+                    QueueCellWrite(row: Row + i, col: Col, value: temp[--targetCount]);
                     //(*pColorBuf)[Col][Row + i] = versionNumber;
                 }
             });
