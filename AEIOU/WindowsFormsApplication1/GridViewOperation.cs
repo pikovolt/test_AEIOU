@@ -43,8 +43,8 @@ namespace AEIOU
                 int bufferWidth = manager.CopyBuffer.GetLength(1);
 
                 // DataGridViewの範囲内に収まるように調整
-                int maxHeight = Math.Min(bufferHeight, manager.View.RowCount - row);
-                int maxWidth = Math.Min(bufferWidth, manager.View.ColumnCount - col);
+                int maxHeight = Math.Min(bufferHeight, manager.RowCount - row);
+                int maxWidth = Math.Min(bufferWidth, manager.ColumnCount - col);
 
                 // DataGridViewに書き戻す
                 for (int i = 0; i < maxHeight; i++)
@@ -152,8 +152,8 @@ namespace AEIOU
 
             // 範囲外の処理はしないよう、コピー範囲を計算
             Rect copyRect = manager.CopyRect;
-            int maxHeight = Math.Min(copyRect.Height, manager.View.RowCount - _row);
-            int maxWidth = Math.Min(copyRect.Width, manager.View.ColumnCount - _col);
+            int maxHeight = Math.Min(copyRect.Height, manager.RowCount - _row);
+            int maxWidth = Math.Min(copyRect.Width, manager.ColumnCount - _col);
             _oldValues = new String[maxHeight, maxWidth];
             _newValues = new String[maxHeight, maxWidth];
 

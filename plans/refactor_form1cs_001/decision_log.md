@@ -397,3 +397,33 @@
 - 影響:
   - `GetSheetColumnCount` / `GetSheetRowCount` が manager 経由で取得可能になり、サイズ参照のモデル依存境界が一段整理される。
   - 列挿入/削除処理の行走査が `GetSheetRowCount()` 経由となり、将来の行数参照元統一に備えた下地ができる。
+
+## 2026-02-27 Phase 1 Step4継続（operation境界参照と表示反映口の追加統一）
+
+- 決定: `GridViewOperation` の貼付け時の最大範囲計算は `manager.View` 直接参照をやめ、`manager.RowCount` / `manager.ColumnCount` を使用する。
+- 理由: 範囲計算の参照口を manager API に揃えることで、モデル境界の一貫性を高め、View 実体への依存を縮退するため。
+- 影響:
+  - `PasteOperation` / `PasteFromBuffer` の境界判定が manager 経由に統一される。
+  - VirtualMode 移行時のサイズ参照先変更に伴う差分を局所化できる。
+
+- 決定: `Form1.SetCellValue` のフォールバック経路で残っていた `dataGridView1[col,row].Value` 直書きを `gridViewManager.SetCellDisplayValue` 呼び出しへ置換する。
+- 理由: Phase 1 同期戦略（adapter 経由で反映）に合わせ、`Form1` 側の UI 直書きポイントを減らすため。
+- 影響:
+  - `Form1` の write 経路で DataGridView 直参照が実コード上解消される（コメント行を除く）。
+  - 表示反映責務が manager により集約され、Step4 の縮退条件（read+write）を一段前進できる。
+
+## 2026-02-27 PR再精査（SetCellValue フォールバックの null 安全性補完）
+
+- 決定: `Form1.SetCellValue` のフォールバックで `gridViewManager.SetCellDisplayValue(...)` を呼ぶ際、`gridViewManager == null` の場合は `dataGridView1[col,row].Value` へ退避するガードを追加する。
+- 理由: 前回差分では「manager 未バインド時」分岐で manager 呼び出しを無条件実行しており、初期化順や異常系で `NullReferenceException` になり得る移行ミスがあったため。
+- 影響:
+  - manager 非存在時でも従来互換の表示更新が可能になり、フォールバック経路の安全性を回復。
+  - manager が存在する通常経路では引き続き adapter 経由反映を維持する。
+
+## 2026-02-27 PR再精査（フォローアップ優先度の再定義）
+
+- 決定: 直近PR評価は「局所差分の有無」ではなく、3-8の3指標（直参照残件/B区分カバレッジ/Undo回帰結果）の更新有無を必須条件にする。
+- 理由: ミクロな修正が連続すると Phase 2（VirtualMode）着手条件の判断が遅れるため。
+- 影響:
+  - 次PRからは、機能差分に加えて3指標の更新をテンプレート化して記録する。
+  - Step4 継続時も「read+write を1件ずつ縮退」の達成を完了条件として維持する。
