@@ -13,6 +13,7 @@ namespace AEIOU
         private string[,] _copyBuffer;              // DataGridView向けのコピーバッファを保持
         private Rect _copyRect;                     // コピー範囲を保持
         private Stack<OperationGroup> _groupStack;  // OperationGroupの入れ子対応
+        private TimingSheetModel _model;
 
         public DataGridView View
         {
@@ -31,9 +32,16 @@ namespace AEIOU
             set { _copyRect = value; }
         }
 
-        public void InitializeWork(DataGridView view)
+        public TimingSheetModel Model
+        {
+            get { return _model; }
+            set { _model = value; }
+        }
+
+        public void InitializeWork(DataGridView view, TimingSheetModel model)
         {
             _view = view;
+            _model = model;
             _copyBuffer = null;
             _undoManager = new UndoManager();
             _groupStack = new Stack<OperationGroup>();

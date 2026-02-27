@@ -314,6 +314,7 @@ namespace AEIOU
         GridScrollService gridScrollService;
         GridCellStyleResolver gridCellStyleResolver;
         GridCellRenderer gridCellRenderer;
+        TimingSheetModel timingSheetModel;
 
         // 繰り返しダイアログ
         private RepeatInputBox _repeatInputDialog;
@@ -494,6 +495,8 @@ namespace AEIOU
         // 作業内容の初期化
         public void InitializeWork(bool isBoot)
         {
+            timingSheetModel = new TimingSheetModel(setting.ColLength, setting.RowLength);
+
             // ヘッダ、各カラム及び行数の設定
             dataGridInitialize(setting.ColLength, setting.RowLength, 50, isBoot);    // 列, 行, 列幅
 
@@ -513,7 +516,7 @@ namespace AEIOU
             addRange = new List<Range>();
 
             // アンドゥメニュを初期化
-            gridViewManager.InitializeWork(dataGridView1);
+            gridViewManager.InitializeWork(dataGridView1, timingSheetModel);
 
             // 各種変数の初期化
             selectRange = new Rect(0, 0, 1, 1);     //選択範囲
@@ -540,12 +543,13 @@ namespace AEIOU
             {
                 // シートの入力情報（タイミング）の初期化
                 // ※バージョンの扱いをどうするのかは未定
+                timingSheetModel = new TimingSheetModel(setting.ColLength, setting.RowLength);
                 dataGridInitialize(setting.ColLength, setting.RowLength, 50, false);    // 列, 行, 列幅
                 aryCellUsedCount = new int[setting.ColLength];
                 for (int i = 0; i < setting.RowLength; i++)
                     for (int j = 0; j < setting.ColLength; j++)
                     {
-                        dataGridView1[j, i].Value = "";
+                        SetCellValue(j, i, "");
                     }
                 isFirstEdit = true;
             }
@@ -563,7 +567,7 @@ namespace AEIOU
             if ((target & InitializeTarget.UndoHistory) != 0)
             {
                 // アンドゥ処理の初期化
-                gridViewManager.InitializeWork(dataGridView1);
+                gridViewManager.InitializeWork(dataGridView1, timingSheetModel);
 
             }
             if ((target & InitializeTarget.RangeSetting) != 0)
@@ -607,13 +611,14 @@ namespace AEIOU
                 col.Width = columnWidth;
                 col.SortMode = DataGridViewColumnSortMode.NotSortable; //ヘッダークリックによるソート動作を禁止
                 this.dataGridView1.Columns.Add(col);
+                timingSheetModel.SetHeader(i, cellName);
             }
 
             // 初期化 (行の生成 : 中身は空)
             dataGridView1.RowCount = setting.RowLength;
             for (int i = 0; i < setting.RowLength; i++)
                 for (int j = 0; j < setting.ColLength; j++)
-                    dataGridView1[j, i].Value = "";
+                    SetCellValue(j, i, "");
 
         }
 
@@ -632,10 +637,10 @@ namespace AEIOU
             for (int i = 0; i < col; i++)
             {
                 tempCellUsed[i] = aryCellUsedCount[i];
-                headerName[i] = dataGridView1.Columns[i].HeaderText;
+                headerName[i] = GetHeaderValue(i);
                 for (int j = 0; j < row; j++)
                 {
-                    temp[i, j] = dataGridView1[i, j].Value.ToString();
+                    temp[i, j] = GetCellValue(i, j);
                 }
             }
 
@@ -649,9 +654,10 @@ namespace AEIOU
             {
                 aryCellUsedCount[i] = tempCellUsed[i];
                 dataGridView1.Columns[i].HeaderText = headerName[i];
+                timingSheetModel.SetHeader(i, headerName[i]);
                 for (int j = 0; j < row; j++)
                 {
-                    dataGridView1[i, j].Value = temp[i, j];
+                    SetCellValue(i, j, temp[i, j]);
                 }
             }
         }
@@ -774,7 +780,7 @@ namespace AEIOU
                 for (int j = (setting.RowLength - 1); j >= (Row + Row_count); j--)
                 {
                     // セル入力値をコピー
-                    var new_value = dataGridView1[i, j - Row_count].Value.ToString();
+                    var new_value = GetCellValue(i, j - Row_count);
 
                     // アンドゥ情報の記録
                     var operation = new SetValueOperation(j, i, new_value);
@@ -804,7 +810,7 @@ namespace AEIOU
                 for (int j = Row + Row_count; j < setting.RowLength; j++)
                 {
                     // セル入力値をコピー
-                    var new_value = dataGridView1[i, j].Value.ToString();
+                    var new_value = GetCellValue(i, j);
 
                     // アンドゥ情報の記録
                     var operation = new SetValueOperation(j - Row_count, i, new_value);
@@ -830,7 +836,7 @@ namespace AEIOU
                 for (int row = (setting.RowLength - 1); row >= Row + Count; row--)
                 {
                     // セル入力値をコピー
-                    var new_value = dataGridView1[i, row - Count].Value.ToString();
+                    var new_value = GetCellValue(i, row - Count);
 
                     // セル色情報のコピー
                     //if(DataGridView1[i, rw].Value.ToString() != "")
@@ -863,10 +869,10 @@ namespace AEIOU
                 for (int row = Row; (row + Count) < setting.RowLength; row++)
                 {
                     // セル入力値をコピー
-                    var new_value = dataGridView1[i, row + Count].Value.ToString();
+                    var new_value = GetCellValue(i, row + Count);
 
                     // セル色情報のコピー
-                    //if(dataGridView1[i, rw].Value.ToString() != "")
+                    //if(GetCellValue(i, rw) != "")
                     //{
                     //    (*pColorBuf)[i][rw] = versionNumber;
                     //}
@@ -1267,8 +1273,8 @@ namespace AEIOU
             for (int i = Y; i >= 0; i--)
             {
                 // 空白は無視、カラセルを見付けたら falseを返す
-                if (dataGridView1[X, i].Value.ToString() == "") continue;
-                if (dataGridView1[X, i].Value.ToString() == setting.KaraCell) return false;
+                if (GetCellValue(X, i) == "") continue;
+                if (GetCellValue(X, i) == setting.KaraCell) return false;
 
                 // タイミングの入力を見付けたら trueを返す
                 return true;
@@ -1336,6 +1342,29 @@ namespace AEIOU
             return gridSelectionService.GetSelectedRect();
         }
 
+        private string GetCellValue(int col, int row)
+        {
+            return timingSheetModel.GetCell(col, row);
+        }
+
+        private void SetCellValue(int col, int row, string value)
+        {
+            timingSheetModel.SetCell(col, row, value);
+            dataGridView1[col, row].Value = value;
+        }
+
+        private string GetHeaderValue(int col)
+        {
+            return timingSheetModel.GetHeader(col);
+        }
+
+        private void SetHeaderValue(int col, string value)
+        {
+            timingSheetModel.SetHeader(col, value);
+            dataGridView1.Columns[col].HeaderText = value;
+        }
+
+        //----------------------------------------------------------------------------------------
         //----------------------------------------------------------------------------------------
         // 指定セルの入力有無をチェック
         private bool checkCellValue(int X, int Y)
@@ -1346,7 +1375,7 @@ namespace AEIOU
             if((X >= 0 && dataGridView1.ColumnCount < X) && (Y >= 0  && dataGridView1.RowCount < Y))
             {
                 // 値が入っていたら trueを返す
-                String str = dataGridView1[X, Y].Value.ToString();
+                String str = GetCellValue(X, Y);
                 if (str.Length > 0)
                     val = true;
             }
@@ -1371,7 +1400,7 @@ namespace AEIOU
             bool isNoBlank = false;
             for (int i = 0; i < rect.Width; i++)
             {
-                if (dataGridView1[rect.X + i, rect.Y].Value.ToString() != "")
+                if (GetCellValue(rect.X + i, rect.Y) != "")
                 {
                     isNoBlank = true;
                     break;
@@ -1391,7 +1420,7 @@ namespace AEIOU
                     for (int l = rect.Left; l <= rect.Right; l++)
                     {
                         // 空白のセルは無視
-                        String str = dataGridView1[l, i].Value.ToString();
+                        String str = GetCellValue(l, i);
                         if (str == "") continue;
 
                         // 選択範囲をクリア
@@ -1428,7 +1457,7 @@ namespace AEIOU
                 for (int i = rect.Left; i <= rect.Right; i++)
                 {
                     // 空白セルは無視する
-                    String new_value = dataGridView1[i, rect.Y].Value.ToString();
+                    String new_value = GetCellValue(i, rect.Y);
                     if (new_value.Length == 0) continue;
 
                     if (isBackward)
@@ -1877,7 +1906,7 @@ namespace AEIOU
                         Rect rect = selectRange;
                         for(int i = 0; i < rect.Width; i++)
                         {
-                            String new_value = dataGridView1[rect.X + i, rect.Y].Value.ToString();
+                            String new_value = GetCellValue(rect.X + i, rect.Y);
 
                             // 入力前に情報が入っているか確認
                             if (!checkCellValue(rect.X + i, rect.Y))
@@ -1927,7 +1956,7 @@ namespace AEIOU
                             {
                                 for (col = selectRange.Left; col <= selectRange.Right; col++)
                                 {
-                                    if (dataGridView1[col, row].Value.ToString() == "") continue;
+                                    if (GetCellValue(col, row) == "") continue;
                                     value = row;
                                     break;
                                 }
@@ -1940,7 +1969,7 @@ namespace AEIOU
                             {
                                 for (col = selectRange.Left; col <= selectRange.Right; col++)
                                 {
-                                    if (dataGridView1[col, row].Value.ToString() == "") continue;
+                                    if (GetCellValue(col, row) == "") continue;
                                     value = row;
                                     break;
                                 }
@@ -2007,7 +2036,7 @@ namespace AEIOU
                         for (int i = rect.Y - 1; i >= 0; i--)
                         {
                             // 空白と空セルは無視
-                            String str = dataGridView1[rect.X, i].Value.ToString();
+                            String str = GetCellValue(rect.X, i);
                             if (str == "" ) continue;
                             if (str == setting.KaraCell) return;    // カラセルが入力されていたら、処理を中断
 
@@ -2064,7 +2093,7 @@ namespace AEIOU
                         for (int i = rect.Y - 1; i >= 0; i--)
                         {
                             // 空白と空セルは無視
-                            String str = dataGridView1[rect.X, i].Value.ToString();
+                            String str = GetCellValue(rect.X, i);
                             //if (str == "" || str == setting.KaraCell) continue;
                             if (str == "") continue;
                             if (str == setting.KaraCell) return;    // カラセルが入力されていたら、処理を中断
@@ -2329,7 +2358,7 @@ namespace AEIOU
             {
                 case Keys.Enter:
                     // 入力確定
-                    dataGridView1.Columns[textBoxColumn].HeaderText = textBox1.Text;
+                    SetHeaderValue(textBoxColumn, textBox1.Text);
                     TextBox_Terminate();
                     e.Handled = true;
                     break;
@@ -2357,7 +2386,7 @@ namespace AEIOU
             if (e.ColumnIndex > -1 && e.RowIndex == -1)
             {
                 // ヘッダの場合 (テキストボックスを出す)
-                textBox1.Text = dataGridView1.Columns[e.ColumnIndex].HeaderText;
+                textBox1.Text = GetHeaderValue(e.ColumnIndex);
                 textBoxColumn = e.ColumnIndex;
                 textBox1.Left = (e.ColumnIndex + 1) * 50 + 1;
                 textBox1.Top = 3;
@@ -2445,7 +2474,7 @@ namespace AEIOU
                 if (bNuki) continue;
 
                 // カラセルは無視
-                String str = dataGridView1[col, i].Value.ToString();
+                String str = GetCellValue(col, i);
                 if (str == "") continue;
 
                 // 中ヌキ範囲長でフレーム値を補正
@@ -2533,7 +2562,7 @@ namespace AEIOU
                 if (bNuki) continue;
 
                 // カラセルは無視
-                String str = dataGridView1[col, i].Value.ToString();
+                String str = GetCellValue(col, i);
                 if (str == "") continue;
 
                 // 中ヌキ範囲長でフレーム値を補正
@@ -2809,7 +2838,7 @@ namespace AEIOU
         private void flushUndoHistory()
         {
             // アンドゥ非対応機能を使用した場合などに アンドゥ履歴をフラッシュする
-            gridViewManager.InitializeWork(dataGridView1);
+            gridViewManager.InitializeWork(dataGridView1, timingSheetModel);
         }
 
         //----------------------------------------------------------------------------------------
@@ -3099,15 +3128,15 @@ namespace AEIOU
                 for (int i = firstColIndex; i >= col; i--)
                 {
                     aryCellUsedCount[i + 1] = aryCellUsedCount[i];
-                    dataGridView1.Columns[i + 1].HeaderText = dataGridView1.Columns[i].HeaderText;
+                    SetHeaderValue(i + 1, GetHeaderValue(i));
                     for (int j = 0; j < setting.RowLength; j++)
-                        dataGridView1[i + 1, j].Value = dataGridView1[i, j].Value.ToString();
+                        SetCellValue(i + 1, j, GetCellValue(i, j));
                 }
                 // 開いた場所を空欄にする
                 aryCellUsedCount[col] = 0;
-                dataGridView1.Columns[col].HeaderText = "";
+                SetHeaderValue(col, "");
                 for (int i = 0; i < setting.RowLength; i++)
-                    dataGridView1[col, i].Value = "";
+                    SetCellValue(col, i, "");
             }
 
             // アンドゥ履歴をフラッシュ
@@ -3129,9 +3158,9 @@ namespace AEIOU
                 for (int i = col; i < setting.ColLength - 1; i++)
                 {
                     aryCellUsedCount[i] = aryCellUsedCount[i + 1];
-                    dataGridView1.Columns[i].HeaderText = dataGridView1.Columns[i + 1].HeaderText;
+                    SetHeaderValue(i, GetHeaderValue(i + 1));
                     for (int j = 0; j < setting.RowLength; j++)
-                        dataGridView1[i, j].Value = dataGridView1[i + 1, j].Value.ToString();
+                        SetCellValue(i, j, GetCellValue(i + 1, j));
                 }
             }
 
@@ -3186,7 +3215,7 @@ namespace AEIOU
                 // 入力
                 for (int i = 0; i < cnt; i += Math.Abs(step))
                 {
-                    if (dataGridView1[col, row + i].Value.ToString() == "")
+                    if (GetCellValue(col, row + i) == "")
                     {
                         aryCellUsedCount[col]++;
                     }
@@ -3312,7 +3341,7 @@ namespace AEIOU
             // 操作を１つ入れる (カレントセルの値を同じ場所に上書き)
             var col = selectRange.Left;
             var row = selectRange.Top;
-            var operation = new SetValueOperation(row, col, dataGridView1[col, row].Value.ToString());
+            var operation = new SetValueOperation(row, col, GetCellValue(col, row));
             gridViewManager.ExecuteOperation(operation);
 
             // 繰り返しダイアログの表示
@@ -3349,12 +3378,12 @@ namespace AEIOU
                 // 置き換え
                 for (int i = 0; i < Cnt; i++)
                 {
-                    if (dataGridView1[Col, Row + i].Value.ToString() == "") continue;
+                    if (GetCellValue(Col, Row + i) == "") continue;
 
                     // フレーム毎に値を調べて、変換前を見つけたら、変換後に書き換え
-                    if (dataGridView1[Col, Row + i].Value.ToString() == A)
+                    if (GetCellValue(Col, Row + i) == A)
                     {
-                        if (dataGridView1[Col, Row + i].Value.ToString() == "")
+                        if (GetCellValue(Col, Row + i) == "")
                         {
                             aryCellUsedCount[Col]++;
                         }
@@ -3389,7 +3418,7 @@ namespace AEIOU
             String[] temp = new String[Cnt];
             for(i = 0; i < Cnt; i++)
             {
-                String val = dataGridView1[Col, Row + i].Value.ToString();
+                String val = GetCellValue(Col, Row + i);
                 if(val == "") continue;
                 temp[targetCount++] = val;
             }
@@ -3399,7 +3428,7 @@ namespace AEIOU
             //選択範囲内の記述を逆順に適応
             for (i = 0; i < Cnt; i++)
             {
-                if (dataGridView1[Col, Row + i].Value.ToString() == "") continue;
+                if (GetCellValue(Col, Row + i) == "") continue;
 
                 // アンドゥ情報の記録
                 var operation = new SetValueOperation(Row + i, Col, temp[--targetCount]);
@@ -3468,13 +3497,13 @@ namespace AEIOU
                 {
                     for (int i = r.Top; i <= r.Bottom; i++)
                     {
-                        if (dataGridView1[c,i].Value.ToString() == "" ||
-                           dataGridView1[c,i].Value.ToString() == setting.KaraCell) continue;
+                        if (GetCellValue(c,i) == "" ||
+                           GetCellValue(c,i) == setting.KaraCell) continue;
 
                         int celNum = 0;
                         try
                         {
-                            celNum = int.Parse(dataGridView1[c, i].Value.ToString());
+                            celNum = int.Parse(GetCellValue(c, i));
                         }
                         catch (Exception ex)
                         {
@@ -3547,7 +3576,7 @@ namespace AEIOU
             //複製操作
             for (int i = 0; i < Len; i++)
             {
-                String val = dataGridView1[Col, Row + i].Value.ToString();
+                String val = GetCellValue(Col, Row + i);
 
                 // アンドゥ情報の記録
                 var operation = new SetValueOperation(Row + Len + i, Col, val);
@@ -3635,7 +3664,7 @@ namespace AEIOU
                     UInt16 current = 0;    // 初期状態は空セル( = 0)
                     for (int j = 0; j < row; j++)
                     {
-                        if (dataGridView1[i, j].Value.ToString() == "")
+                        if (GetCellValue(i, j) == "")
                         {
                             //(特に何もしない)
                         }
@@ -3645,7 +3674,7 @@ namespace AEIOU
                             UInt16 val = 0;
                             try
                             {
-                                val = UInt16.Parse(dataGridView1[i, j].Value.ToString());
+                                val = UInt16.Parse(GetCellValue(i, j));
                             }
                             catch (Exception ex)
                             {
@@ -3661,7 +3690,7 @@ namespace AEIOU
                 // 各セルの名称を出力
                 for (int i = 0; i < col; i++)
                 {
-                    byte[] name = Encoding.GetEncoding("Shift_JIS").GetBytes(dataGridView1.Columns[i].HeaderText);
+                    byte[] name = Encoding.GetEncoding("Shift_JIS").GetBytes(GetHeaderValue(i));
                     outfs.WriteByte((byte)name.Length);
                     outfs.Write(name, 0, name.Length);
                 }
@@ -3731,7 +3760,7 @@ namespace AEIOU
                     if (current != val)
                     {
                         current = val;
-                        dataGridView1[i, j].Value = val.ToString();
+                        SetCellValue(i, j, val.ToString());
                     }
                 }
             }
@@ -3742,8 +3771,7 @@ namespace AEIOU
                 int nameLen = inpfs.ReadByte();
                 byte[] temp = new byte[nameLen];
                 inpfs.Read(temp, 0, nameLen);
-                dataGridView1.Columns[i].HeaderText =
-                    Encoding.GetEncoding("Shift_JIS").GetString(temp);
+                SetHeaderValue(i, Encoding.GetEncoding("Shift_JIS").GetString(temp));
             }
 
             // ストリームを閉じる

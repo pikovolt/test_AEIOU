@@ -67,3 +67,13 @@
   - Model の責務上限を「データ入れ物 + 行列管理 + Undo/Redo連携」に固定し、業務ロジック移管を禁止。
 - 理由: 先行レビューで指摘された「Undo/Redo影響」「Model肥大化回避」「VirtualMode性能前提」の3点を、実装着手前に計画へ埋め込むため。
 - 影響: Phase 1 の実装順序と Done 判定がより具体化され、Phase 2 への移行時の追加設計コストを抑制できる。
+
+## 2026-02-27 Phase 1実装着手（モデル正の同期導入）
+
+- 決定: `TimingSheetModel` を新規導入し、`GridViewManager` と `SetValueOperation` 系をモデル同期対応に変更する。
+- 実装方針:
+  - `Form1` では `GetCellValue`/`SetCellValue` を導入し、入力ホットパスのセル読取をモデル経由へ置換。
+  - `GridViewOperation` では Undo/Redo を含む値更新時に `TimingSheetModel` を同時更新し、表示反映は従来どおり `DataGridView` へ行う。
+  - VirtualMode は OFF のまま維持し、Phase 2 で `CellValueNeeded/Pushed` に接続可能な更新口を先に固定する。
+- 理由: Phase 1 の必須要件（入力ホットパスの直参照削減・Undo/Redo互換維持）を小差分で満たすため。
+- 影響: `Form1` でのセル参照がモデル経由に寄り、今後の一括操作置換（B区分）を段階的に適用しやすくなる。

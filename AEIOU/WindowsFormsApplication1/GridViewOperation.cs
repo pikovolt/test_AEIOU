@@ -29,7 +29,7 @@ namespace AEIOU
             {
                 for (int j = 0; j < range.Width; j++)
                 {
-                    manager.CopyBuffer[i, j] = manager.View[range.X + j, range.Y + i].Value.ToString();
+                    manager.CopyBuffer[i, j] = manager.Model.GetCell(range.X + j, range.Y + i);
                 }
             }
         }
@@ -51,6 +51,7 @@ namespace AEIOU
                 {
                     for (int j = 0; j < maxWidth; j++)
                     {
+                        manager.Model.SetCell(col + j, row + i, manager.CopyBuffer[i, j]);
                         manager.View[col + j, row + i].Value = manager.CopyBuffer[i, j];
                     }
                 }
@@ -64,6 +65,7 @@ namespace AEIOU
             {
                 for (int j = 0; j < range.Width; j++)
                 {
+                    manager.Model.SetCell(range.X + j, range.Y + i, "");
                     manager.View[range.X + j, range.Y + i].Value = "";
                 }
             }
@@ -87,12 +89,13 @@ namespace AEIOU
 
         public override void Execute(GridViewManager manager)
         {
-            _oldValue = manager.View[_column, _row].Value.ToString();
+            _oldValue = manager.Model.SetCellWithUndo(_column, _row, _newValue);
             manager.View[_column, _row].Value = _newValue;
         }
 
         public override void Undo(GridViewManager manager)
         {
+            manager.Model.ApplyUndoCell(_column, _row, _oldValue);
             manager.View[_column, _row].Value = _oldValue;
         }
 
@@ -156,7 +159,7 @@ namespace AEIOU
                 {
                     for (int j = 0; j < maxWidth; j++)
                     {
-                        _oldValues[i, j] = manager.View[_col + j, _row + i].Value.ToString();
+                        _oldValues[i, j] = manager.Model.GetCell(_col + j, _row + i);
                     }
                 }
                 PasteFromBuffer(_row, _col, manager);
@@ -173,6 +176,7 @@ namespace AEIOU
                 {
                     for (int j = 0; j < columnCount; j++)
                     {
+                        manager.Model.SetCell(_col + j, _row + i, _oldValues[i, j]);
                         manager.View[_col + j, _row + i].Value = _oldValues[i, j];
                     }
                 }
@@ -203,7 +207,7 @@ namespace AEIOU
             {
                 for (int j = 0; j < _cutRange.Width; j++)
                 {
-                    _oldValues[i, j] = manager.View[_cutRange.X + j, _cutRange.Y + i].Value.ToString();
+                    _oldValues[i, j] = manager.Model.GetCell(_cutRange.X + j, _cutRange.Y + i);
                 }
             }
             CopyToBuffer(_cutRange, manager);
@@ -216,6 +220,7 @@ namespace AEIOU
             {
                 for (int j = 0; j < _cutRange.Width; j++)
                 {
+                    manager.Model.SetCell(_cutRange.X + j, _cutRange.Y + i, _oldValues[i, j]);
                     manager.View[_cutRange.X + j, _cutRange.Y + i].Value = _oldValues[i, j];
                 }
             }
@@ -246,7 +251,7 @@ namespace AEIOU
             {
                 for (int j = 0; j < _deleteRange.Width; j++)
                 {
-                    _oldValues[i, j] = manager.View[_deleteRange.X + j, _deleteRange.Y + i].Value.ToString();
+                    _oldValues[i, j] = manager.Model.GetCell(_deleteRange.X + j, _deleteRange.Y + i);
                 }
             }
             ClearSelection(_deleteRange, manager);
@@ -258,6 +263,7 @@ namespace AEIOU
             {
                 for (int j = 0; j < _deleteRange.Width; j++)
                 {
+                    manager.Model.SetCell(_deleteRange.X + j, _deleteRange.Y + i, _oldValues[i, j]);
                     manager.View[_deleteRange.X + j, _deleteRange.Y + i].Value = _oldValues[i, j];
                 }
             }
