@@ -1526,7 +1526,7 @@ namespace AEIOU
                     }
 
                     // アンドゥ情報の記録
-                    var operation = new SetValueOperation(rect.Y, rect.X + i, new_value);
+                    var operation = new SetValueOperation(rect.Y, i, new_value);
                     gridViewManager.ExecuteOperation(operation);
 
                 }
@@ -3426,16 +3426,15 @@ namespace AEIOU
                 // 置き換え
                 for (int i = 0; i < Cnt; i++)
                 {
-                    if (GetCellValue(Col, Row + i) == "") continue;
+                    string currentValue;
+                    if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
+                    {
+                        continue;
+                    }
 
                     // フレーム毎に値を調べて、変換前を見つけたら、変換後に書き換え
-                    if (GetCellValue(Col, Row + i) == A)
+                    if (currentValue == A)
                     {
-                        if (GetCellValue(Col, Row + i) == "")
-                        {
-                            aryCellUsedCount[Col]++;
-                        }
-
                         // アンドゥ情報の記録
                         var operation = new SetValueOperation(Row + i, Col, B);
                         gridViewManager.ExecuteOperation(operation);
@@ -3545,13 +3544,18 @@ namespace AEIOU
                 {
                     for (int i = r.Top; i <= r.Bottom; i++)
                     {
-                        if (GetCellValue(c,i) == "" ||
-                           GetCellValue(c,i) == setting.KaraCell) continue;
+                        string currentValue;
+                        if (!TryGetCellValue(c, i, out currentValue) ||
+                            currentValue == "" ||
+                            currentValue == setting.KaraCell)
+                        {
+                            continue;
+                        }
 
                         int celNum = 0;
                         try
                         {
-                            celNum = int.Parse(GetCellValue(c, i));
+                            celNum = int.Parse(currentValue);
                         }
                         catch (Exception ex)
                         {

@@ -201,3 +201,13 @@
 - 決定: `Form1.GetCellValue` / `Form1.TryGetCellValue` は、`GridViewManager` が現行 `TimingSheetModel` にバインド済みの場合に manager 経由を優先する。
 - 理由: Phase 1 の同期戦略（adapter 経由で反映口を限定）に合わせ、読取側も同一境界へ寄せるため。
 - 影響: `Form1` のセル値アクセスは read/write ともに manager 優先の対称構造となり、Phase 2（VirtualMode 接続）での参照口一本化を進めやすくなる。
+
+## 2026-02-27 Phase 1 Step4継続（B区分の参照置換 + 列インデックス是正）
+
+- 決定: 一括操作のうち `replace` / `fourArithmeticOperation` のセル値参照を `TryGetCellValue` 優先へ段階移行する。
+- 理由: 同一セルの `GetCellValue` 多重呼び出しを減らし、モデル参照口を Phase 2 前に統一するため。
+- 追加修正:
+  - `deleteRect_with_backspace` の `SetValueOperation` 列指定を `rect.X + i` から `i` へ修正。
+- 影響:
+  - B区分の read 経路がより一貫化され、モデル経由置換の適用範囲が拡大。
+  - バックスペース削除時に列ずれ書込が起きる不具合を回避。
