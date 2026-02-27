@@ -1397,6 +1397,12 @@ namespace AEIOU
             return timingSheetModel.TryGetCell(col, row, out value);
         }
 
+        private bool IsCellEmpty(int col, int row)
+        {
+            string value;
+            return !TryGetCellValue(col, row, out value) || value == "";
+        }
+
         private void SetCellValue(int col, int row, string value)
         {
             if (IsGridViewManagerBoundToCurrentModel())
@@ -3302,7 +3308,7 @@ namespace AEIOU
                 // 入力
                 for (int i = 0; i < cnt; i += Math.Abs(step))
                 {
-                    if (GetCellValue(col, row + i) == "")
+                    if (IsCellEmpty(col, row + i))
                     {
                         aryCellUsedCount[col]++;
                     }
@@ -3504,7 +3510,12 @@ namespace AEIOU
             String[] temp = new String[Cnt];
             for(i = 0; i < Cnt; i++)
             {
-                String val = GetCellValue(Col, Row + i);
+                string val;
+                if (!TryGetCellValue(Col, Row + i, out val))
+                {
+                    continue;
+                }
+
                 if(val == "") continue;
                 temp[targetCount++] = val;
             }
@@ -3514,7 +3525,7 @@ namespace AEIOU
             //選択範囲内の記述を逆順に適応
             for (i = 0; i < Cnt; i++)
             {
-                if (GetCellValue(Col, Row + i) == "") continue;
+                if (IsCellEmpty(Col, Row + i)) continue;
 
                 // アンドゥ情報の記録
                 var operation = new SetValueOperation(Row + i, Col, temp[--targetCount]);

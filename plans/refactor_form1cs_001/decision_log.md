@@ -262,3 +262,11 @@
 - 影響:
   - 値更新・Undo/Redo・選択更新ロジックは変更なし。
   - 再描画タイミングのみを末尾集約に寄せ、重複発火を削減する。
+
+## 2026-02-27 Phase 1 Step4継続（連番/反転の読取経路統一）
+
+- 決定: `sequentialNumberToolStripMenuItem_Click` / `reverseToolStripMenuItem_Click` の空セル判定を `TryGetCellValue` ベースに寄せ、`GetCellValue(...) == ""` 直比較を削減する。
+- 理由: B区分（一括操作）の read 経路を model adapter 経由に統一し、範囲外や未初期化の分岐を同一ルールで扱うため。
+- 影響:
+  - 連番作成の使用数カウント判定は `IsCellEmpty` ヘルパー経由で統一される。
+  - 反転処理の値収集/適用時に `TryGetCellValue` を利用し、読取境界が明確化される。
