@@ -3606,11 +3606,20 @@ namespace AEIOU
             Row = selectRange.Top;
             Len = selectRange.Height;
 
+            // 貼り付け先の末尾がシート行数を超える場合は、範囲内だけ複製する
+            int maxCopyLength = setting.RowLength - (Row + Len);
+            if (maxCopyLength <= 0)
+            {
+                return;
+            }
+
+            int copyLength = (Len < maxCopyLength) ? Len : maxCopyLength;
+
             gridViewManager.BeginGroup("複製");
             try
             {
                 //複製操作
-                for (int i = 0; i < Len; i++)
+                for (int i = 0; i < copyLength; i++)
                 {
                     String val = GetCellValue(Col, Row + i);
 
@@ -3629,6 +3638,7 @@ namespace AEIOU
             Rect rect = selectRange;
             dataGridView1.ClearSelection();
             rect.Y += Len;
+            rect.Height = copyLength;
             for (int i = 0; i < rect.Height; i++)
                 for (int j = 0; j < rect.Width; j++)
                     dataGridView1[rect.X + j, rect.Y + i].Selected = true;
