@@ -799,8 +799,7 @@ namespace AEIOU
         //----------------------------------------------------------------------------------------
         void insertCell(int Col, int Row, int Row_count)
         {
-            gridViewManager.BeginGroup("行の挿入");
-            try
+            ExecuteWriteGroup("行の挿入", delegate
             {
                 // 指定セルの指定位置以降を、指定数だけ後ろに送る
                 int i = Col;
@@ -810,9 +809,7 @@ namespace AEIOU
                         // セル入力値をコピー
                         var new_value = GetCellValue(i, j - Row_count);
 
-                        // アンドゥ情報の記録
-                        var operation = new SetValueOperation(j, i, new_value);
-                        gridViewManager.ExecuteOperation(operation);
+                        QueueCellWrite(row: j, col: i, value: new_value);
 
                     }
                 }
@@ -820,11 +817,7 @@ namespace AEIOU
                 // 指定範囲に被る領域を削除（空白にする）
                 Rect r = new Rect(Col, Row, 1, Row_count);
                 deleteRect(r, false);
-            }
-            finally
-            {
-                gridViewManager.EndGroup();
-            }
+            });
 
             dataGridView1.Invalidate();
 
@@ -833,9 +826,7 @@ namespace AEIOU
         //----------------------------------------------------------------------------------------
         void deleteCell(int Col, int Row, int Row_count)
         {
-            // アンドゥグループの作成
-            gridViewManager.BeginGroup("行の削除");
-            try
+            ExecuteWriteGroup("行の削除", delegate
             {
                 // 指定セルの指定位置以降を、指定数だけ前に送る
                 int i = Col;
@@ -846,20 +837,14 @@ namespace AEIOU
                         // セル入力値をコピー
                         var new_value = GetCellValue(i, j);
 
-                        // アンドゥ情報の記録
-                        var operation = new SetValueOperation(j - Row_count, i, new_value);
-                        gridViewManager.ExecuteOperation(operation);
+                        QueueCellWrite(row: j - Row_count, col: i, value: new_value);
                     }
                 }
 
                 // 末端の領域を削除（空白にする）
                 Rect r = new Rect(Col, (GetSheetRowCount() - Row_count), 1, Row_count);
                 deleteRect(r, false);
-            }
-            finally
-            {
-                gridViewManager.EndGroup();
-            }
+            });
 
             dataGridView1.Invalidate();
         }
@@ -867,8 +852,7 @@ namespace AEIOU
         //----------------------------------------------------------------------------------------
         void insertToAllCell(int Row, int Count)
         {
-            gridViewManager.BeginGroup("行の挿入");
-            try
+            ExecuteWriteGroup("行の挿入", delegate
             {
                 // 指定セルの指定位置以降を、指定数だけ後ろに送る
                 for (int i = 0; i < GetSheetColumnCount(); i++)
@@ -884,20 +868,14 @@ namespace AEIOU
                         //    gAryBuff[i, rw, gColorBufferNumber] = versionNumber;
                         //}
 
-                        // アンドゥ情報の記録
-                        var operation = new SetValueOperation(row, i, new_value);
-                        gridViewManager.ExecuteOperation(operation);
+                        QueueCellWrite(row: row, col: i, value: new_value);
                     }
                 }
 
                 // 指定範囲に被る領域を削除（空白にする）
                 Rect r = new Rect(0, Row, GetSheetColumnCount(), Count);
                 deleteRect(r, false);
-            }
-            finally
-            {
-                gridViewManager.EndGroup();
-            }
+            });
 
             dataGridView1.Invalidate();
 
@@ -906,8 +884,7 @@ namespace AEIOU
         //----------------------------------------------------------------------------------------
         void cutToAllCell(int Row, int Count)
         {
-            gridViewManager.BeginGroup("行の削除");
-            try
+            ExecuteWriteGroup("行の削除", delegate
             {
                 //全てのセルの指定位置以降を、指定数だけ前に戻す
                 for (int i = 0; i < GetSheetColumnCount(); i++)
@@ -923,24 +900,16 @@ namespace AEIOU
                         //    (*pColorBuf)[i][rw] = versionNumber;
                         //}
 
-                        // アンドゥ情報の記録
-                        var operation = new SetValueOperation(row, i, new_value);
-                        gridViewManager.ExecuteOperation(operation);
+                        QueueCellWrite(row: row, col: i, value: new_value);
                     }
                 }
 
                 // 範囲末尾の不要領域を削除（空白にする）
                 Rect r = new Rect(0, GetSheetRowCount() - Count, GetSheetColumnCount(), Count);
                 deleteRect(r, false);
-            }
-            finally
-            {
-                gridViewManager.EndGroup();
-            }
+            });
 
-            dataGridView1.Invalidate();
-
-            isFirstEdit = true;
+            FinishWriteOperation(true);
 
         }
 
