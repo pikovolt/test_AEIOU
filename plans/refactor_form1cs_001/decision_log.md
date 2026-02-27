@@ -310,3 +310,27 @@
 - 影響:
   - 記録内容自体は不変。
   - 履歴参照時の章番号整合性を回復し、レビュー指摘の再発を抑止。
+
+## 2026-02-27 Phase 1 Step4継続（B区分の書込ループ境界をモデルサイズ基準へ）
+
+- 決定: 行挿入/削除系（`insertCell`, `deleteCell`, `insertToAllCell`, `cutToAllCell`）のループ境界と削除矩形計算を、`setting.ColLength` / `setting.RowLength` 直参照から `TimingSheetModel` サイズ参照（`GetSheetColumnCount` / `GetSheetRowCount`）へ置換する。
+- 理由: Phase 1 方針の「モデル正」を徹底し、設定値と実モデルサイズの乖離が起きる経路で範囲計算が不一致になるリスクを下げるため。
+- 影響:
+  - B区分（一括操作）の更新処理で、サイズ取得口がモデル基準に統一される。
+  - VirtualMode 移行時にも、行列サイズの参照先を追加変更せずに流用しやすくなる。
+
+## 2026-02-27 PR再精査（行削除系の末尾クリア境界オフバイワン修正）
+
+- 決定: `deleteCell` / `cutToAllCell` の末尾クリア矩形開始行を `rowCount - count - 1` から `rowCount - count` へ修正する。
+- 理由: 行詰め後に空白化すべき末尾領域は「最後の `count` 行」であり、`-1` を含む式だと1行手前から消去してしまう（かつ `count == rowCount` で負値開始になり得る）ため。
+- 影響:
+  - 行削除系操作で、クリア対象が本来の末尾領域と一致する。
+  - 行数上限近傍・全行対象の境界条件で範囲外アクセスリスクを低減できる。
+
+## 2026-02-27 PR再精査フォローアップ（行挿入/削除系のUndoグループ例外安全化）
+
+- 決定: `insertCell` / `deleteCell` / `insertToAllCell` / `cutToAllCell` の `BeginGroup`〜`EndGroup` を `try/finally` で囲み、例外時でも `EndGroup()` が必ず実行されるようにする。
+- 理由: 境界計算や `SetValueOperation` 実行中に例外が発生した場合、`EndGroup` 未到達でグループスタックが積み残り、後続操作の Undo 単位が壊れるリスクがあるため。
+- 影響:
+  - 例外発生時でも Undo グループ整合性を維持できる。
+  - 通常時の操作結果・Undo単位は従来どおり維持される。

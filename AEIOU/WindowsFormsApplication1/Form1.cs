@@ -800,27 +800,31 @@ namespace AEIOU
         void insertCell(int Col, int Row, int Row_count)
         {
             gridViewManager.BeginGroup("行の挿入");
-
-            // 指定セルの指定位置以降を、指定数だけ後ろに送る
-            int i = Col;
+            try
             {
-                for (int j = (setting.RowLength - 1); j >= (Row + Row_count); j--)
+                // 指定セルの指定位置以降を、指定数だけ後ろに送る
+                int i = Col;
                 {
-                    // セル入力値をコピー
-                    var new_value = GetCellValue(i, j - Row_count);
+                    for (int j = (GetSheetRowCount() - 1); j >= (Row + Row_count); j--)
+                    {
+                        // セル入力値をコピー
+                        var new_value = GetCellValue(i, j - Row_count);
 
-                    // アンドゥ情報の記録
-                    var operation = new SetValueOperation(j, i, new_value);
-                    gridViewManager.ExecuteOperation(operation);
+                        // アンドゥ情報の記録
+                        var operation = new SetValueOperation(j, i, new_value);
+                        gridViewManager.ExecuteOperation(operation);
 
+                    }
                 }
+
+                // 指定範囲に被る領域を削除（空白にする）
+                Rect r = new Rect(Col, Row, 1, Row_count);
+                deleteRect(r, false);
             }
-
-            // 指定範囲に被る領域を削除（空白にする）
-            Rect r = new Rect(Col, Row, 1, Row_count);
-            deleteRect(r, false);
-
-            gridViewManager.EndGroup();
+            finally
+            {
+                gridViewManager.EndGroup();
+            }
 
             dataGridView1.Invalidate();
 
@@ -831,27 +835,31 @@ namespace AEIOU
         {
             // アンドゥグループの作成
             gridViewManager.BeginGroup("行の削除");
-
-            // 指定セルの指定位置以降を、指定数だけ前に送る
-            int i = Col;
+            try
             {
-                //for (int j = (setting.RowLength - 1); j >= (Row + Row_count); j--)
-                for (int j = Row + Row_count; j < setting.RowLength; j++)
+                // 指定セルの指定位置以降を、指定数だけ前に送る
+                int i = Col;
                 {
-                    // セル入力値をコピー
-                    var new_value = GetCellValue(i, j);
+                    //for (int j = (setting.RowLength - 1); j >= (Row + Row_count); j--)
+                    for (int j = Row + Row_count; j < GetSheetRowCount(); j++)
+                    {
+                        // セル入力値をコピー
+                        var new_value = GetCellValue(i, j);
 
-                    // アンドゥ情報の記録
-                    var operation = new SetValueOperation(j - Row_count, i, new_value);
-                    gridViewManager.ExecuteOperation(operation);
+                        // アンドゥ情報の記録
+                        var operation = new SetValueOperation(j - Row_count, i, new_value);
+                        gridViewManager.ExecuteOperation(operation);
+                    }
                 }
+
+                // 末端の領域を削除（空白にする）
+                Rect r = new Rect(Col, (GetSheetRowCount() - Row_count), 1, Row_count);
+                deleteRect(r, false);
             }
-
-            // 末端の領域を削除（空白にする）
-            Rect r = new Rect(Col, (setting.RowLength - Row_count - 1), 1, Row_count);
-            deleteRect(r, false);
-
-            gridViewManager.EndGroup();
+            finally
+            {
+                gridViewManager.EndGroup();
+            }
 
             dataGridView1.Invalidate();
         }
@@ -860,32 +868,36 @@ namespace AEIOU
         void insertToAllCell(int Row, int Count)
         {
             gridViewManager.BeginGroup("行の挿入");
-
-            // 指定セルの指定位置以降を、指定数だけ後ろに送る
-            for (int i = 0; i < setting.ColLength; i++)
+            try
             {
-                for (int row = (setting.RowLength - 1); row >= Row + Count; row--)
+                // 指定セルの指定位置以降を、指定数だけ後ろに送る
+                for (int i = 0; i < GetSheetColumnCount(); i++)
                 {
-                    // セル入力値をコピー
-                    var new_value = GetCellValue(i, row - Count);
+                    for (int row = (GetSheetRowCount() - 1); row >= Row + Count; row--)
+                    {
+                        // セル入力値をコピー
+                        var new_value = GetCellValue(i, row - Count);
 
-                    // セル色情報のコピー
-                    //if(DataGridView1[i, rw].Value.ToString() != "")
-                    //{
-                    //    gAryBuff[i, rw, gColorBufferNumber] = versionNumber;
-                    //}
+                        // セル色情報のコピー
+                        //if(DataGridView1[i, rw].Value.ToString() != "")
+                        //{
+                        //    gAryBuff[i, rw, gColorBufferNumber] = versionNumber;
+                        //}
 
-                    // アンドゥ情報の記録
-                    var operation = new SetValueOperation(row, i, new_value);
-                    gridViewManager.ExecuteOperation(operation);
+                        // アンドゥ情報の記録
+                        var operation = new SetValueOperation(row, i, new_value);
+                        gridViewManager.ExecuteOperation(operation);
+                    }
                 }
+
+                // 指定範囲に被る領域を削除（空白にする）
+                Rect r = new Rect(0, Row, GetSheetColumnCount(), Count);
+                deleteRect(r, false);
             }
-
-            // 指定範囲に被る領域を削除（空白にする）
-            Rect r = new Rect(0, Row, setting.ColLength, Count);
-            deleteRect(r, false);
-
-            gridViewManager.EndGroup();
+            finally
+            {
+                gridViewManager.EndGroup();
+            }
 
             dataGridView1.Invalidate();
 
@@ -895,32 +907,36 @@ namespace AEIOU
         void cutToAllCell(int Row, int Count)
         {
             gridViewManager.BeginGroup("行の削除");
-
-            //全てのセルの指定位置以降を、指定数だけ前に戻す
-            for (int i = 0; i < setting.ColLength; i++)
+            try
             {
-                for (int row = Row; (row + Count) < setting.RowLength; row++)
+                //全てのセルの指定位置以降を、指定数だけ前に戻す
+                for (int i = 0; i < GetSheetColumnCount(); i++)
                 {
-                    // セル入力値をコピー
-                    var new_value = GetCellValue(i, row + Count);
+                    for (int row = Row; (row + Count) < GetSheetRowCount(); row++)
+                    {
+                        // セル入力値をコピー
+                        var new_value = GetCellValue(i, row + Count);
 
-                    // セル色情報のコピー
-                    //if(GetCellValue(i, rw) != "")
-                    //{
-                    //    (*pColorBuf)[i][rw] = versionNumber;
-                    //}
+                        // セル色情報のコピー
+                        //if(GetCellValue(i, rw) != "")
+                        //{
+                        //    (*pColorBuf)[i][rw] = versionNumber;
+                        //}
 
-                    // アンドゥ情報の記録
-                    var operation = new SetValueOperation(row, i, new_value);
-                    gridViewManager.ExecuteOperation(operation);
+                        // アンドゥ情報の記録
+                        var operation = new SetValueOperation(row, i, new_value);
+                        gridViewManager.ExecuteOperation(operation);
+                    }
                 }
+
+                // 範囲末尾の不要領域を削除（空白にする）
+                Rect r = new Rect(0, GetSheetRowCount() - Count, GetSheetColumnCount(), Count);
+                deleteRect(r, false);
             }
-
-            // 範囲末尾の不要領域を削除（空白にする）
-            Rect r = new Rect(0, setting.RowLength - Count - 1, setting.ColLength, Count);
-            deleteRect(r, false);
-
-            gridViewManager.EndGroup();
+            finally
+            {
+                gridViewManager.EndGroup();
+            }
 
             dataGridView1.Invalidate();
 
@@ -1430,6 +1446,26 @@ namespace AEIOU
             return gridViewManager != null &&
                    timingSheetModel != null &&
                    gridViewManager.Model == timingSheetModel;
+        }
+
+        private int GetSheetColumnCount()
+        {
+            if (timingSheetModel != null)
+            {
+                return timingSheetModel.ColumnCount;
+            }
+
+            return setting.ColLength;
+        }
+
+        private int GetSheetRowCount()
+        {
+            if (timingSheetModel != null)
+            {
+                return timingSheetModel.RowCount;
+            }
+
+            return setting.RowLength;
         }
 
         private string GetHeaderValue(int col)
