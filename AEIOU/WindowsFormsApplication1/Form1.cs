@@ -2940,12 +2940,12 @@ namespace AEIOU
                     continue;
                 }
 
-                if (currentValue.Length == 0)
-                {
-                    aryCellUsedCount[col]++;
-                }
                 if (QueueCellWriteIfChanged(row: frm, col: col, value: (t + setting.FirstFrame).ToString()))
                 {
+                    if (currentValue.Length == 0)
+                    {
+                        aryCellUsedCount[col]++;
+                    }
                     hasWrite = true;
                 }
             }
@@ -3972,8 +3972,6 @@ namespace AEIOU
             setting.RowLength = row;
             InitializeWork(false);
 
-            bool hasWrite = false;
-
             // セル
             ExecuteWriteGroup("STS読込", delegate
             {
@@ -3990,10 +3988,7 @@ namespace AEIOU
                     if (current != val)
                     {
                         current = val;
-                        if (QueueCellWriteIfChanged(row: j, col: i, value: val.ToString()))
-                        {
-                            hasWrite = true;
-                        }
+                        QueueCellWriteIfChanged(row: j, col: i, value: val.ToString());
                     }
                 }
                 }
@@ -4011,10 +4006,8 @@ namespace AEIOU
             // ストリームを閉じる
             inpfs.Close();
 
-            if (hasWrite)
-            {
-                isFirstEdit = true;
-            }
+            // 読み込み結果は確定状態とし、Undo履歴をクリアする（旧実装互換）。
+            flushUndoHistory();
         }
 
         //----------------------------------------------------------------------------------------
