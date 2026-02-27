@@ -801,18 +801,9 @@ namespace AEIOU
         {
             ExecuteWriteGroup("行の挿入", delegate
             {
-                // 指定セルの指定位置以降を、指定数だけ後ろに送る
-                int i = Col;
-                {
-                    for (int j = (GetSheetRowCount() - 1); j >= (Row + Row_count); j--)
-                    {
-                        // セル入力値をコピー
-                        var new_value = GetCellValue(i, j - Row_count);
-
-                        QueueCellWrite(row: j, col: i, value: new_value);
-
-                    }
-                }
+                int rowCount = GetSheetRowCount();
+                int movableLength = rowCount - (Row + Row_count);
+                QueueShiftWrites(Col, Col + 1, Row, movableLength, Row + Row_count);
 
                 // 指定範囲に被る領域を削除（空白にする）
                 Rect r = new Rect(Col, Row, 1, Row_count);
@@ -828,18 +819,10 @@ namespace AEIOU
         {
             ExecuteWriteGroup("行の削除", delegate
             {
-                // 指定セルの指定位置以降を、指定数だけ前に送る
-                int i = Col;
-                {
-                    //for (int j = (setting.RowLength - 1); j >= (Row + Row_count); j--)
-                    for (int j = Row + Row_count; j < GetSheetRowCount(); j++)
-                    {
-                        // セル入力値をコピー
-                        var new_value = GetCellValue(i, j);
-
-                        QueueCellWrite(row: j - Row_count, col: i, value: new_value);
-                    }
-                }
+                int rowCount = GetSheetRowCount();
+                int sourceStartRow = Row + Row_count;
+                int movableLength = rowCount - sourceStartRow;
+                QueueShiftWrites(Col, Col + 1, sourceStartRow, movableLength, Row);
 
                 // 末端の領域を削除（空白にする）
                 Rect r = new Rect(Col, (GetSheetRowCount() - Row_count), 1, Row_count);
@@ -854,23 +837,9 @@ namespace AEIOU
         {
             ExecuteWriteGroup("行の挿入", delegate
             {
-                // 指定セルの指定位置以降を、指定数だけ後ろに送る
-                for (int i = 0; i < GetSheetColumnCount(); i++)
-                {
-                    for (int row = (GetSheetRowCount() - 1); row >= Row + Count; row--)
-                    {
-                        // セル入力値をコピー
-                        var new_value = GetCellValue(i, row - Count);
-
-                        // セル色情報のコピー
-                        //if(DataGridView1[i, rw].Value.ToString() != "")
-                        //{
-                        //    gAryBuff[i, rw, gColorBufferNumber] = versionNumber;
-                        //}
-
-                        QueueCellWrite(row: row, col: i, value: new_value);
-                    }
-                }
+                int rowCount = GetSheetRowCount();
+                int movableLength = rowCount - (Row + Count);
+                QueueShiftWrites(0, GetSheetColumnCount(), Row, movableLength, Row + Count);
 
                 // 指定範囲に被る領域を削除（空白にする）
                 Rect r = new Rect(0, Row, GetSheetColumnCount(), Count);
@@ -886,23 +855,9 @@ namespace AEIOU
         {
             ExecuteWriteGroup("行の削除", delegate
             {
-                //全てのセルの指定位置以降を、指定数だけ前に戻す
-                for (int i = 0; i < GetSheetColumnCount(); i++)
-                {
-                    for (int row = Row; (row + Count) < GetSheetRowCount(); row++)
-                    {
-                        // セル入力値をコピー
-                        var new_value = GetCellValue(i, row + Count);
-
-                        // セル色情報のコピー
-                        //if(GetCellValue(i, rw) != "")
-                        //{
-                        //    (*pColorBuf)[i][rw] = versionNumber;
-                        //}
-
-                        QueueCellWrite(row: row, col: i, value: new_value);
-                    }
-                }
+                int sourceStartRow = Row + Count;
+                int movableLength = GetSheetRowCount() - sourceStartRow;
+                QueueShiftWrites(0, GetSheetColumnCount(), sourceStartRow, movableLength, Row);
 
                 // 範囲末尾の不要領域を削除（空白にする）
                 Rect r = new Rect(0, GetSheetRowCount() - Count, GetSheetColumnCount(), Count);
@@ -1508,6 +1463,43 @@ namespace AEIOU
         {
             var operation = new SetValueOperation(row, col, value);
             gridViewManager.ExecuteOperation(operation);
+        }
+
+        private void QueueCellWrites(IEnumerable<CellWriteEntry> writes)
+        {
+            foreach (CellWriteEntry write in writes)
+            {
+                QueueCellWrite(write.Row, write.Col, write.Value);
+            }
+        }
+
+        private void QueueShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
+        {
+            List<CellWriteEntry> writes = CollectShiftWrites(startCol, endColExclusive, sourceStartRow, length, destinationStartRow);
+            QueueCellWrites(writes);
+        }
+
+        private List<CellWriteEntry> CollectShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
+        {
+            List<CellWriteEntry> writes = new List<CellWriteEntry>();
+
+            if (length <= 0)
+            {
+                return writes;
+            }
+
+            for (int col = startCol; col < endColExclusive; col++)
+            {
+                for (int offset = 0; offset < length; offset++)
+                {
+                    int sourceRow = sourceStartRow + offset;
+                    int destinationRow = destinationStartRow + offset;
+                    string value = GetCellValue(col, sourceRow);
+                    writes.Add(new CellWriteEntry(destinationRow, col, value));
+                }
+            }
+
+            return writes;
         }
 
         private struct CellWriteEntry
