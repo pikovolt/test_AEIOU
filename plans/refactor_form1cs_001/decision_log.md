@@ -157,3 +157,9 @@
 - 理由: 直前PRでは `Form1.SetCellValue` が manager 経由を優先するため、Timing再初期化直後に manager が旧モデルを保持しているとフォールバック経路に依存しやすく、移行意図（adapter 経路の一貫化）とずれるため。
 - 影響: リサイズ/再初期化中も manager と現行モデルの整合が保たれ、`SetCellValue`・`SetHeaderValue` の更新口が安定する。
 
+## 2026-02-27 Phase 1再点検（Timing初期化時のUndo履歴保持）
+
+- 決定: `InitializeWork(InitializeTarget.Timing)` では `gridViewManager.InitializeWork(...)` を呼ばず、`gridViewManager.Model = timingSheetModel` の再バインドのみ行う。
+- 理由: `InitializeWork(...)` は Undo/Redo 履歴・コピー状態を再初期化する副作用があり、Timing再初期化だけを意図した経路で履歴が失われる移行ミスになるため。
+- 影響: モデル参照ずれは防ぎつつ、`InitializeTarget.Timing` 単体呼び出し時の Undo 履歴ポリシーを従来どおり維持できる。
+

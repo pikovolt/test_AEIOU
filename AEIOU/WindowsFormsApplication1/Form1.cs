@@ -544,7 +544,7 @@ namespace AEIOU
                 // シートの入力情報（タイミング）の初期化
                 // ※バージョンの扱いをどうするのかは未定
                 timingSheetModel = new TimingSheetModel(setting.ColLength, setting.RowLength);
-                gridViewManager.InitializeWork(dataGridView1, timingSheetModel);
+                gridViewManager.Model = timingSheetModel;
                 dataGridInitialize(setting.ColLength, setting.RowLength, 50, false);    // 列, 行, 列幅
                 aryCellUsedCount = new int[setting.ColLength];
                 for (int i = 0; i < setting.RowLength; i++)
