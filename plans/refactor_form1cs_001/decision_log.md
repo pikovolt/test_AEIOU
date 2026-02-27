@@ -171,3 +171,27 @@
 - 影響: 次PRで「何を追加確認すべきか」を事前共有でき、差分レビューの観点がぶれにくくなる。
 
 
+
+## 2026-02-27 Phase 1 Step 4着手（複製操作のUndoグループ化）
+
+- 決定: `duplicateToolStripMenuItem_Click` で `SetValueOperation` を複数発行する前に `gridViewManager.BeginGroup("複製")` を開始し、末尾の `EndGroup()` と対になるよう修正する。
+- 理由: 一括操作（B区分）のUndo単位を操作論理に合わせるため。グループ開始なしで `EndGroup()` のみ呼ぶ実装では履歴がまとまらず、操作再現性が低下する。
+- 影響:
+  - 複製操作が単一のUndo単位として記録され、既存の一括操作ポリシー（Begin/Endで囲む）と整合する。
+  - モデル更新経路は既存の `SetValueOperation`（= manager 経由更新）を維持し、Phase 1 の更新口統一方針に一致する。
+
+## 2026-02-27 PR再精査（複製Undoグループの例外安全性）
+
+- 決定: `duplicateToolStripMenuItem_Click` の `BeginGroup("複製")` 導入箇所を `try/finally` で囲み、例外発生時でも `EndGroup()` が必ず実行されるように修正する。
+- 理由: 移行前はグループ未使用だったため、途中例外でも Undo グループスタック破損は起きなかった。移行後は `BeginGroup` 追加により、`EndGroup` 未到達時にグループが積み残るリスクが新規発生するため。
+- 影響:
+  - 複製中に範囲外アクセス等の例外が起きても `GridViewManager` のグループスタック整合性を維持できる。
+  - 既存の複製ロジック（`SetValueOperation` 経由更新）は維持され、Phase 1 方針との整合は保たれる。
+
+## 2026-02-27 PR再精査フォローアップ（複製先の範囲外書込防止）
+
+- 決定: `duplicateToolStripMenuItem_Click` に、複製先（`Row + Len` 以降）が `setting.RowLength` を超える場合の上限計算を追加し、範囲内に収まる件数だけ複製する。
+- 理由: 直前PRは Undo グループ整合性を改善したが、選択位置によっては複製先インデックスが行数上限を超え、`SetValueOperation` 実行中に例外が起きる余地が残っていたため。
+- 影響:
+  - 複製操作の行末近傍での実行時に、範囲外アクセス例外を回避できる。
+  - 実際に複製できた件数（`copyLength`）に合わせて選択範囲の高さを更新し、表示上の選択状態と実データを一致させる。

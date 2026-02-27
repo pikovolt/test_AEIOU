@@ -3601,31 +3601,44 @@ namespace AEIOU
         {
             // 複製
 
-            int Col, Row, Cnt, Len;
+            int Col, Row, Len;
             Col = selectRange.Left;
             Row = selectRange.Top;
             Len = selectRange.Height;
 
-            // （回数は２回固定）
-            Cnt = 2;
-
-            //複製操作
-            for (int i = 0; i < Len; i++)
+            // 貼り付け先の末尾がシート行数を超える場合は、範囲内だけ複製する
+            int maxCopyLength = setting.RowLength - (Row + Len);
+            if (maxCopyLength <= 0)
             {
-                String val = GetCellValue(Col, Row + i);
-
-                // アンドゥ情報の記録
-                var operation = new SetValueOperation(Row + Len + i, Col, val);
-                gridViewManager.ExecuteOperation(operation);
-                //(*pColorBuf)[Col][Row + Len + i] = versionNumber;
+                return;
             }
 
-            gridViewManager.EndGroup();
+            int copyLength = (Len < maxCopyLength) ? Len : maxCopyLength;
+
+            gridViewManager.BeginGroup("複製");
+            try
+            {
+                //複製操作
+                for (int i = 0; i < copyLength; i++)
+                {
+                    String val = GetCellValue(Col, Row + i);
+
+                    // アンドゥ情報の記録
+                    var operation = new SetValueOperation(Row + Len + i, Col, val);
+                    gridViewManager.ExecuteOperation(operation);
+                    //(*pColorBuf)[Col][Row + Len + i] = versionNumber;
+                }
+            }
+            finally
+            {
+                gridViewManager.EndGroup();
+            }
 
             // 新しい選択範囲を設定
             Rect rect = selectRange;
             dataGridView1.ClearSelection();
             rect.Y += Len;
+            rect.Height = copyLength;
             for (int i = 0; i < rect.Height; i++)
                 for (int j = 0; j < rect.Width; j++)
                     dataGridView1[rect.X + j, rect.Y + i].Selected = true;
