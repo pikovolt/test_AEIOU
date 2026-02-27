@@ -1346,6 +1346,11 @@ namespace AEIOU
             return timingSheetModel.GetCell(col, row);
         }
 
+        private bool TryGetCellValue(int col, int row, out string value)
+        {
+            return timingSheetModel.TryGetCell(col, row, out value);
+        }
+
         private void SetCellValue(int col, int row, string value)
         {
             timingSheetModel.SetCell(col, row, value);
@@ -1371,7 +1376,8 @@ namespace AEIOU
             bool val = false;
 
             // チェック範囲は X,Y共に 0以上
-            if((X >= 0 && dataGridView1.ColumnCount < X) && (Y >= 0  && dataGridView1.RowCount < Y))
+            if ((X >= 0 && X < timingSheetModel.ColumnCount) &&
+                (Y >= 0 && Y < timingSheetModel.RowCount))
             {
                 // 値が入っていたら trueを返す
                 String str = GetCellValue(X, Y);
@@ -2677,12 +2683,16 @@ namespace AEIOU
 
                 // タイミング情報をセルに書き込む
                 // ※書き込むセルが空欄の場合は、使用カウントを＋１
-                DataGridViewCell cell = dataGridView1[col, frm];
-                if (cell.Value.ToString().Length == 0)
+                if (!TryGetCellValue(col, frm, out string currentValue))
+                {
+                    continue;
+                }
+
+                if (currentValue.Length == 0)
                 {
                     aryCellUsedCount[col]++;
                 }
-                cell.Value = (t + setting.FirstFrame).ToString();
+                SetCellValue(col, frm, (t + setting.FirstFrame).ToString());
             }
 
             isFirstEdit = true;

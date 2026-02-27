@@ -86,3 +86,16 @@
   - `dataGridInitialize` の初期化ループを引数 `columnCount` / `rowCount` 基準へ統一し、モデル・ビューのサイズ整合を明示。
   - ヘッダ復元時の反映を `SetHeaderValue` 経由に寄せ、更新口を一本化。
 - 理由: VirtualMode 前段の Phase 1 では「モデル正」の更新口を固定し、再実行経路での値取り違えリスクを最小化するため。
+
+
+## 2026-02-27 Phase 1 C区分監査（統合）
+
+- 決定: AE貼り付け～入力有無判定までをモデル基準に統一する。
+  - `pasteFromAEToolStripMenuItem_Click` の書込を `SetCellValue` 経由に変更。
+  - AE貼り付け時は `TryGetCellValue` で範囲外フレームをスキップ。
+  - `checkCellValue` の範囲判定を `X < timingSheetModel.ColumnCount` / `Y < timingSheetModel.RowCount` に是正。
+- 理由: Phase 1 方針（モデル正・範囲外は `Try*` 吸収）に対する移行漏れと判定不整合を同時に解消するため。
+- 影響:
+  - ファイルI/O経路でもモデルとビューの更新口が統一される。
+  - 範囲外データ混入時の処理継続性が向上する。
+  - `checkCellValue` が意図通りの「有効範囲かつ非空」判定として機能する。
