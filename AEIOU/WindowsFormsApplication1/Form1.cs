@@ -1541,6 +1541,17 @@ namespace AEIOU
             }
         }
 
+        private void ApplyCellWrites(string groupName, IList<CellWriteEntry> writes)
+        {
+            ExecuteWriteGroup(groupName, delegate
+            {
+                foreach (CellWriteEntry write in writes)
+                {
+                    QueueCellWrite(row: write.Row, col: write.Col, value: write.Value);
+                }
+            });
+        }
+
         private void FinishWriteOperation(bool shouldInvalidate)
         {
             isFirstEdit = true;
@@ -3483,23 +3494,23 @@ namespace AEIOU
                 int frm = start;
                 int frmStep = (skip == true) ? step : step / Math.Abs(step);
                 int cnt = selectRange.Height;
+                List<CellWriteEntry> writes = new List<CellWriteEntry>();
 
-                ExecuteWriteGroup("連番作成", delegate
+                // 入力
+                for (int i = 0; i < cnt; i += Math.Abs(step))
                 {
-                    // 入力
-                    for (int i = 0; i < cnt; i += Math.Abs(step))
+                    if (IsCellEmpty(col, row + i))
                     {
-                        if (IsCellEmpty(col, row + i))
-                        {
-                            aryCellUsedCount[col]++;
-                        }
-
-                        QueueCellWrite(row: row + i, col: col, value: frm.ToString());
-
-                        //(*pColorBuf)[Col][Row + 1] = versionNumber;
-                        frm += frmStep;
+                        aryCellUsedCount[col]++;
                     }
-                });
+
+                    writes.Add(new CellWriteEntry(row + i, col, frm.ToString()));
+
+                    //(*pColorBuf)[Col][Row + 1] = versionNumber;
+                    frm += frmStep;
+                }
+
+                ApplyCellWrites("連番作成", writes);
 
                 FinishWriteOperation(true);
 
@@ -3632,26 +3643,25 @@ namespace AEIOU
                 Row = selectRange.Top;
                 Cnt = selectRange.Height;
 
-                ExecuteWriteGroup("置換", delegate
+                List<CellWriteEntry> writes = new List<CellWriteEntry>();
+                // 置き換え
+                for (int i = 0; i < Cnt; i++)
                 {
-                    // 置き換え
-                    for (int i = 0; i < Cnt; i++)
+                    string currentValue;
+                    if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
                     {
-                        string currentValue;
-                        if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
-                        {
-                            continue;
-                        }
-
-                        // フレーム毎に値を調べて、変換前を見つけたら、変換後に書き換え
-                        if (currentValue == A)
-                        {
-                            QueueCellWrite(row: Row + i, col: Col, value: B);
-                            //(*pColorBuf)[Col][Row + i] = versionNumber;
-                        }
-
+                        continue;
                     }
-                });
+
+                    // フレーム毎に値を調べて、変換前を見つけたら、変換後に書き換え
+                    if (currentValue == A)
+                    {
+                        writes.Add(new CellWriteEntry(Row + i, Col, B));
+                        //(*pColorBuf)[Col][Row + i] = versionNumber;
+                    }
+                }
+
+                ApplyCellWrites("置換", writes);
 
                 FinishWriteOperation(true);
             }
@@ -3681,26 +3691,26 @@ namespace AEIOU
                 temp[targetCount++] = val;
             }
 
-            ExecuteWriteGroup("反転", delegate
+            List<CellWriteEntry> writes = new List<CellWriteEntry>();
+            //選択範囲内の記述を逆順に適応
+            for (i = 0; i < Cnt; i++)
             {
-                //選択範囲内の記述を逆順に適応
-                for (i = 0; i < Cnt; i++)
+                string currentValue;
+                if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
                 {
-                    string currentValue;
-                    if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
-                    {
-                        continue;
-                    }
-
-                    if (targetCount <= 0)
-                    {
-                        break;
-                    }
-
-                    QueueCellWrite(row: Row + i, col: Col, value: temp[--targetCount]);
-                    //(*pColorBuf)[Col][Row + i] = versionNumber;
+                    continue;
                 }
-            });
+
+                if (targetCount <= 0)
+                {
+                    break;
+                }
+
+                writes.Add(new CellWriteEntry(Row + i, Col, temp[--targetCount]));
+                //(*pColorBuf)[Col][Row + i] = versionNumber;
+            }
+
+            ApplyCellWrites("反転", writes);
 
             FinishWriteOperation(true);
         }
@@ -3784,13 +3794,7 @@ namespace AEIOU
                     }
                 }
 
-                ExecuteWriteGroup("四則演算", delegate
-                {
-                    foreach (CellWriteEntry write in arithmeticWrites)
-                    {
-                        QueueCellWrite(row: write.Row, col: write.Col, value: write.Value);
-                    }
-                });
+                ApplyCellWrites("四則演算", arithmeticWrites);
 
                 FinishWriteOperation(true);
             }
@@ -3815,16 +3819,16 @@ namespace AEIOU
 
             int copyLength = (Len < maxCopyLength) ? Len : maxCopyLength;
 
-            ExecuteWriteGroup("複製", delegate
+            List<CellWriteEntry> writes = new List<CellWriteEntry>();
+            //複製操作
+            for (int i = 0; i < copyLength; i++)
             {
-                //複製操作
-                for (int i = 0; i < copyLength; i++)
-                {
-                    String val = GetCellValue(Col, Row + i);
-                    QueueCellWrite(row: Row + Len + i, col: Col, value: val);
-                    //(*pColorBuf)[Col][Row + Len + i] = versionNumber;
-                }
-            });
+                String val = GetCellValue(Col, Row + i);
+                writes.Add(new CellWriteEntry(Row + Len + i, Col, val));
+                //(*pColorBuf)[Col][Row + Len + i] = versionNumber;
+            }
+
+            ApplyCellWrites("複製", writes);
 
             // 新しい選択範囲を設定
             Rect rect = selectRange;
