@@ -106,27 +106,36 @@ namespace AEIOU
 
         public void SetCellValue(int col, int row, string value)
         {
-            _model.SetCell(col, row, value);
-            _view[col, row].Value = value;
+            string normalizedValue = NormalizeCellValue(value);
+            _model.SetCell(col, row, normalizedValue);
+            _view[col, row].Value = normalizedValue;
         }
 
         public string SetCellValueWithUndo(int col, int row, string value)
         {
-            string oldValue = _model.SetCellWithUndo(col, row, value);
-            _view[col, row].Value = value;
+            string normalizedValue = NormalizeCellValue(value);
+            string oldValue = _model.SetCellWithUndo(col, row, normalizedValue);
+            _view[col, row].Value = normalizedValue;
             return oldValue;
         }
 
         public void ApplyUndoCellValue(int col, int row, string value)
         {
-            _model.ApplyUndoCell(col, row, value);
-            _view[col, row].Value = value;
+            string normalizedValue = NormalizeCellValue(value);
+            _model.ApplyUndoCell(col, row, normalizedValue);
+            _view[col, row].Value = normalizedValue;
         }
 
         public void ApplyRedoCellValue(int col, int row, string value)
         {
-            _model.ApplyRedoCell(col, row, value);
-            _view[col, row].Value = value;
+            string normalizedValue = NormalizeCellValue(value);
+            _model.ApplyRedoCell(col, row, normalizedValue);
+            _view[col, row].Value = normalizedValue;
+        }
+
+        private string NormalizeCellValue(string value)
+        {
+            return value ?? "";
         }
 
     }
