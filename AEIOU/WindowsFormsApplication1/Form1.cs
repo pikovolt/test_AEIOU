@@ -1776,7 +1776,10 @@ namespace AEIOU
         // KeyDownイベントハンドラ
         private void dataGridView1_KeyDown(object sender, KeyEventArgs e)
         {
-            if (tryExecuteShortcut(contextMenuStrip1.Items, e.KeyData))
+            int keyValue = setting.keys.convKey(e.KeyValue, e.Alt, e.Control, e.Shift);
+            Keys convertedKeyData = (Keys)keyValue;
+            if (tryExecuteShortcut(contextMenuStrip1.Items, convertedKeyData) ||
+                tryExecuteShortcut(contextMenuStrip1.Items, e.KeyData))
             {
                 e.Handled = true;
                 e.SuppressKeyPress = true;
@@ -1784,7 +1787,6 @@ namespace AEIOU
             }
 
             bool isCellEdit = false;
-            int keyValue = setting.keys.convKey(e.KeyValue, e.Alt, e.Control, e.Shift);
             switch (keyValue & 0x0ff)
             {
                 case 8:     // BackSpace
