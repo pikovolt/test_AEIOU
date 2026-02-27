@@ -191,6 +191,77 @@ namespace AEIOU
             _view.Columns[col].HeaderText = NormalizeCellValue(value);
         }
 
+        public string[,] GetRangeValues(Rect range)
+        {
+            ValidateRange(range);
+            string[,] values = new string[range.Height, range.Width];
+            for (int rowOffset = 0; rowOffset < range.Height; rowOffset++)
+            {
+                for (int colOffset = 0; colOffset < range.Width; colOffset++)
+                {
+                    values[rowOffset, colOffset] = GetCellValue(range.X + colOffset, range.Y + rowOffset);
+                }
+            }
+
+            return values;
+        }
+
+        public void SetRangeValues(int startCol, int startRow, string[,] values)
+        {
+            if (values == null)
+            {
+                throw new ArgumentNullException("values");
+            }
+
+            int rowCount = values.GetLength(0);
+            int columnCount = values.GetLength(1);
+            ValidateRange(new Rect(startCol, startRow, columnCount, rowCount));
+            for (int rowOffset = 0; rowOffset < rowCount; rowOffset++)
+            {
+                for (int colOffset = 0; colOffset < columnCount; colOffset++)
+                {
+                    SetCellValue(startCol + colOffset, startRow + rowOffset, values[rowOffset, colOffset]);
+                }
+            }
+        }
+
+        public void ClearRangeValues(Rect range)
+        {
+            ValidateRange(range);
+            for (int rowOffset = 0; rowOffset < range.Height; rowOffset++)
+            {
+                for (int colOffset = 0; colOffset < range.Width; colOffset++)
+                {
+                    SetCellValue(range.X + colOffset, range.Y + rowOffset, "");
+                }
+            }
+        }
+
+
+        private void ValidateRange(Rect range)
+        {
+            if (range.Width < 0 || range.Height < 0)
+            {
+                throw new ArgumentOutOfRangeException("range", "Range size must be non-negative.");
+            }
+
+            if (range.Width == 0 || range.Height == 0)
+            {
+                return;
+            }
+
+            ValidateCellIndex(range.X, range.Y);
+            ValidateCellIndex(range.Right, range.Bottom);
+        }
+
+        private void ValidateCellIndex(int col, int row)
+        {
+            if (col < 0 || row < 0 || col >= ColumnCount || row >= RowCount)
+            {
+                throw new ArgumentOutOfRangeException("col,row", "Cell index is out of range.");
+            }
+        }
+
         private string NormalizeCellValue(string value)
         {
             return value ?? "";
