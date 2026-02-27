@@ -5,7 +5,7 @@ using System.Windows.Forms;
 
 namespace AEIOU
 {
-    public class GridCellStyleResolver
+    class GridCellStyleResolver
     {
         public Color ResolveBackColor(
             DataGridView view,

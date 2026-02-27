@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace AEIOU
 {
-    public class GridScrollService
+    class GridScrollService
     {
         private readonly DataGridView _view;
         private readonly Settings _setting;
