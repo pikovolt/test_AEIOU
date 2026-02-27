@@ -278,3 +278,11 @@
 - 影響:
   - 収集/適用の判定基準が同一化され、`temp[--targetCount]` の境界を保守しやすくなる。
   - 防御的に `targetCount <= 0` ガードを追加し、想定外の差異が出ても範囲外アクセスを回避する。
+
+## 2026-02-27 PR再精査フォローアップ（checkContinuty の読取一本化）
+
+- 決定: 描画ホットパスの `checkContinuty` で同一セルへの二重 `GetCellValue` 呼び出しをやめ、`TryGetCellValue` 1回 + ローカル変数判定へ置換する。
+- 理由: 読取経路を model adapter 側へ揃えつつ、CellPainting 経路での重複読取を減らし判定条件の一貫性を高めるため。
+- 影響:
+  - 空セル/範囲外は `TryGetCellValue == false or ""` として同一扱い。
+  - KaraCell 判定と通常入力判定は従来仕様を維持。

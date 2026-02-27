@@ -1307,9 +1307,17 @@ namespace AEIOU
             // 遡って状態を確認
             for (int i = Y; i >= 0; i--)
             {
-                // 空白は無視、カラセルを見付けたら falseを返す
-                if (GetCellValue(X, i) == "") continue;
-                if (GetCellValue(X, i) == setting.KaraCell) return false;
+                string currentValue;
+                if (!TryGetCellValue(X, i, out currentValue) || currentValue == "")
+                {
+                    continue;
+                }
+
+                // カラセルを見付けたら false を返す
+                if (currentValue == setting.KaraCell)
+                {
+                    return false;
+                }
 
                 // タイミングの入力を見付けたら trueを返す
                 return true;
