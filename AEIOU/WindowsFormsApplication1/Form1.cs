@@ -1542,9 +1542,9 @@ namespace AEIOU
 
         private struct CellWriteEntry
         {
-            public int Row;
-            public int Col;
-            public string Value;
+            public readonly int Row;
+            public readonly int Col;
+            public readonly string Value;
 
             public CellWriteEntry(int row, int col, string value)
             {
