@@ -1478,6 +1478,18 @@ namespace AEIOU
             return true;
         }
 
+        private bool SetCellValueIfChanged(int col, int row, string value)
+        {
+            string normalizedValue = value ?? "";
+            if (GetCellValue(col, row) == normalizedValue)
+            {
+                return false;
+            }
+
+            SetCellValue(col, row, normalizedValue);
+            return true;
+        }
+
         private void QueueShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
         {
             if (length <= 0 || endColExclusive <= startCol)
@@ -3973,9 +3985,7 @@ namespace AEIOU
             InitializeWork(false);
 
             // セル
-            ExecuteWriteGroup("STS読込", delegate
-            {
-                byte[] cell = new byte[sizeof(UInt16)];
+            byte[] cell = new byte[sizeof(UInt16)];
             for (int i = 0; i < col; i++)
             {
                 UInt16 current = 0;
@@ -3988,11 +3998,10 @@ namespace AEIOU
                     if (current != val)
                     {
                         current = val;
-                        QueueCellWriteIfChanged(row: j, col: i, value: val.ToString());
+                        SetCellValueIfChanged(col: i, row: j, value: val.ToString());
                     }
                 }
-                }
-            });
+            }
 
             // 各セルの名称を入力
             for (int i = 0; i < col; i++)
