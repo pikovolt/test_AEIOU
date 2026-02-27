@@ -2,7 +2,7 @@
 
 namespace AEIOU
 {
-    public class GridCellRenderer
+    class GridCellRenderer
     {
         private readonly DataGridView _view;
         private readonly Settings _setting;

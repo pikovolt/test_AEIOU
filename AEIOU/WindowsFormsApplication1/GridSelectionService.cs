@@ -3,7 +3,7 @@ using System.Windows.Forms;
 
 namespace AEIOU
 {
-    public class GridSelectionService
+    class GridSelectionService
     {
         private readonly DataGridView _view;
         private readonly Settings _setting;
