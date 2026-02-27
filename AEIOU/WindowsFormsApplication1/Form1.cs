@@ -1519,6 +1519,36 @@ namespace AEIOU
             }
         }
 
+        private void ExecuteWriteGroup(string groupName, Action action)
+        {
+            gridViewManager.BeginGroup(groupName);
+            try
+            {
+                action();
+            }
+            finally
+            {
+                gridViewManager.EndGroup();
+            }
+        }
+
+        private void QueueCellWrite(int row, int col, string value)
+        {
+            var operation = new SetValueOperation(row, col, value);
+            gridViewManager.ExecuteOperation(operation);
+        }
+
+        private void FinishWriteOperation(bool shouldInvalidate)
+        {
+            isFirstEdit = true;
+
+            if (shouldInvalidate)
+            {
+                // 描画更新(継続記号の更新の為)
+                dataGridView1.Invalidate();
+            }
+        }
+
         //----------------------------------------------------------------------------------------
         //----------------------------------------------------------------------------------------
         // 指定セルの入力有無をチェック
@@ -3370,30 +3400,24 @@ namespace AEIOU
                 int frmStep = (skip == true) ? step : step / Math.Abs(step);
                 int cnt = selectRange.Height;
 
-                gridViewManager.BeginGroup("連番作成");
-
-                // 入力
-                for (int i = 0; i < cnt; i += Math.Abs(step))
+                ExecuteWriteGroup("連番作成", delegate
                 {
-                    if (IsCellEmpty(col, row + i))
+                    // 入力
+                    for (int i = 0; i < cnt; i += Math.Abs(step))
                     {
-                        aryCellUsedCount[col]++;
+                        if (IsCellEmpty(col, row + i))
+                        {
+                            aryCellUsedCount[col]++;
+                        }
+
+                        QueueCellWrite(row + i, col, frm.ToString());
+
+                        //(*pColorBuf)[Col][Row + 1] = versionNumber;
+                        frm += frmStep;
                     }
+                });
 
-                    // アンドゥ情報の記録
-                    var operation = new SetValueOperation(row + i, col, frm.ToString());
-                    gridViewManager.ExecuteOperation(operation);
-
-                    //(*pColorBuf)[Col][Row + 1] = versionNumber;
-                    frm += frmStep;
-                }
-
-                gridViewManager.EndGroup();
-
-                isFirstEdit = true;
-
-                // 描画更新(継続記号の更新の為)
-                dataGridView1.Invalidate();
+                FinishWriteOperation(true);
 
             }
         }
@@ -3437,61 +3461,52 @@ namespace AEIOU
                 }
                 count *= loop;
 
-                gridViewManager.BeginGroup("繰り返し");
-
-                //範囲の消去
+                ExecuteWriteGroup("繰り返し", delegate
                 {
+                    //範囲の消去
                     deleteRect(selectRange, false);
-                }
 
-                //番号入力
-                int row = selectRange.Top;
-                for (int num = start, col = selectRange.Left; col <= selectRange.Right; col++)
-                {
-                    for (int i = 0; i < count; i++)
+                    //番号入力
+                    int row = selectRange.Top;
+                    for (int num = start, col = selectRange.Left; col <= selectRange.Right; col++)
                     {
-
-                        if (insert_str == "")
+                        for (int i = 0; i < count; i++)
                         {
-                            //挿入番号なし
-                            var operation = new SetValueOperation(row + (i * step), col, num.ToString());
-                            gridViewManager.ExecuteOperation(operation);
 
-                            aryCellUsedCount[col]++;
-                            //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
-                            num += skip;
-                            if (num > end) num = start;
-                        }
-                        else if ((i % 2) == 0)
-                        {
-                            //挿入番号あり（開始＃～終了＃）
-                            //※連番と挿入番号が交互なのでカウンタを1/2にして番号計算
-                            var operation = new SetValueOperation(row + (i * step), col, num.ToString());
-                            gridViewManager.ExecuteOperation(operation);
+                            if (insert_str == "")
+                            {
+                                //挿入番号なし
+                                QueueCellWrite(row + (i * step), col, num.ToString());
 
-                            aryCellUsedCount[col]++;
-                            //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
-                            num += skip;
-                            if (num > end) num = start;
-                        }
-                        else
-                        {
-                            //挿入番号あり（挿入＃）
-                            var operation = new SetValueOperation(row + (i * step), col, insert_str);
-                            gridViewManager.ExecuteOperation(operation);
+                                aryCellUsedCount[col]++;
+                                //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
+                                num += skip;
+                                if (num > end) num = start;
+                            }
+                            else if ((i % 2) == 0)
+                            {
+                                //挿入番号あり（開始＃～終了＃）
+                                //※連番と挿入番号が交互なのでカウンタを1/2にして番号計算
+                                QueueCellWrite(row + (i * step), col, num.ToString());
 
-                            aryCellUsedCount[col]++;
-                            //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
+                                aryCellUsedCount[col]++;
+                                //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
+                                num += skip;
+                                if (num > end) num = start;
+                            }
+                            else
+                            {
+                                //挿入番号あり（挿入＃）
+                                QueueCellWrite(row + (i * step), col, insert_str);
+
+                                aryCellUsedCount[col]++;
+                                //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
+                            }
                         }
                     }
-                }
+                });
 
-                gridViewManager.EndGroup();
-
-                isFirstEdit = true;
-
-                // 描画更新(継続記号の更新の為)
-                dataGridView1.Invalidate();
+                FinishWriteOperation(true);
             }
         }
 
@@ -3533,33 +3548,28 @@ namespace AEIOU
                 Row = selectRange.Top;
                 Cnt = selectRange.Height;
 
-                gridViewManager.BeginGroup("置換");
-
-                // 置き換え
-                for (int i = 0; i < Cnt; i++)
+                ExecuteWriteGroup("置換", delegate
                 {
-                    string currentValue;
-                    if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
+                    // 置き換え
+                    for (int i = 0; i < Cnt; i++)
                     {
-                        continue;
+                        string currentValue;
+                        if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
+                        {
+                            continue;
+                        }
+
+                        // フレーム毎に値を調べて、変換前を見つけたら、変換後に書き換え
+                        if (currentValue == A)
+                        {
+                            QueueCellWrite(Row + i, Col, B);
+                            //(*pColorBuf)[Col][Row + i] = versionNumber;
+                        }
+
                     }
+                });
 
-                    // フレーム毎に値を調べて、変換前を見つけたら、変換後に書き換え
-                    if (currentValue == A)
-                    {
-                        // アンドゥ情報の記録
-                        var operation = new SetValueOperation(Row + i, Col, B);
-                        gridViewManager.ExecuteOperation(operation);
-                        //(*pColorBuf)[Col][Row + i] = versionNumber;
-                    }
-
-                }
-                gridViewManager.EndGroup();
-
-                isFirstEdit = true;
-
-                // 描画更新(継続記号の更新の為)
-                dataGridView1.Invalidate();
+                FinishWriteOperation(true);
             }
         }
 
@@ -3587,34 +3597,28 @@ namespace AEIOU
                 temp[targetCount++] = val;
             }
 
-            gridViewManager.BeginGroup("反転");
-
-            //選択範囲内の記述を逆順に適応
-            for (i = 0; i < Cnt; i++)
+            ExecuteWriteGroup("反転", delegate
             {
-                string currentValue;
-                if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
+                //選択範囲内の記述を逆順に適応
+                for (i = 0; i < Cnt; i++)
                 {
-                    continue;
+                    string currentValue;
+                    if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
+                    {
+                        continue;
+                    }
+
+                    if (targetCount <= 0)
+                    {
+                        break;
+                    }
+
+                    QueueCellWrite(Row + i, Col, temp[--targetCount]);
+                    //(*pColorBuf)[Col][Row + i] = versionNumber;
                 }
+            });
 
-                if (targetCount <= 0)
-                {
-                    break;
-                }
-
-                // アンドゥ情報の記録
-                var operation = new SetValueOperation(Row + i, Col, temp[--targetCount]);
-                gridViewManager.ExecuteOperation(operation);
-                //(*pColorBuf)[Col][Row + i] = versionNumber;
-            }
-
-            gridViewManager.EndGroup();
-
-            isFirstEdit = true;
-
-            // 描画更新(継続記号の更新の為)
-            dataGridView1.Invalidate();
+            FinishWriteOperation(true);
         }
 
         //----------------------------------------------------------------------------------------
