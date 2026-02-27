@@ -1498,10 +1498,14 @@ namespace AEIOU
 
                 gridViewManager.BeginGroup("削除");
 
-                for (int i = rect.Left; i <= rect.Right; i++)
+                // rect.Left～rect.Right で回しているため、ループ変数は「選択範囲内の相対位置」ではなく
+                // DataGridView 全体に対する「絶対列インデックス」。
+                // そのため SetValueOperation の列引数は col をそのまま渡す（rect.X + col にはしない）。
+                // 複数列選択でも Left～Right の各列を1回ずつ処理するため、列ずれは発生しない。
+                for (int col = rect.Left; col <= rect.Right; col++)
                 {
                     // 空白セルは無視する
-                    String new_value = GetCellValue(i, rect.Y);
+                    String new_value = GetCellValue(col, rect.Y);
                     if (new_value.Length == 0) continue;
 
                     if (isBackward)
@@ -1509,7 +1513,7 @@ namespace AEIOU
                         //セル内容の消去
                         new_value = "";
                         //使用状況を修正
-                        aryCellUsedCount[i]--;
+                        aryCellUsedCount[col]--;
                     }
                     else
                     {
@@ -1521,12 +1525,12 @@ namespace AEIOU
                         // セルの中身が空白になった場合は、使用状況を修正
                         if (new_value.Length == 0)
                         {
-                            aryCellUsedCount[i]--;
+                            aryCellUsedCount[col]--;
                         }
                     }
 
                     // アンドゥ情報の記録
-                    var operation = new SetValueOperation(rect.Y, rect.X + i, new_value);
+                    var operation = new SetValueOperation(rect.Y, col, new_value);
                     gridViewManager.ExecuteOperation(operation);
 
                 }
@@ -3426,16 +3430,15 @@ namespace AEIOU
                 // 置き換え
                 for (int i = 0; i < Cnt; i++)
                 {
-                    if (GetCellValue(Col, Row + i) == "") continue;
+                    string currentValue;
+                    if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
+                    {
+                        continue;
+                    }
 
                     // フレーム毎に値を調べて、変換前を見つけたら、変換後に書き換え
-                    if (GetCellValue(Col, Row + i) == A)
+                    if (currentValue == A)
                     {
-                        if (GetCellValue(Col, Row + i) == "")
-                        {
-                            aryCellUsedCount[Col]++;
-                        }
-
                         // アンドゥ情報の記録
                         var operation = new SetValueOperation(Row + i, Col, B);
                         gridViewManager.ExecuteOperation(operation);
@@ -3539,19 +3542,25 @@ namespace AEIOU
                 }
 
                 gridViewManager.BeginGroup("四則演算");
+                bool hasArithmeticUpdate = false;
 
                 Rect r = selectRange;
                 for (int c = r.Left; c <= r.Right; c++)
                 {
                     for (int i = r.Top; i <= r.Bottom; i++)
                     {
-                        if (GetCellValue(c,i) == "" ||
-                           GetCellValue(c,i) == setting.KaraCell) continue;
+                        string currentValue;
+                        if (!TryGetCellValue(c, i, out currentValue) ||
+                            currentValue == "" ||
+                            currentValue == setting.KaraCell)
+                        {
+                            continue;
+                        }
 
                         int celNum = 0;
                         try
                         {
-                            celNum = int.Parse(GetCellValue(c, i));
+                            celNum = int.Parse(currentValue);
                         }
                         catch (Exception ex)
                         {
@@ -3559,7 +3568,10 @@ namespace AEIOU
 
                             // アンドゥを行い、途中までの入力結果を取り消す
                             gridViewManager.EndGroup();
-                            gridViewManager.Undo();
+                            if (hasArithmeticUpdate)
+                            {
+                                gridViewManager.Undo();
+                            }
 
                             return;
                         }
@@ -3571,12 +3583,14 @@ namespace AEIOU
                                 // アンドゥ情報の記録
                                 operation = new SetValueOperation(i, c, (celNum + num).ToString());
                                 gridViewManager.ExecuteOperation(operation);
+                                hasArithmeticUpdate = true;
                                 //(*pColorBuf)[c,i] = versionNumber;
                                 break;
                             case CalcMode.Minus:
                                 // アンドゥ情報の記録
                                 operation = new SetValueOperation(i, c, (celNum - num).ToString());
                                 gridViewManager.ExecuteOperation(operation);
+                                hasArithmeticUpdate = true;
                                 //(*pColorBuf)[c][i] = versionNumber;
                                 break;
                             case CalcMode.Multiple:
@@ -3584,6 +3598,7 @@ namespace AEIOU
                                 {
                                     operation = new SetValueOperation(i, c, (celNum * num).ToString());
                                     gridViewManager.ExecuteOperation(operation);
+                                    hasArithmeticUpdate = true;
                                     //(*pColorBuf)[c][i] = versionNumber;
                                 }
                                 break;
@@ -3592,6 +3607,7 @@ namespace AEIOU
                                 {
                                     operation = new SetValueOperation(i, c, (celNum / num).ToString());
                                     gridViewManager.ExecuteOperation(operation);
+                                    hasArithmeticUpdate = true;
                                     //(*pColorBuf)[c][i] = versionNumber;
                                 }
                                 break;

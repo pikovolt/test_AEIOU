@@ -201,3 +201,35 @@
 - 決定: `Form1.GetCellValue` / `Form1.TryGetCellValue` は、`GridViewManager` が現行 `TimingSheetModel` にバインド済みの場合に manager 経由を優先する。
 - 理由: Phase 1 の同期戦略（adapter 経由で反映口を限定）に合わせ、読取側も同一境界へ寄せるため。
 - 影響: `Form1` のセル値アクセスは read/write ともに manager 優先の対称構造となり、Phase 2（VirtualMode 接続）での参照口一本化を進めやすくなる。
+
+## 2026-02-27 Phase 1 Step4継続（B区分の参照置換 + 列インデックス是正）
+
+- 決定: 一括操作のうち `replace` / `fourArithmeticOperation` のセル値参照を `TryGetCellValue` 優先へ段階移行する。
+- 理由: 同一セルの `GetCellValue` 多重呼び出しを減らし、モデル参照口を Phase 2 前に統一するため。
+- 追加修正:
+  - `deleteRect_with_backspace` の `SetValueOperation` 列指定を `rect.X + i` から `i` へ修正。
+- 影響:
+  - B区分の read 経路がより一貫化され、モデル経由置換の適用範囲が拡大。
+  - バックスペース削除時に列ずれ書込が起きる不具合を回避。
+
+## 2026-02-27 PR再精査（四則演算エラー時Undo境界の補強）
+
+- 決定: `fourArithmeticOperationToolStripMenuItem_Click` で変換エラーが発生した際、同操作内で更新が1件も無い場合は `Undo()` を実行しない。
+- 理由: `BeginGroup` 後に操作が push されていない状態で `Undo()` を呼ぶと、直前の別操作を取り消すリスクがあるため。
+- 影響:
+  - 四則演算の途中失敗時に「今回分だけを巻き戻す」境界が明確化される。
+  - Phase 1 移行中の Undo/Redo 整合性を維持しやすくなる。
+
+## 2026-02-27 PRコメント対応（backspace削除の列インデックス説明をコード化）
+
+- 決定: `deleteRect_with_backspace` のループ変数を `col` に改め、絶対列インデックスを直接走査していることをコメントで明示する。
+- 理由: `GetCellValue(i, rect.Y)` と `SetValueOperation(..., i, ...)` の組み合わせが、相対インデックスと誤解されやすかったため。
+- 影響:
+  - `rect.X + i` を使わない設計意図（`i`/`col` がすでに絶対列）がコード上で追跡しやすくなる。
+  - 仕様変更はなく、可読性とレビュー容易性のみを改善。
+
+## 2026-02-27 PRコメント対応（複数列選択時の挙動説明を補強）
+
+- 決定: `deleteRect_with_backspace` のコメントに、複数列選択時でも `rect.Left`～`rect.Right` を絶対列として順次処理するため列ずれが起きないことを追記する。
+- 理由: 列インデックス修正の妥当性を、レビュー時にコードだけで検証しやすくするため。
+- 影響: 動作変更はなく、意図の可視化のみ。
