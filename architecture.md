@@ -28,13 +28,37 @@
 - 許容上限: P99 <= 40ms（スパイク監視用）
 - 計測対象外: クリップボード大量貼付、行列一括挿入/削除などバッチ系処理
 
-### 計測方式
+### 2.1 計測契約（Measurement Contract）
 
-- `GridInputController.HandleKeyDown` 開始時点でタイムスタンプ取得
-- `dataGridView1.InvalidateCell(...)` 実行後、次回描画完了時点で計測終了
-- 開発時はデバッグオーバーレイまたはログで 直近 N=200 件の P50/P95/P99 を表示
+計測の解釈ブレを防ぐため、以下で固定する。
 
-### 25ms 目標を満たすための実装原則
+- 開始点（T0）: `dataGridView1_KeyDown` 受理直後
+- 終了点（T1）: 入力対象セルの `CellPainting` が完了した時点
+- 計測値: `latency_ms = T1 - T0`
+- 対象セル: `CurrentCell`（範囲入力時は左上セル）
+- 集計窓: 直近 N=200 イベント（移動平均）
+
+> 注: `InvalidateCell` 呼び出し時刻ではなく、実描画完了までを含める。
+
+### 2.2 標準計測シナリオ（回帰判定用）
+
+性能判定は次の 4 シナリオで行う。
+
+1. 単一セル連続入力（テンキー 0-9 を連打）
+2. Enter 移動付き入力（入力 + 下方向移動）
+3. 空セル入力（KaraCell 設定値含む）
+4. スクロール境界付近（表示 2/3 付近）での連続入力
+
+各シナリオで P95/P99 を採取し、**いずれか 1 つでも P95 > 25ms なら回帰**と判定する。
+
+### 2.3 計測実装メモ
+
+- `GridInputController.HandleKeyDown` の入口で `Stopwatch.GetTimestamp()` を取得
+- `GridCellRenderer.Paint` 終了時に該当セルなら計測終了
+- デバッグビルドでのみ計測ログを有効化（`#if DEBUG`）
+- ログは CSV（timestamp, key, row, col, latency_ms）で出力可能にする
+
+### 2.4 25ms 目標を満たすための実装原則
 
 - 1 キー入力で再描画する範囲を最小化（`InvalidateCell` / `InvalidateColumn`）
 - 文字列解析・状態判定は `GridCellStyleResolver` で軽量化し、不要な `ToString()` を抑制
@@ -67,6 +91,30 @@
 - Renderer は **モデルを read-only 参照**。
 - Controller は **UI 部品の詳細を知らない**。`IGridView` インターフェース越しに操作。
 - `DataGridViewCell` 派生クラスへ状態を持たせない。描画状態は `GridCellStyle` DTO で渡す。
+
+### 3.3 インターフェース契約（最小）
+
+#### IGridView（Controller から利用）
+
+- `CellPosition CurrentCell { get; set; }`
+- `SelectionRange CurrentSelection { get; set; }`
+- `void InvalidateCell(int col, int row)`
+- `void EnsureVisible(int row)`
+- `void BeginBatchUpdate()` / `void EndBatchUpdate()`
+
+不変条件:
+
+- `CurrentCell` は常に有効範囲内
+- `EndBatchUpdate` 後は UI 状態が一貫していること（選択とカーソルの整合）
+
+#### GridCellStyle DTO（Renderer へ渡す）
+
+- `bool IsActiveColumn`
+- `bool IsSelected`
+- `bool IsKaraCell`
+- `bool IsContinuousLine`
+- `SheetBorder BorderState`
+- `string DisplayText`
 
 ---
 
@@ -191,6 +239,8 @@ I/F 例:
   - コピー/貼付
   - キー移動
   - 基準線描画
+- 現行実装で性能ベースラインを取得（P50/P95/P99）
+  - 対象は「2.2 標準計測シナリオ」の 4 ケース
 
 ## Phase 1: モデル抽出
 
@@ -214,6 +264,7 @@ I/F 例:
 ## Phase 5: 最適化
 
 - 必要に応じて描画キャッシュ・可視範囲更新最適化を導入。
+- P95 > 25ms の場合はホットパスプロファイルを取得し、要因別に改善。
 
 ---
 
@@ -239,5 +290,6 @@ I/F 例:
 - `CellPainting` 本体が `renderer` 呼び出しのみ。
 - セルデータの読み書きがすべて `TimingSheetModel` 経由。
 - `dataGridView1.VirtualMode = true` で既存主要操作が破綻しない。
-- 通常のテンキー入力において入力→表示反映が **P95 25ms 以内**。
+- 「2.2 標準計測シナリオ」全ケースで入力→表示反映が **P95 25ms 以内**。
+- 計測ログ（P50/P95/P99）を成果物として添付。
 - 手動スモークテスト項目を全通過。
