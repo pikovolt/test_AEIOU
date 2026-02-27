@@ -309,6 +309,11 @@ namespace AEIOU
         // アンドゥ処理
         GridViewManager gridViewManager = new GridViewManager();
 
+        // 先行分離したサービス
+        GridSelectionService gridSelectionService;
+        GridScrollService gridScrollService;
+        GridCellStyleResolver gridCellStyleResolver;
+
         // 繰り返しダイアログ
         private RepeatInputBox _repeatInputDialog;
 
@@ -417,6 +422,11 @@ namespace AEIOU
 
             // 作業データの初期化
             InitializeWork(true);
+
+            // 先行分離サービスの初期化
+            gridSelectionService = new GridSelectionService(dataGridView1, setting);
+            gridScrollService = new GridScrollService(dataGridView1, setting);
+            gridCellStyleResolver = new GridCellStyleResolver();
 
             // 読み込みファイル指定がある場合 ファイル読込を行う
             if (cmds.Length > 1 && File.Exists(cmds[1]))
@@ -1282,143 +1292,18 @@ namespace AEIOU
             }
             // (仮)フレーム数の表示 [ここまで]------------------------------------------------------------
 
-            // セルの使用状態(未入力/入力済) 評価
-            bool bUsed = (aryCellUsedCount[e.ColumnIndex] > 0);
-
-            // アクティブセル(カーソル列か否か) 評価
-            bool bActive = (e.ColumnIndex == dataGridView1.CurrentCell.ColumnIndex);
-
             // 継続記号 評価
             bool bLine = checkContinuty(e.ColumnIndex, e.RowIndex);
-
-            // 切り貼りフレーム数のカウント＆先頭フレームへの切り貼り有無 評価
-
-            // 中抜き 評価
-            bool bNuki = false;
-            foreach (Range nuki in delRange)
-                if (nuki.Top <= e.RowIndex && nuki.Bottom >= e.RowIndex)
-                    bNuki = true;
-
-            // 切り貼り 評価
-            bool bKiribari = false;
-            foreach (Range kiribari in addRange)
-                if (kiribari.Top <= e.RowIndex && kiribari.Bottom >= e.RowIndex)
-                    bKiribari = true;
-
-            // 背景色の設定
-            Color bgColor = new Color();
-            if (bNuki)
-            {
-                // "中抜き"の色設定
-                bgColor = gridPalette.Nakanuki;
-            }
-            else if (bKiribari)
-            {
-                // "切り貼り"の色設定
-                bgColor = gridPalette.Harikomi;
-            }
-            else if (e.ColumnIndex == -1)
-            {
-                // "Frames"列の色設定
-                bgColor = gridPalette.Header;
-            }
-            else
-            {
-                // 各セルの色設定
-                switch (dataGridView1.Columns[e.ColumnIndex].DisplayIndex % 2)
-                {
-                    case 0:  //偶数列
-                        // カーソル行の場合はアクティブ色
-                        if (bActive) bgColor = gridPalette.BgCell1A;
-                        else
-                        {
-                            // 入力済か否かで、色分け
-                            bgColor = (bUsed) ? gridPalette.BgCell1R : gridPalette.BgCell1;
-                        }
-                        break;
-                    case 1:  //奇数列
-                        // カーソル行の場合はアクティブ色
-                        if (bActive) bgColor = gridPalette.BgCell2A;
-                        else
-                        {
-                            // 入力済か否かで、色分け
-                            bgColor = (bUsed) ? gridPalette.BgCell2R : gridPalette.BgCell2;
-                        }
-                        break;
-                }
-            }
-
-            // 選択チェック
-            bool bSelected = false;
-            if ((e.PaintParts & DataGridViewPaintParts.SelectionBackground) ==
-                    DataGridViewPaintParts.SelectionBackground &&
-                (e.State & DataGridViewElementStates.Selected) ==
-                    DataGridViewElementStates.Selected)
-            {
-                // 選択セル
-                bSelected = true;
-            }
-
-            // ドラッグ中の選択元 領域チェック
-            bool bDragSource = false;
-            {
-                Rect rect = selectRange;
-                if (isRectDrag &&
-                    (rect.Top <= e.RowIndex && rect.Bottom >= e.RowIndex &&
-                    rect.Left <= e.ColumnIndex && rect.Right >= e.ColumnIndex))
-                {
-                    // ドラッグ中の選択元セル
-                    bDragSource = true;
-                }
-            }
-
-            // ドラッグ中の移動先 領域チェック
-            bool bMovingRange = false;
-            if (isRectDrag)
-            {
-                // 移動先範囲のチェック
-                Point offset = new Point(mouseDownPoint.X - selectRange.X, mouseDownPoint.Y - selectRange.Y);
-                int col = dataGridView1.CurrentCell.ColumnIndex;
-                int row = dataGridView1.CurrentCell.RowIndex;
-                int w = selectRange.Width - 1;
-                int h = selectRange.Height - 1;
-                if (((col - offset.X) > e.ColumnIndex) ||
-                    ((col + w - offset.X) < e.ColumnIndex) ||
-                    ((row - offset.Y) > e.RowIndex) ||
-                    ((row + h - offset.Y) < e.RowIndex))
-                {
-                }
-                else
-                {
-                    // ドラッグ中の移動先セル
-                    bMovingRange = true;
-                }
-            }
-
-            // ドラッグ中か否かで、選択表示処理を分ける
-            if (isRectDrag)
-            {
-                // ドラッグ時
-                if (bMovingRange)
-                {
-                    // 選択色に設定
-                    bgColor = gridPalette.Selected;
-                }
-                else if (bDragSource)
-                {
-                    // ドラッグ中選択元色に設定
-                    bgColor = Color.DarkGray;
-                }
-            }
-            else
-            {
-                // 非ドラッグ時
-                if (bSelected)
-                {
-                    // 選択色に設定
-                    bgColor = gridPalette.Selected;
-                }
-            }
+            Color bgColor = gridCellStyleResolver.ResolveBackColor(
+                dataGridView1,
+                e,
+                gridPalette,
+                aryCellUsedCount,
+                delRange,
+                addRange,
+                isRectDrag,
+                selectRange,
+                mouseDownPoint);
 
             //背景色を設定
             e.CellStyle.BackColor = bgColor;
@@ -1469,37 +1354,7 @@ namespace AEIOU
         // 選択範囲の取得
         private Rect getSelectedRect()
         {
-            Rect r = new Rect(setting.ColLength,setting.RowLength,0,0);
-            int Count = dataGridView1.SelectedCells.Count;
-
-            // 選択範囲を取得
-            for (int i = 0; i < Count; i++)
-            {
-                int rowIndex = dataGridView1.SelectedCells[i].RowIndex;
-                int colIndex = dataGridView1.SelectedCells[i].ColumnIndex;
-                if (rowIndex < r.Y)
-                {
-                    r.Y = rowIndex;
-                }
-                if (colIndex < r.X)
-                {
-                    r.X = colIndex;
-                }
-                if (rowIndex > r.Height)
-                {
-                    r.Height = rowIndex;
-                }
-                if (colIndex > r.Width)
-                {
-                    r.Width = colIndex;
-                }
-            }
-
-            // 高さと幅を計算
-            r.Height = r.Height - r.Y + 1;
-            r.Width = r.Width - r.X + 1;
-
-            return r;
+            return gridSelectionService.GetSelectedRect();
         }
 
         //----------------------------------------------------------------------------------------
@@ -1523,31 +1378,7 @@ namespace AEIOU
         // 画面2/3より下に移動した場合の画面送り
         private void scrollingForward()
         {
-            Rectangle client = dataGridView1.ClientRectangle;               //dataGridViewの表示範囲
-            int height = dataGridView1.Rows[0].Height;                      //１行分の高さ
-            int rowTop = dataGridView1.FirstDisplayedScrollingRowIndex;     //表示最上段の行数
-            int currentRow = dataGridView1.CurrentCell.RowIndex - rowTop;   //表示領域内での上からのインデックス（行）
-            int rowCount = (client.Height - (height - 1)) / height;         //表示行数（完全に表示されているもの）
-            int border = (int)(rowCount * (2.0 / 3.0));                     //閾値となる行数
-            if (border < currentRow)
-            {
-                //閾値に食い込んだ分、先に進める
-                int forwardCount = currentRow - border;
-                int top = selectRange.Top + forwardCount;
-                int btm = setting.RowLength - selectRange.Height;
-                // 先頭が 終端-選択幅(垂直方向) を超える場合は 補正する
-                if (top > btm)
-                {
-                    //はみ出す場合
-                    dataGridView1.FirstDisplayedScrollingRowIndex = btm;
-                }
-                else
-                {
-                    //はみ出さない場合
-                    dataGridView1.FirstDisplayedScrollingRowIndex += forwardCount;
-                }
-
-            }
+            gridScrollService.ScrollForward(selectRange);
         }
 
         //----------------------------------------------------------------------------------------
@@ -1665,28 +1496,11 @@ namespace AEIOU
             // 選択範囲を取得
             Rect rect = getSelectedRect();
 
-            // 選択範囲をクリア
-            dataGridView1.ClearSelection();
-
             // 先頭位置の計算(※下端のはみ出しチェック)
             int len = cursorMoveWithNakaNuki();
             if (len > 0)
             {
-                int top = rect.Y + len;
-                int btm = setting.RowLength - rect.Height;
-                top = (top > btm) ? btm : top;  // 先頭が 終端-選択幅(垂直方向) を超える場合は 補正する
-
-                // カーソルのカレント位置を設定
-                dataGridView1.CurrentCell = dataGridView1[rect.X, top];
-
-                // 新しい選択範囲を設定
-                for (int i = 0; i < rect.Height; i++)
-                    for (int j = 0; j < rect.Width; j++)
-                        dataGridView1[rect.X + j, top + i].Selected = true;
-
-                // 範囲を保存
-                rect.Y = top;
-                selectRange = rect;
+                selectRange = gridSelectionService.MoveSelectionDown(rect, len);
             }
 
             isFirstEdit = true;
@@ -1699,66 +1513,13 @@ namespace AEIOU
         //----------------------------------------------------------------------------------------
         private void scrollingRowBackward(int keyValue)
         {
-            // 基準秒数を足し合わせて新しい行数を求める
-            int moveSize;
-            if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.CTRLKey))
-            {
-                // +Ctrl
-                moveSize = setting.Fps * setting.SheetSec;
-            }
-            else
-            {
-                // その他
-                moveSize = setting.Fps;
-            }
-
-            int row = dataGridView1.FirstDisplayedScrollingRowIndex;
-            int newRow = row - moveSize;
-
-            // 先頭行を基準フレームにしたいので余りを差し引く
-            if ((newRow % moveSize) != 0)
-            {
-                newRow += moveSize - (newRow % moveSize);
-            }
-
-            // 移動可能な範囲ならページ移動
-            // ※カーソル位置はページ先頭
-            if (newRow >= 0)
-            {
-                dataGridView1.FirstDisplayedScrollingRowIndex = newRow;
-                dataGridView1.CurrentCell = dataGridView1[dataGridView1.CurrentCell.ColumnIndex, newRow];
-            }
+            gridScrollService.ScrollRowBackward(keyValue);
         }
 
         //----------------------------------------------------------------------------------------
         private void scrollingRowForward(int keyValue)
         {
-            // 基準秒数を足し合わせて新しい行数を求める
-            int moveSize;
-            if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.CTRLKey))
-            {
-                // +Ctrl
-                moveSize = setting.Fps * setting.SheetSec;
-            }
-            else
-            {
-                // その他
-                moveSize = setting.Fps;
-            }
-
-            int row = dataGridView1.FirstDisplayedScrollingRowIndex;
-            int newRow = row + moveSize;
-
-            // 先頭行を基準フレームにしたいので余りを差し引く
-            newRow -= newRow % moveSize;
-
-            // 移動可能な範囲ならページ移動
-            // ※カーソル位置はページ先頭
-            if (newRow < setting.RowLength)
-            {
-                dataGridView1.FirstDisplayedScrollingRowIndex = newRow;
-                dataGridView1.CurrentCell = dataGridView1[dataGridView1.CurrentCell.ColumnIndex, newRow];
-            }
+            gridScrollService.ScrollRowForward(keyValue);
         }
 
         //----------------------------------------------------------------------------------------
