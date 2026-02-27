@@ -411,3 +411,11 @@
 - 影響:
   - `Form1` の write 経路で DataGridView 直参照が実コード上解消される（コメント行を除く）。
   - 表示反映責務が manager により集約され、Step4 の縮退条件（read+write）を一段前進できる。
+
+## 2026-02-27 PR再精査（SetCellValue フォールバックの null 安全性補完）
+
+- 決定: `Form1.SetCellValue` のフォールバックで `gridViewManager.SetCellDisplayValue(...)` を呼ぶ際、`gridViewManager == null` の場合は `dataGridView1[col,row].Value` へ退避するガードを追加する。
+- 理由: 前回差分では「manager 未バインド時」分岐で manager 呼び出しを無条件実行しており、初期化順や異常系で `NullReferenceException` になり得る移行ミスがあったため。
+- 影響:
+  - manager 非存在時でも従来互換の表示更新が可能になり、フォールバック経路の安全性を回復。
+  - manager が存在する通常経路では引き続き adapter 経由反映を維持する。
