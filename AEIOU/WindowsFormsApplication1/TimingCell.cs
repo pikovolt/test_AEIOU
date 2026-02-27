@@ -74,16 +74,18 @@ namespace AEIOU
             DataGridViewAdvancedBorderStyle advancedBorderStyle,
             DataGridViewPaintParts paintParts)
         {
-            // 値が入っている場合のみ、カスタム描画を実行
-            if (value != null)
+            // 常にカスタム描画を実行する。
+            // 値の null 有無に描画結果（背景色/継続線/基準線）が依存すると、
+            // 同期タイミング次第で装飾描画が失われるため。
             {
+                bool isSelected = (elementState & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected;
 
                 // 背景の描画
                 if ((paintParts & DataGridViewPaintParts.Background) ==
                     DataGridViewPaintParts.Background)
                 {
                     SolidBrush cellBackground =
-                        (elementState == DataGridViewElementStates.Selected)
+                        isSelected
                         ? new SolidBrush(cellStyle.SelectionBackColor)
                         : new SolidBrush(cellStyle.BackColor);
                     graphics.FillRectangle(cellBackground, cellBounds);
@@ -171,20 +173,13 @@ namespace AEIOU
 
                 // 文字の描画
                 // ※カラセルの場合は描画しない
-                if (this.FormattedValue is String && !isKaraCell)
+                if (formattedValue is String && !isKaraCell)
                 {
                     TextRenderer.DrawText(graphics,
-                        (string)this.FormattedValue,
+                        (string)formattedValue,
                         this.DataGridView.Font,
                         baseArea, cellStyle.ForeColor);
                 }
-            }
-            else
-            {
-                // ベースクラスでの描画
-                base.Paint(graphics, clipBounds, cellBounds, rowIndex,
-                    elementState, value, formattedValue, errorText,
-                    cellStyle, advancedBorderStyle, paintParts);
             }
         }
 
