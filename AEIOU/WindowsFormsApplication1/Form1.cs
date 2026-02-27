@@ -1376,7 +1376,8 @@ namespace AEIOU
             bool val = false;
 
             // チェック範囲は X,Y共に 0以上
-            if((X >= 0 && dataGridView1.ColumnCount < X) && (Y >= 0  && dataGridView1.RowCount < Y))
+            if ((X >= 0 && X < timingSheetModel.ColumnCount) &&
+                (Y >= 0 && Y < timingSheetModel.RowCount))
             {
                 // 値が入っていたら trueを返す
                 String str = GetCellValue(X, Y);
