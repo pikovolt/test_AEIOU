@@ -38,6 +38,32 @@ namespace AEIOU
             set { _model = value; }
         }
 
+        public int ColumnCount
+        {
+            get
+            {
+                if (_model != null)
+                {
+                    return _model.ColumnCount;
+                }
+
+                return (_view != null) ? _view.ColumnCount : 0;
+            }
+        }
+
+        public int RowCount
+        {
+            get
+            {
+                if (_model != null)
+                {
+                    return _model.RowCount;
+                }
+
+                return (_view != null) ? _view.RowCount : 0;
+            }
+        }
+
         public void InitializeWork(DataGridView view, TimingSheetModel model)
         {
             _view = view;
@@ -108,14 +134,14 @@ namespace AEIOU
         {
             string normalizedValue = NormalizeCellValue(value);
             _model.SetCell(col, row, normalizedValue);
-            _view[col, row].Value = normalizedValue;
+            SetCellDisplayValue(col, row, normalizedValue);
         }
 
         public string SetCellValueWithUndo(int col, int row, string value)
         {
             string normalizedValue = NormalizeCellValue(value);
             string oldValue = _model.SetCellWithUndo(col, row, normalizedValue);
-            _view[col, row].Value = normalizedValue;
+            SetCellDisplayValue(col, row, normalizedValue);
             return oldValue;
         }
 
@@ -123,14 +149,14 @@ namespace AEIOU
         {
             string normalizedValue = NormalizeCellValue(value);
             _model.ApplyUndoCell(col, row, normalizedValue);
-            _view[col, row].Value = normalizedValue;
+            SetCellDisplayValue(col, row, normalizedValue);
         }
 
         public void ApplyRedoCellValue(int col, int row, string value)
         {
             string normalizedValue = NormalizeCellValue(value);
             _model.ApplyRedoCell(col, row, normalizedValue);
-            _view[col, row].Value = normalizedValue;
+            SetCellDisplayValue(col, row, normalizedValue);
         }
 
         public string GetHeaderValue(int col)
@@ -142,7 +168,27 @@ namespace AEIOU
         {
             string normalizedValue = NormalizeCellValue(value);
             _model.SetHeader(col, normalizedValue);
-            _view.Columns[col].HeaderText = normalizedValue;
+            SetHeaderDisplayValue(col, normalizedValue);
+        }
+
+        public void SetCellDisplayValue(int col, int row, string value)
+        {
+            if (_view == null)
+            {
+                return;
+            }
+
+            _view[col, row].Value = NormalizeCellValue(value);
+        }
+
+        public void SetHeaderDisplayValue(int col, string value)
+        {
+            if (_view == null)
+            {
+                return;
+            }
+
+            _view.Columns[col].HeaderText = NormalizeCellValue(value);
         }
 
         private string NormalizeCellValue(string value)

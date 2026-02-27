@@ -386,3 +386,14 @@
 - 理由: 品質維持のための緊急パッチまでブロックする解釈を防ぎ、運用の実効性を担保するため。
 - 影響:
   - ミクロ偏重抑制の意図を維持しつつ、実運用で必要な例外経路を明文化。
+
+## 2026-02-27 Phase 1 Step4継続（write経路のmanager一本化を拡張）
+
+- 決定: `Form1.SetCellValue` / `SetHeaderValue` は `GridViewManager` が存在する限り manager 経由を優先し、`timingSheetModel` 直接書込の分岐を極小化する。
+- 併せて `GridViewManager` に以下を追加し、表示反映責務を manager 内に集約する。
+  - `ColumnCount` / `RowCount`
+  - `SetCellDisplayValue` / `SetHeaderDisplayValue`
+- 理由: Phase 1 の同期戦略（adapter 経由で反映口を限定）を B区分（列挿入/削除・複製上限計算）まで拡張し、Phase 2 の VirtualMode 接続時に UI 直書きポイントを減らすため。
+- 影響:
+  - `GetSheetColumnCount` / `GetSheetRowCount` が manager 経由で取得可能になり、サイズ参照のモデル依存境界が一段整理される。
+  - 列挿入/削除処理の行走査が `GetSheetRowCount()` 経由となり、将来の行数参照元統一に備えた下地ができる。

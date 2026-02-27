@@ -1450,9 +1450,9 @@ namespace AEIOU
 
         private int GetSheetColumnCount()
         {
-            if (timingSheetModel != null)
+            if (IsGridViewManagerBoundToCurrentModel())
             {
-                return timingSheetModel.ColumnCount;
+                return gridViewManager.ColumnCount;
             }
 
             return setting.ColLength;
@@ -1460,9 +1460,9 @@ namespace AEIOU
 
         private int GetSheetRowCount()
         {
-            if (timingSheetModel != null)
+            if (IsGridViewManagerBoundToCurrentModel())
             {
-                return timingSheetModel.RowCount;
+                return gridViewManager.RowCount;
             }
 
             return setting.RowLength;
@@ -1500,8 +1500,10 @@ namespace AEIOU
             bool val = false;
 
             // チェック範囲は X,Y共に 0以上
-            if ((X >= 0 && X < timingSheetModel.ColumnCount) &&
-                (Y >= 0 && Y < timingSheetModel.RowCount))
+            int columnCount = GetSheetColumnCount();
+            int rowCount = GetSheetRowCount();
+            if ((X >= 0 && X < columnCount) &&
+                (Y >= 0 && Y < rowCount))
             {
                 // 値が入っていたら trueを返す
                 String str = GetCellValue(X, Y);
@@ -3262,17 +3264,18 @@ namespace AEIOU
             {
                 // カレントセル位置を空けるように位置をずらす
                 int firstColIndex = (setting.ColLength - 1) - 1;
+                int rowCount = GetSheetRowCount();
                 for (int i = firstColIndex; i >= col; i--)
                 {
                     aryCellUsedCount[i + 1] = aryCellUsedCount[i];
                     SetHeaderValue(i + 1, GetHeaderValue(i));
-                    for (int j = 0; j < setting.RowLength; j++)
+                    for (int j = 0; j < rowCount; j++)
                         SetCellValue(i + 1, j, GetCellValue(i, j));
                 }
                 // 開いた場所を空欄にする
                 aryCellUsedCount[col] = 0;
                 SetHeaderValue(col, "");
-                for (int i = 0; i < setting.RowLength; i++)
+                for (int i = 0; i < rowCount; i++)
                     SetCellValue(col, i, "");
             }
 
@@ -3292,11 +3295,12 @@ namespace AEIOU
             int col = dataGridView1.CurrentCell.ColumnIndex;
             {
                 // カレントセル位置を埋めるように位置をずらす
+                int rowCount = GetSheetRowCount();
                 for (int i = col; i < setting.ColLength - 1; i++)
                 {
                     aryCellUsedCount[i] = aryCellUsedCount[i + 1];
                     SetHeaderValue(i, GetHeaderValue(i + 1));
-                    for (int j = 0; j < setting.RowLength; j++)
+                    for (int j = 0; j < rowCount; j++)
                         SetCellValue(i, j, GetCellValue(i + 1, j));
                 }
             }
@@ -3734,7 +3738,7 @@ namespace AEIOU
             Len = selectRange.Height;
 
             // 貼り付け先の末尾がシート行数を超える場合は、範囲内だけ複製する
-            int maxCopyLength = setting.RowLength - (Row + Len);
+            int maxCopyLength = GetSheetRowCount() - (Row + Len);
             if (maxCopyLength <= 0)
             {
                 return;
