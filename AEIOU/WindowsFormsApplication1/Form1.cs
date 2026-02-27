@@ -717,7 +717,13 @@ namespace AEIOU
         }
 
         //---------------------------------------------------------------------------
-        private void copyToCell(int col, int row, bool shouldInvalidate = true)
+        private void copyToCell(int col, int row)
+        {
+            copyToCell(col, row, true);
+        }
+
+        //---------------------------------------------------------------------------
+        private void copyToCell(int col, int row, bool shouldInvalidate)
         {
             // PasteOperationのインスタンスを作成
             PasteOperation pasteOperation = new PasteOperation(row, col);
@@ -744,7 +750,13 @@ namespace AEIOU
         }
 
         //---------------------------------------------------------------------------
-        private void cutToBuf(Rect rect, bool shouldInvalidate = true)
+        private void cutToBuf(Rect rect)
+        {
+            cutToBuf(rect, true);
+        }
+
+        //---------------------------------------------------------------------------
+        private void cutToBuf(Rect rect, bool shouldInvalidate)
         {
             // CutOperationのインスタンスを作成
             CutOperation cutOperation = new CutOperation(rect);
@@ -761,7 +773,13 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
-        private void deleteRect(Rect rect, bool shouldInvalidate = true)
+        private void deleteRect(Rect rect)
+        {
+            deleteRect(rect, true);
+        }
+
+        //----------------------------------------------------------------------------------------
+        private void deleteRect(Rect rect, bool shouldInvalidate)
         {
             // DeleteOperationのインスタンスを作成
             DeleteOperation deleteOperation = new DeleteOperation(rect);

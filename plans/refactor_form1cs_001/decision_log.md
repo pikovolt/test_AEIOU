@@ -241,3 +241,11 @@
 - 影響:
   - 単体操作（通常のコピー貼付け・削除）は従来どおり即時再描画を維持。
   - 複合操作では Undo/Redo 操作単位を変えず、描画更新のみ末尾集約となる。
+
+## 2026-02-27 PR再精査（移行ミス: optional parameter 互換性）
+
+- 決定: `copyToCell` / `cutToBuf` / `deleteRect` の `shouldInvalidate = true`（optional parameter）を廃止し、`(引数なし)` + `(bool 引数あり)` のオーバーロード構成へ変更する。
+- 理由: 本プロジェクトは `TargetFrameworkVersion v3.5` かつ旧ツールチェーン互換を維持しており、optional parameter 導入はビルド環境によってはコンパイル不能となる移行ミスになり得るため。
+- 影響:
+  - 呼び出し側の既定挙動は維持（引数なし呼び出しは従来どおり即時 `Invalidate()`）。
+  - 一括操作側の `false` 指定による再描画集約も維持される。
