@@ -34,3 +34,10 @@
 - 理由: SSOT Step 2-3の目的（接続性確認）を最小実装で満たし、実モデル結合の不確実性を切り離すため。
 - 影響範囲: `Form1.cs` の VirtualMode設定、ダミーデータ準備処理、値取得/更新イベント。
 - 見直し条件: Phase移行時に `TimingSheetModel` 直結へ進む場合、ダミーデータ層の撤去または `#if DEBUG` 化を判断する。
+
+
+### D-006: 計測未開始時は `Application.DoEvents` をスキップ
+- 判断: `TryEndInputLatencyMeasurement` に `HasPendingSample` 判定を追加し、未計測状態では `Application.DoEvents` を実行しない。
+- 理由: 入力計測サンプルが存在しない描画サイクルで `DoEvents` が再入を誘発し、計測対象外の副作用を増やすリスクを抑えるため。
+- 影響範囲: `Form1.cs` の `InputLatencyProbe` / `TryEndInputLatencyMeasurement`。
+- 見直し条件: 手動検証で計測漏れが増える場合は終了フック設計（`CellPainting` 以外）を再評価する。

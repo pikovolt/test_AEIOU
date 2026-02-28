@@ -315,6 +315,11 @@ namespace AEIOU
 	        {
 	            get { return samples.Count; }
 	        }
+
+	        public bool HasPendingSample
+	        {
+	            get { return hasPendingSample; }
+	        }
 	    }
 
 	    //----------------------------------------------------------------------------------------
@@ -1417,6 +1422,11 @@ namespace AEIOU
         private void TryEndInputLatencyMeasurement(string hookName)
         {
             if (!EnableVirtualModeSpike)
+            {
+                return;
+            }
+
+            if (!inputLatencyProbe.HasPendingSample)
             {
                 return;
             }
