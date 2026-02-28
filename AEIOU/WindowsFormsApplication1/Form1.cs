@@ -284,16 +284,31 @@ namespace AEIOU
     {
 	    private class InputLatencyProbe
 	    {
+	        private class InputLatencySample
+	        {
+	            public int SampleIndex;
+	            public long ElapsedMilliseconds;
+	            public string StartContext;
+	            public string EndHook;
+	            public DateTime RecordedAt;
+	        }
+
 	        private Stopwatch stopwatch = new Stopwatch();
-	        private List<long> samples = new List<long>();
+	        private List<InputLatencySample> samples = new List<InputLatencySample>();
 	        private bool hasPendingSample;
 	        private string outputFilePath;
+	        private string summaryOutputFilePath;
 	        private bool hasWrittenHeader;
+	        private bool hasWrittenSummaryHeader;
+	        private string pendingStartContext = "unknown";
+	        private const int BatchSize = 100;
 
 	        public void SetOutputFilePath(string path)
 	        {
 	            outputFilePath = path;
+	            summaryOutputFilePath = string.IsNullOrEmpty(path) ? "" : Path.Combine(Path.GetDirectoryName(path), InputLatencySummaryFileName);
 	            hasWrittenHeader = !string.IsNullOrEmpty(path) && File.Exists(path) && (new FileInfo(path).Length > 0);
+	            hasWrittenSummaryHeader = !string.IsNullOrEmpty(summaryOutputFilePath) && File.Exists(summaryOutputFilePath) && (new FileInfo(summaryOutputFilePath).Length > 0);
 	        }
 
 	        public string OutputFilePath
@@ -301,11 +316,17 @@ namespace AEIOU
 	            get { return outputFilePath; }
 	        }
 
-	        public void Begin()
+	        public string SummaryOutputFilePath
+	        {
+	            get { return summaryOutputFilePath; }
+	        }
+
+	        public void Begin(string startContext)
 	        {
 	            stopwatch.Reset();
 	            stopwatch.Start();
 	            hasPendingSample = true;
+	            pendingStartContext = string.IsNullOrEmpty(startContext) ? "unknown" : startContext;
 	        }
 
 	        public bool TryEnd(string hookName, out long elapsedMilliseconds)
@@ -319,13 +340,22 @@ namespace AEIOU
 	            stopwatch.Stop();
 	            hasPendingSample = false;
 	            elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
-	            samples.Add(elapsedMilliseconds);
+
+	            InputLatencySample sample = new InputLatencySample();
+	            sample.SampleIndex = samples.Count + 1;
+	            sample.ElapsedMilliseconds = elapsedMilliseconds;
+	            sample.StartContext = pendingStartContext;
+	            sample.EndHook = hookName;
+	            sample.RecordedAt = DateTime.Now;
+	            samples.Add(sample);
+
 	            Debug.WriteLine(string.Format("[VirtualModeSpike] InputLatency {0}ms ({1})", elapsedMilliseconds, hookName));
-	            AppendSampleToOutput(elapsedMilliseconds, hookName);
+	            AppendSampleToOutput(sample);
+	            AppendBatchSummaryIfReady();
 	            return true;
 	        }
 
-	        private void AppendSampleToOutput(long elapsedMilliseconds, string hookName)
+	        private void AppendSampleToOutput(InputLatencySample sample)
 	        {
 	            if (string.IsNullOrEmpty(outputFilePath))
 	            {
@@ -334,12 +364,76 @@ namespace AEIOU
 
 	            if (!hasWrittenHeader)
 	            {
-	                File.AppendAllText(outputFilePath, "sample_index,elapsed_ms,hook,recorded_at" + Environment.NewLine, Encoding.UTF8);
+	                File.AppendAllText(outputFilePath, "sample_index,elapsed_ms,start_context,end_hook,recorded_at" + Environment.NewLine, Encoding.UTF8);
 	                hasWrittenHeader = true;
 	            }
 
-	            string line = string.Format("{0},{1},{2},{3}", samples.Count, elapsedMilliseconds, hookName, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+	            string line = string.Format("{0},{1},{2},{3},{4}", sample.SampleIndex, sample.ElapsedMilliseconds, sample.StartContext, sample.EndHook, sample.RecordedAt.ToString("yyyy-MM-dd HH:mm:ss.fff"));
 	            File.AppendAllText(outputFilePath, line + Environment.NewLine, Encoding.UTF8);
+	        }
+
+	        private void AppendBatchSummaryIfReady()
+	        {
+	            if (string.IsNullOrEmpty(summaryOutputFilePath))
+	            {
+	                return;
+	            }
+
+	            if (samples.Count == 0 || samples.Count % BatchSize != 0)
+	            {
+	                return;
+	            }
+
+	            if (!hasWrittenSummaryHeader)
+	            {
+	                File.AppendAllText(summaryOutputFilePath, "batch_no,start_index,end_index,p95_ms,min_ms,max_ms,recorded_at" + Environment.NewLine, Encoding.UTF8);
+	                hasWrittenSummaryHeader = true;
+	            }
+
+	            int startIndex = samples.Count - BatchSize;
+	            int endIndex = samples.Count - 1;
+	            List<long> batchValues = new List<long>();
+	            long min = long.MaxValue;
+	            long max = long.MinValue;
+
+	            int i;
+	            for (i = startIndex; i <= endIndex; i++)
+	            {
+	                long value = samples[i].ElapsedMilliseconds;
+	                batchValues.Add(value);
+	                if (value < min)
+	                {
+	                    min = value;
+	                }
+	                if (value > max)
+	                {
+	                    max = value;
+	                }
+	            }
+
+	            batchValues.Sort();
+	            int p95Index = (int)Math.Ceiling(batchValues.Count * 0.95) - 1;
+	            if (p95Index < 0)
+	            {
+	                p95Index = 0;
+	            }
+	            if (p95Index >= batchValues.Count)
+	            {
+	                p95Index = batchValues.Count - 1;
+	            }
+
+	            long p95 = batchValues[p95Index];
+	            int batchNo = samples.Count / BatchSize;
+	            string line = string.Format("{0},{1},{2},{3},{4},{5},{6}",
+	                batchNo,
+	                startIndex + 1,
+	                endIndex + 1,
+	                p95,
+	                min,
+	                max,
+	                DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+	            File.AppendAllText(summaryOutputFilePath, line + Environment.NewLine, Encoding.UTF8);
+	            Debug.WriteLine(string.Format("[VirtualModeSpike] BatchSummary #{0} P95={1}ms min={2}ms max={3}ms", batchNo, p95, min, max));
 	        }
 
 	        public int SampleCount
@@ -390,9 +484,10 @@ namespace AEIOU
         // 繰り返しダイアログ
         private RepeatInputBox _repeatInputDialog;
 
-        // VirtualMode スパイク用（後で撤去しやすいように集約）
-        private const bool EnableVirtualModeSpike = true;
-        private const string InputLatencySampleFileName = "virtualmode_input_latency_samples.csv";
+	    // VirtualMode スパイク用（後で撤去しやすいように集約）
+	    private const bool EnableVirtualModeSpike = true;
+	    private const string InputLatencySampleFileName = "virtualmode_input_latency_samples.csv";
+	    private const string InputLatencySummaryFileName = "virtualmode_input_latency_summary.csv";
         private string[,] virtualModeDummyCells;
         private InputLatencyProbe inputLatencyProbe = new InputLatencyProbe();
 
@@ -1417,6 +1512,7 @@ namespace AEIOU
             string sampleOutputPath = Path.Combine(setting.CurrentDir, InputLatencySampleFileName);
             inputLatencyProbe.SetOutputFilePath(sampleOutputPath);
             Debug.WriteLine(string.Format("[VirtualModeSpike] InputLatency sample output: {0}", sampleOutputPath));
+            Debug.WriteLine(string.Format("[VirtualModeSpike] InputLatency summary output: {0}", inputLatencyProbe.SummaryOutputFilePath));
 
             dataGridView1.VirtualMode = true;
             dataGridView1.CellValueNeeded += dataGridView1_CellValueNeeded;
@@ -1444,14 +1540,14 @@ namespace AEIOU
             }
         }
 
-        private void BeginInputLatencyMeasurement()
+        private void BeginInputLatencyMeasurement(string startContext)
         {
             if (!EnableVirtualModeSpike)
             {
                 return;
             }
 
-            inputLatencyProbe.Begin();
+            inputLatencyProbe.Begin(startContext);
         }
 
         private void TryEndInputLatencyMeasurement(string hookName)
@@ -1470,6 +1566,14 @@ namespace AEIOU
 
             long elapsed;
             inputLatencyProbe.TryEnd(hookName, out elapsed);
+        }
+
+        private string BuildInputLatencyStartContext(KeyEventArgs e)
+        {
+            string keyName = e == null ? "unknown" : e.KeyCode.ToString();
+            int col = dataGridView1.CurrentCell == null ? -1 : dataGridView1.CurrentCell.ColumnIndex;
+            int row = dataGridView1.CurrentCell == null ? -1 : dataGridView1.CurrentCell.RowIndex;
+            return string.Format("key:{0};cell:{1},{2};edit:{3}", keyName, col, row, dataGridView1.IsCurrentCellInEditMode ? 1 : 0);
         }
 
         private bool TryGetVirtualDummyValue(int col, int row, out string value)
@@ -2030,7 +2134,7 @@ namespace AEIOU
         // KeyDownイベントハンドラ
         private void dataGridView1_KeyDown(object sender, KeyEventArgs e)
         {
-            BeginInputLatencyMeasurement();
+            BeginInputLatencyMeasurement(BuildInputLatencyStartContext(e));
 
             int keyValue = setting.keys.convKey(e.KeyValue, e.Alt, e.Control, e.Shift);
             Keys convertedKeyData = (Keys)keyValue;
