@@ -76,3 +76,9 @@
 - 理由: 直近の複数バッチで安定値が再現し、単発外れ値を直ちに全体未達へ一般化する根拠が弱まったため。
 - 影響範囲: `worklog_20260228_001.md` のB再評価、`workplan_20260228_001.md` のStep 4残タスク（再発条件試験中心）とExit Gate運用。
 - 見直し条件: 再発条件試験で重大外れ値が再現した場合はB判定を再度保留へ戻し、許容条件を再定義する。
+
+### D-012: D-004の終了フック実装を `Application.DoEvents` から `BeginInvoke` 非同期完了へ置換
+- 判断: `CellPainting` 到達時点で直接 `Application.DoEvents()` を呼ぶ方式をやめ、`BeginInvoke` でUIキュー後段に停止処理を予約する。併せて、同一サンプルに対する多重予約を防ぐ `hasPendingEndRequest` ガードを `InputLatencyProbe` に追加する。
+- 理由: `DoEvents` は描画中に入力イベントを再入処理し得るため、シナリオB（連続移動）での状態破壊・再入リスクが高い。Step 4のロングテール切り分けを進める上でも、計測機構自体の副作用を最小化する必要があるため。
+- 影響範囲: `Form1.cs` の `InputLatencyProbe`（終了予約状態管理）と `TryEndInputLatencyMeasurement`（終了フック実装）。
+- 見直し条件: `BeginInvoke` 置換後にサンプル欠損や終了遅延の偏りが観測された場合、終了フック候補（`CellValueNeeded` 併用など）を比較再評価する。

@@ -282,8 +282,8 @@ namespace AEIOU
 {
     public partial class Form1 : Form
     {
-	    private class InputLatencyProbe
-	    {
+		    private class InputLatencyProbe
+		    {
 	        private class InputLatencySample
 	        {
 	            public int SampleIndex;
@@ -300,8 +300,9 @@ namespace AEIOU
 	        private string summaryOutputFilePath;
 	        private bool hasWrittenHeader;
 	        private bool hasWrittenSummaryHeader;
-	        private string pendingStartContext = "unknown";
-	        private const int BatchSize = 100;
+		        private string pendingStartContext = "unknown";
+		        private bool hasPendingEndRequest;
+		        private const int BatchSize = 100;
 
 	        public void SetOutputFilePath(string path)
 	        {
@@ -322,20 +323,38 @@ namespace AEIOU
 	            get { return summaryOutputFilePath; }
 	        }
 
-	        public void Begin(string startContext)
-	        {
-	            stopwatch.Reset();
-	            stopwatch.Start();
-	            hasPendingSample = true;
-	            pendingStartContext = string.IsNullOrEmpty(startContext) ? "unknown" : startContext;
-	        }
+		        public void Begin(string startContext)
+		        {
+		            stopwatch.Reset();
+		            stopwatch.Start();
+		            hasPendingSample = true;
+		            hasPendingEndRequest = false;
+		            pendingStartContext = string.IsNullOrEmpty(startContext) ? "unknown" : startContext;
+		        }
 
-	        public bool TryEnd(string hookName, out long elapsedMilliseconds)
-	        {
-	            elapsedMilliseconds = 0;
-	            if (!hasPendingSample)
-	            {
-	                return false;
+		        public bool TryMarkEndRequest()
+		        {
+		            if (!hasPendingSample)
+		            {
+		                return false;
+		            }
+
+		            if (hasPendingEndRequest)
+		            {
+		                return false;
+		            }
+
+		            hasPendingEndRequest = true;
+		            return true;
+		        }
+
+		        public bool TryEnd(string hookName, out long elapsedMilliseconds)
+		        {
+		            elapsedMilliseconds = 0;
+		            hasPendingEndRequest = false;
+		            if (!hasPendingSample)
+		            {
+		                return false;
 	            }
 
 	            stopwatch.Stop();
@@ -1574,16 +1593,22 @@ namespace AEIOU
                 return;
             }
 
-            if (!inputLatencyProbe.HasPendingSample)
-            {
-                return;
-            }
+		            if (!inputLatencyProbe.HasPendingSample)
+		            {
+		                return;
+		            }
 
-            Application.DoEvents();
+		            if (!inputLatencyProbe.TryMarkEndRequest())
+		            {
+		                return;
+		            }
 
-            long elapsed;
-            inputLatencyProbe.TryEnd(hookName, out elapsed);
-        }
+		            this.BeginInvoke((MethodInvoker)delegate
+		            {
+		                long elapsed;
+		                inputLatencyProbe.TryEnd(hookName + "+BeginInvoke", out elapsed);
+		            });
+		        }
 
         private string BuildInputLatencyStartContext(KeyEventArgs e)
         {
