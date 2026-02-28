@@ -103,19 +103,21 @@
   - R-P1-03 未達。イベント順序依存・Undo/Redo粒度・描画更新境界の各観点について、実施結果（PASS/FAIL）を記録すること。
 
 ### W-07: R-P1-04 引き継ぎ最小要件
-- status: BLOCKED
+- status: PASS
 - evidence:
   - ファイル証跡:
-    - ひな形は存在（`agent_plans/refactor_form1cs_001/phase2/definitions/DONE_TEMPLATE_IMPL.md`）。
-    - ただし VM2-001〜VM2-008 の Done報告実体が未配置で、未解決事項ID/影響/暫定評価・再現手順（前提/操作/期待/実結果）・証跡リンクの三点セットを同時充足した記録を確認できない。
-  - ログ証跡: `rg -n "# task_VM2_00[1-8]|未解決事項/フォローアップ|前提|操作|期待|実結果|証跡リンク" agent_plans/refactor_form1cs_001/phase2 -S` でテンプレート定義のみ確認。
+    - `agent_plans/refactor_form1cs_001/phase2/definitions/DONE_TEMPLATE_IMPL.md` に必須欄（未解決事項ID/影響/暫定評価、前提/操作/期待/実結果、証跡リンク）が定義されている。
+    - `agent_plans/refactor_form1cs_001/phase2/reports/impl_done/done_VM2_001.md` 〜 `done_VM2_008.md` の実体が配置済みで、各報告に「未解決事項ID/影響/暫定評価」「前提/操作/期待/実結果」「証跡リンク」が記録されている。
+  - ログ証跡:
+    1) `rg -n "未解決事項ID/影響/暫定評価|前提:|操作:|期待:|実結果:|証跡リンク" agent_plans/refactor_form1cs_001/phase2/reports/impl_done/done_VM2_00[1-8].md`
+    2) `rg -n "# done_VM2_00[1-8]" agent_plans/refactor_form1cs_001/phase2/reports/impl_done/done_VM2_00[1-8].md`
   - 再現手順:
-    1) `sed -n '1,220p' agent_plans/refactor_form1cs_001/phase2/definitions/DONE_TEMPLATE_IMPL.md`
-    2) `agent_plans/refactor_form1cs_001/phase2/tasks/impl/` 配下にDone報告ファイルがないことを確認。
-    3) `R-P1-04` 判定に必要な引き継ぎ記録が未整備と判定。
+    1) `sed -n '1,220p' agent_plans/refactor_form1cs_001/phase2/reports/impl_done/done_VM2_001.md`
+    2) `sed -n '1,220p' agent_plans/refactor_form1cs_001/phase2/reports/impl_done/done_VM2_008.md`
+    3) `rg -n "未解決事項ID/影響/暫定評価|前提:|操作:|期待:|実結果:|証跡リンク" agent_plans/refactor_form1cs_001/phase2/reports/impl_done/done_VM2_00[1-8].md`
+    4) 3) の出力で必須要件（未解決事項ID/影響/暫定評価、再現手順4点、証跡リンク）が全Done報告で充足していることを確認し、`R-P1-04` を PASS 判定する。
 - note:
-  - BLOCKED理由（R-P1-04）: 引き継ぎ記録の実体不足により判定不能。
-  - 解除条件（R-P1-04）: VM2各タスクでDone報告を作成し、少なくとも1件は「未解決事項ID/影響/暫定評価 + 再現手順4点 + 証跡リンク」を満たしたサンプルを添付する。
+  - 判定更新（R-P1-04）: 判定基準を「テンプレート有無」ではなく「必須要件（未解決事項ID/影響/暫定評価・再現手順4点・証跡リンク）の実体充足」に基づき再評価し、PASSへ更新。
 
 ## 判定サマリ
 - P0完了: Yes
@@ -125,5 +127,4 @@
   - R-P1-01: イベント割当マップ正本の作成（対象/対象外理由付き）。
   - R-P1-02: 3サービス実体の作成と責務マトリクス化。
   - R-P1-03: smoke checklist 実施結果の記録。
-  - R-P1-04: Done報告（未解決事項ID、再現手順、証跡リンク）の整備。
   - R-P2: ログフォーマット・チケット命名・補助テンプレート運用の統一。
