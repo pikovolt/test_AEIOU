@@ -10,3 +10,8 @@
 
 ## 完了判定
 - 上記3項目がすべてPASS。
+
+## 完了判定への対応記録（PRE_P0_03）
+- PASS: `dataGridView1_CellPainting` では `checkContinuty` から継続フラグ（事前計算済み）を受け取るだけにし、セル探索は実施しない構成へ変更。
+- PASS: 値探索ロジックを `ContinuityStateService` へ移動し、`SetCellValue`/初期化時に列単位で再計算することで、描画外レイヤーでデータアクセスを実行。
+- PASS: `TryGetCellValue` の集約方針は維持し、`ContinuityStateService` での値参照は `GetCellValue`（内部で `TryGetCellValue` 利用）経由に統一。
