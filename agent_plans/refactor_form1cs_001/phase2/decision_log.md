@@ -15,3 +15,19 @@
 - 理由:
 - 影響範囲:
 - フォローアップ:
+
+### 2026-02-28: ID衝突解消と命名規約変更
+- lane: pre|impl
+- affects: task_PRE_003, task_PRE_004, task_VM2_001
+- 変更内容:
+  - 旧 `task_VM2_001.md` / `task_VM2_002.md` を PRE レーンへ移動し、`task_PRE_003.md` / `task_PRE_004.md` に改名した。
+  - `tasks/impl/` には新しい `task_VM2_001.md`（`VirtualMode=true` 起動成立）を再作成した。
+  - pre/impl の命名規約を明文化し、移行期間は PRE レーンで VM2 番号を新規発行しない暫定ルールを追加した。
+- 理由:
+  - PRE と IMPL で同一番号帯が混在すると、依存関係とレビュー対象の識別が困難になるため。
+- 影響範囲:
+  - `overview.md` のレーン定義、着手条件、依存ルール。
+  - `tasks/pre/` および `tasks/impl/` のタスクファイル命名と参照。
+- フォローアップ:
+  - 文書内リンクで旧 `tasks/impl/task_VM2_001.md` / `task_VM2_002.md` 参照が残っていないかを継続点検する。
+
