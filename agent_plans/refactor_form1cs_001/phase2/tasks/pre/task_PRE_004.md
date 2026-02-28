@@ -22,11 +22,11 @@
 
 | 入力状態 | 返却値 | 例外有無 | UI挙動 |
 |---|---|---|---|
-| 正常セル（行・列ともに有効範囲、モデル初期化済み、バインド一致） | 対象セルの表示値（型変換済みの `object`） | 例外なし | 該当セルを通常描画する |
-| 空セル（値未設定 / `null`） | `string.Empty`（または表示上の空値） | 例外なし | 空文字として描画し、編集継続可能 |
-| 行/列境界外（`rowIndex` / `columnIndex` が範囲外） | `string.Empty`（フォールバック） | 例外なし | 空表示で継続し、グリッド描画を中断しない |
-| モデル未初期化（データソース未ロード / 解放済み） | `string.Empty`（フォールバック） | 例外なし | 空表示で継続し、画面操作を阻害しない |
-| バインド不一致（列定義とモデルプロパティが不整合） | `string.Empty`（フォールバック） | 例外なし | 空表示で継続し、異常はログ/診断経路で検知する |
+| 正常セル（行・列ともに有効範囲、モデル初期化済み、バインド一致） | 対象セルの表示文字列（`string`、型正規化済み） | 例外なし | 該当セルを通常描画する |
+| 空セル（値未設定 / `null`） | `string.Empty`（失敗時値: フォールバック空文字） | 例外なし | 空文字として描画し、編集継続可能 |
+| 行/列境界外（`rowIndex` / `columnIndex` が範囲外） | `string.Empty`（失敗時値: フォールバック空文字） | 例外なし | 空表示で継続し、グリッド描画を中断しない |
+| モデル未初期化（データソース未ロード / 解放済み） | `string.Empty`（失敗時値: フォールバック空文字） | 例外なし | 空表示で継続し、画面操作を阻害しない |
+| バインド不一致（列定義とモデルプロパティが不整合） | `string.Empty`（失敗時値: フォールバック空文字） | 例外なし | 空表示で継続し、異常はログ/診断経路で検知する |
 
 ### 列型ごとの返却ポリシー
 現行フェーズ（PRE-004）では **正規セル値型を「表示文字列（`string`）」に統一** する。
@@ -54,6 +54,12 @@
 
 ログは UI 継続性を優先して非例外で記録し、`CellValueNeeded` の制御フローを中断させない。
 
+### フォールバック仕様（失敗時統一）
+- 成功値型は `string`（表示文字列）に固定し、`CellValueNeeded` は成功時にそのまま表示へ渡す。
+- `TryGetCellValue == false` の場合、失敗時値は常に `string.Empty`（フォールバック空文字）とする。
+- 型不一致時動作は `TryGetCellValue == false`、`failureReason = CellValueFailureReason.TypeMismatch`、`CellValueNeeded` は `string.Empty` を返却、の組み合わせに統一する。
+- 上記失敗系では例外を送出せず、診断ログ必須項目を記録して UI 継続を優先する。
+
 ### `TryGetCellValue` 戻り契約（インターフェース）
 `TryGetCellValue` は以下の戻り契約を満たすインターフェースで扱う。
 
@@ -80,15 +86,15 @@ public enum CellValueFailureReason
 ```
 
 - `bool` は成功可否を示し、`true` の場合のみ `value` を有効値として扱う。
-- `out object? value` はインターフェース互換性維持のため継続するが、**現行フェーズでは成功時の実体を `string`（表示文字列）に固定** する。
+- 成功値型は `string`（表示文字列）に固定し、`out object? value` はインターフェース互換性維持のための受け口として継続する。
 - `TryGetCellValue` は成功判定前に、以下の順で列メタ情報から型を確定する。
   1. `columnIndex` から列定義を特定する。
   2. 列定義の `DataPropertyName` / 列種別 / `ValueType` から期待型を決定する。
   3. モデル値が期待型として解釈可能かを検証し、表示文字列へ正規化する。
   4. 正規化完了時のみ `true` とし、`value` に正規化済み文字列を設定する。
-- 型確定または正規化に失敗した場合は `false` を返し、`value = null`、`failureReason = CellValueFailureReason.TypeMismatch` に統一する。
+- 型確定または正規化に失敗した場合は `false` を返し、`value = null`、`failureReason = CellValueFailureReason.TypeMismatch`（型不一致時動作）に統一する。
 - `failureReason` は失敗理由を必ず返し、成功時は `CellValueFailureReason.None` とする。
-- `CellValueNeeded` は `TryGetCellValue == false` の場合にフォールバック値を返し、同時に診断ログ必須項目を記録する。
+- `CellValueNeeded` は `TryGetCellValue == false` の場合に失敗時値 `string.Empty`（フォールバック空文字）を返し、同時に診断ログ必須項目を記録する。
 
 ### 型不一致時の統一処理（DataError 非依存）
 - 型不一致（列メタ情報で確定した期待型とモデル値が整合しない、または表示文字列へ正規化できない）は、必ず `TryGetCellValue == false` で返す。
