@@ -3,8 +3,12 @@
 ## 目的
 編集結果を `CellValuePushed` へ集約し、VirtualMode環境での値反映を成立させる。
 
+## 関連サービス
+- `GridDataSyncService`（同期）
+
 ## 実施内容
 - `CellValuePushed` で編集値をデータソースへ反映する。
+- `GridDataSyncService` を経由した write 経路に統一する。
 - 変換失敗時の扱い（バリデーション/フォールバック）を定義する。
 - 編集コミット時の反映タイミングを確認する。
 

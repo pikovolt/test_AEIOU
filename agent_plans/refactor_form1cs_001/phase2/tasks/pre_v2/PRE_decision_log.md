@@ -47,3 +47,17 @@
   - レビュー時は decision/worklog の両方を確認対象にする。
 - ssotRefs:
   - R-P1-04
+
+### PREV2-DEC-003
+- date: 2026-02-28
+- summary: R-P1-02 のサービス名称・導入方針と PRE/IMPL 用語を固定した。
+- reason:
+  - サービス名の導入方式（新規/既存拡張）と責務語彙が文書間で暗黙になっており、レビュー判定で揺れが生じる恐れがあったため。
+- impact:
+  - `GridInputInterpreter`（新規導入）、`GridViewUpdater`（`GridCellRenderer`拡張）、`GridDataSyncService`（`GridViewManager`拡張）を正本化。
+  - `Form1` の責務をイベント中継・依存注入・UI境界に限定する方針を明記。
+  - IMPLタスク（VM2-002/003/004/006）へ関連サービス語彙を反映し、PREとの用語一致を確保。
+- followup:
+  - VM2実装時は、各PRで「関連サービス」節の語彙と実装上の責務配置が一致することを確認する。
+- ssotRefs:
+  - R-P1-02
