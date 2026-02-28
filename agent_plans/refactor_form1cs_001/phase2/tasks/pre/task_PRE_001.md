@@ -1,10 +1,10 @@
 # task_PRE_001: Form1.cs のイベント処理責務の棚卸し
 
 ## 目的
-`Form1.cs` 内イベントハンドラを分類し、抽出候補を明確化する。
+`Form1.cs` のうち、Phase2実装に必要な最小限のイベント責務を分類し、抽出候補を明確化する。
 
 ## 実施内容
-- イベントハンドラ一覧を作成する。
+- 実装着手に必要な最小限のイベント棚卸しを行い、Phase2対象/今フェーズ詳細化しない対象に分類する。
 - 各ハンドラの責務（UI制御/モデル更新/描画更新）をラベル付けする。
 - 複合責務ハンドラを抽出候補として列挙する。
 
@@ -16,9 +16,10 @@
 - IMPL側は PRE-001 全体完了ではなく `U-PRE001-EVT` の完了有無で着手可否を判定する。
 
 ## 完了条件
-- 分類結果が本ファイルに記載されている。
+- 分類結果（最低限、Phase2対象イベントと今フェーズ詳細化しないイベント）が本ファイルに記載されている。
 - 次タスクへ引き継ぐ抽出候補が明記されている。
 - 本ファイル内の `DONE_TEMPLATE_PRE 記入` セクションに、共通定義 `DONE_TEMPLATE_PRE.md` の必須欄がすべて記入済みである。
+- Phase2実装着手に必要な確認項目（入力処理/描画/貼り付け・挿入削除の責務境界）が不足なく記載されている。
 
 ## Done定義参照
 - 共通定義 `DONE_TEMPLATE_PRE.md` を参照する。
@@ -46,9 +47,28 @@
 ## PRルール
 - 本タスクのみを変更対象とする（1タスク=1PR）。
 
-## イベント棚卸し（Phase2で触る可能性が高いものに限定）
+## 棚卸し方針（軽量運用）
+- 本PREは「全イベントの網羅」を目的とせず、Phase2実装に直結する責務境界の確認を最優先とする。
+- 追加調査は、実装中に不足が判明したイベントのみ都度追記する。
 
-### Phase2対象（必須レビュー）
+## イベント棚卸し
+
+### 層1: 実装可否判断に必要な最小イベント一覧（イベント名・1行責務・優先度）
+| イベント名 | 1行責務 | 優先度 |
+| --- | --- | --- |
+| `dataGridView1_KeyDown` | キーボード入力の解釈と移動/編集起点を担う。 | High（Phase2対象） |
+| `dataGridView1_KeyPress` | 直接文字入力の受理窓口（現状は空実装）を担う。 | Mid（Phase2対象） |
+| `dataGridView1_CellPainting` | セル描画ルールの適用と描画出力を担う。 | High（Phase2対象） |
+| `pasteFromAEToolStripMenuItem_Click` | AE形式テキストの解析と貼り付け実行を担う。 | High（Phase2対象） |
+| `insertCellToolStripMenuItem_Click` | カレント位置へのセル挿入と後続データ移動を担う。 | High（Phase2対象） |
+| `deleteCellToolStripMenuItem_Click` | カレント位置のセル削除と前詰め更新を担う。 | High（Phase2対象） |
+| `dataGridView1_KeyUp` | 入力後の補助処理を担う。 | Low（対象外） |
+| `dataGridView1_CellMouseDown/Move/Up` | マウスドラッグ選択の開始/追従/確定を担う。 | Low（対象外） |
+| `dataGridView1_CellDoubleClick` | 個別編集開始の入口を担う。 | Low（対象外） |
+| `Form1_FormClosing` | 終了時の状態保存フローを担う。 | Low（対象外） |
+| `undoToolStripMenuItem_Click` / `redoToolStripMenuItem_Click` | Undo/Redoの実行トリガを担う。 | Low（対象外） |
+
+### 層2: Phase2対象（必須レビュー）の詳細表
 | イベント | 主責務 | 副責務 | 識別子ベース探索情報（Form1.cs） | 副作用分類チェック | 抽出候補（最小関数レベル）と初手IMPL |
 | --- | --- | --- | --- | --- | --- |
 | `dataGridView1_KeyDown` | キーボード入力解釈（移動/編集/ショートカット） | 選択範囲更新、スクロール、書き込み系処理の起動 | メソッド: `dataGridView1_KeyDown`<br>関連呼び出し: `deleteRect_with_backspace`, `calcRect_with_enter`, `gridSelectionService.MoveSelection`, `flushUndoHistory`, `dataGridView1.Invalidate`<br>特徴コメント: `// 画面2/3より下に移動した場合の画面送り` | データ更新: ☑<br>選択変更: ☑<br>Invalidate: ☑<br>Undo記録: ☑<br>外部UI更新: ☐ | `MoveSelection` 前後の「範囲計算/境界補正」切り出し → **VM2-005**<br>入力種別ごとの「編集書き込み分岐」切り出し → **VM2-003**<br>`Invalidate` 呼び出し条件の集約 → **VM2-006** |
@@ -58,7 +78,9 @@
 | `insertCellToolStripMenuItem_Click` | セル挿入操作の実行 | 既存データシフト、複数セル更新、再描画 | メソッド: `insertCellToolStripMenuItem_Click`<br>関連呼び出し: `resizeDataGridView1`, `adjustWindowSize`, `CopyColumn`, `ClearColumn`, `flushUndoHistory`, `InitializeWork`<br>特徴コメント: `// カレントセルの位置を空ける` | データ更新: ☑<br>選択変更: ☐<br>Invalidate: ☐（サイズ変更側に委譲）<br>Undo記録: ☑（履歴フラッシュ）<br>外部UI更新: ☑（ウィンドウ調整） | 列シフトの「移動元/移動先インデックス解決」関数化 → **VM2-004**<br>空列初期化の「挿入後クリア処理」分離 → **VM2-003**<br>サイズ変更と表示同期の境界整理 → **VM2-004** |
 | `deleteCellToolStripMenuItem_Click` | セル削除操作の実行 | データ詰め処理、複数セル更新、再描画 | メソッド: `deleteCellToolStripMenuItem_Click`<br>関連呼び出し: `CopyColumn`, `resizeDataGridView1`, `adjustWindowSize`, `flushUndoHistory`, `InitializeWork`<br>特徴コメント: `// カレントセルの位置を詰める` | データ更新: ☑<br>選択変更: ☐<br>Invalidate: ☐（サイズ変更側に委譲）<br>Undo記録: ☑（履歴フラッシュ）<br>外部UI更新: ☑（ウィンドウ調整） | 列詰めの「シフト終端計算」関数化 → **VM2-004**<br>削除後サイズ反映の「Row/Column同期」分離 → **VM2-004**<br>削除操作の履歴境界（Undo粒度）整理 → **VM2-007** |
 
-### 対象外（参照のみ）
+### 対象外（棚卸し済み・今フェーズでは詳細化しない）
+※ 以下は実装可否判断に必要な範囲で棚卸し済みであり、本フェーズでは詳細表の作成対象外とした項目。
+
 | イベント | 1行サマリ | 抽出優先度 |
 | --- | --- | --- |
 | `dataGridView1_KeyUp` | 入力後処理の補助で、主ロジックは `KeyDown/KeyPress` 側に寄る。 | Low |
