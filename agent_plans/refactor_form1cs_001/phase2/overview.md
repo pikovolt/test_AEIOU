@@ -34,5 +34,5 @@
    依存（前提タスク）: VM2-001〜VM2-007
 
 ## 完了条件
-- `phase2/tasks/` 配下タスクが順次完了し、各PRで回帰確認済み。
+- `phase2/tasks/pre/` と `phase2/tasks/impl/` 配下タスクが順次完了し、各PRで回帰確認済み。
 - 重大な方針変更は `decision_log.md` に記録済み。
