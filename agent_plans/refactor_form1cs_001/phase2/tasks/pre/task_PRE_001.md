@@ -20,6 +20,7 @@
 - 次タスクへ引き継ぐ抽出候補が明記されている。
 - 本ファイル内の `DONE_TEMPLATE_PRE 記入` セクションに、共通定義 `DONE_TEMPLATE_PRE.md` の必須欄がすべて記入済みである。
 - Phase2実装着手に必要な確認項目（入力処理/描画/貼り付け・挿入削除の責務境界）が不足なく記載されている。
+- PRE-001とPRE-002でイベント割当が一致していること。
 
 ## Done定義参照
 - 共通定義 `DONE_TEMPLATE_PRE.md` を参照する。
@@ -53,6 +54,20 @@
 
 ## イベント棚卸し
 
+### Phase2イベント責務マトリクス（正本）
+> PRE-002 から参照する正本テーブル。イベント割当の差分記載は本表を更新して反映する。
+
+| イベント名 | 優先度 | 担当サービス候補 | 接続VM2 | 備考 |
+| --- | --- | --- | --- | --- |
+| `dataGridView1_KeyDown` | High（Phase2対象） | `GridInputInterpreter` | VM2-005 / VM2-003 | 入力解釈の主入口。 |
+| `dataGridView1_KeyPress` | Mid（Phase2対象） | `GridInputInterpreter` | VM2-003 / VM2-005 | 現状空実装だが入力受理境界の定義対象。 |
+| `dataGridView1_CellPainting` | High（Phase2対象） | `GridViewUpdater` | VM2-002 / VM2-006 | 描画責務分離の主対象。 |
+| `pasteFromAEToolStripMenuItem_Click` | High（Phase2対象） | `GridInputInterpreter` / `GridViewUpdater` / `GridDataSyncService` | VM2-003 / VM2-006 / VM2-007 | 解析・表示反映・Undo境界を分担する複合イベント。 |
+| `insertCellToolStripMenuItem_Click` | High（Phase2対象） | `GridViewUpdater` | VM2-004 | 列シフトと表示同期を分離。 |
+| `deleteCellToolStripMenuItem_Click` | High（Phase2対象） | `GridViewUpdater` | VM2-004 / VM2-007 | 削除シフトと履歴境界の整理対象。 |
+| `dataGridView1_CellMouseUp` | Low（対象外） | なし（PRE-001対象外） | - | マウス選択系のため本フェーズでは詳細化しない。 |
+| `dataGridView1_ColumnHeaderMouseClick` | Low（対象外） | なし（PRE-001対象外） | - | 列ヘッダ操作は本フェーズの主要抽出軸外。 |
+
 ### 層1: 実装可否判断に必要な最小イベント一覧（イベント名・1行責務・優先度）
 | イベント名 | 1行責務 | 優先度 |
 | --- | --- | --- |
@@ -85,6 +100,7 @@
 | --- | --- | --- |
 | `dataGridView1_KeyUp` | 入力後処理の補助で、主ロジックは `KeyDown/KeyPress` 側に寄る。 | Low |
 | `dataGridView1_CellMouseDown/Move/Up` | マウス選択操作の追従が中心で、Phase2の主要抽出軸（入力処理/描画/貼り付け）からは外れる。 | Low |
+| `dataGridView1_ColumnHeaderMouseClick` | 列ヘッダ操作の補助的UIイベントで、Phase2の主要抽出軸からは外れる。 | Low |
 | `dataGridView1_CellDoubleClick` | 個別編集開始の入口であり、広域なデータ変換責務は小さい。 | Low |
 | `Form1_FormClosing` | 終了時の状態保存系で、VirtualMode対応の中核イベントではない。 | Low |
 | `undoToolStripMenuItem_Click` / `redoToolStripMenuItem_Click` | 履歴実行の呼び出し窓口で、分離対象は履歴実装側。 | Low |
