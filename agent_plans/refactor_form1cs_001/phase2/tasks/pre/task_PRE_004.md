@@ -29,10 +29,13 @@
 | バインド不一致（列定義とモデルプロパティが不整合） | `string.Empty`（フォールバック） | 例外なし | 空表示で継続し、異常はログ/診断経路で検知する |
 
 ### 列型ごとの返却ポリシー
-- 文字列列: モデル値を `string` として返却し、`null` は `string.Empty` に正規化する。
-- 数値列: モデル値を各列が要求する数値型（`int` / `decimal` / `double` 等）のまま返却し、`null` は `DBNull.Value` ではなく表示用フォールバック（`string.Empty`）に統一する。
-- 日時列: モデル値を `DateTime`（必要に応じて `DateTime?`）として返却し、未設定 (`null`) は空表示フォールバック（`string.Empty`）を返却する。
-- 上記いずれも `CellValueNeeded` 内で例外変換を行わず、返却前に列定義と型の整合性を `TryGetCellValue` で検証する。
+現行フェーズ（PRE-004）では **正規セル値型を「表示文字列（`string`）」に統一** する。
+
+- 文字列列: モデル値を表示文字列として返却し、`null` は `string.Empty` に正規化する。
+- 数値列: 列定義に基づいて数値として解釈した後、表示文字列へ正規化して返却する（内部で数値型を保持しても `CellValueNeeded` 返却値は文字列に統一）。
+- 日時列: 列定義に基づいて日時として解釈した後、表示文字列へ正規化して返却する（内部で `DateTime` を扱っても返却値は文字列に統一）。
+- いずれの列型でも未設定値（`null`）は `string.Empty` に統一し、`DBNull.Value` は返却しない。
+- 上記の正規化は `TryGetCellValue` で実施し、`CellValueNeeded` 側で追加の型変換や例外吸収を行わない。
 
 ### 編集中セルの優先値ルール
 - 対象セルが編集中の場合、表示値の解決順序は「編集中バッファ値 > モデル保持値」とする。
@@ -70,15 +73,28 @@ public enum CellValueFailureReason
     OutOfRange,
     ModelUninitialized,
     BindingMismatch,
+    TypeMismatch,
     NullValue,
     Unknown
 }
 ```
 
 - `bool` は成功可否を示し、`true` の場合のみ `value` を有効値として扱う。
-- `value` は成功時に列型ポリシーに従った値を返し、失敗時は `null`（または呼び出し側で無視可能な値）とする。
+- `out object? value` はインターフェース互換性維持のため継続するが、**現行フェーズでは成功時の実体を `string`（表示文字列）に固定** する。
+- `TryGetCellValue` は成功判定前に、以下の順で列メタ情報から型を確定する。
+  1. `columnIndex` から列定義を特定する。
+  2. 列定義の `DataPropertyName` / 列種別 / `ValueType` から期待型を決定する。
+  3. モデル値が期待型として解釈可能かを検証し、表示文字列へ正規化する。
+  4. 正規化完了時のみ `true` とし、`value` に正規化済み文字列を設定する。
+- 型確定または正規化に失敗した場合は `false` を返し、`value = null`、`failureReason = CellValueFailureReason.TypeMismatch` に統一する。
 - `failureReason` は失敗理由を必ず返し、成功時は `CellValueFailureReason.None` とする。
 - `CellValueNeeded` は `TryGetCellValue == false` の場合にフォールバック値を返し、同時に診断ログ必須項目を記録する。
+
+### 型不一致時の統一処理（DataError 非依存）
+- 型不一致（列メタ情報で確定した期待型とモデル値が整合しない、または表示文字列へ正規化できない）は、必ず `TryGetCellValue == false` で返す。
+- 失敗理由は `CellValueFailureReason.TypeMismatch` に一本化し、`CellValueNeeded` は例外を投げず `string.Empty` を返す。
+- 同時に診断ログ必須項目（`rowIndex` / `columnIndex` / `columnName` / `reasonCategory` / `occurrenceCount`）を記録する。
+- `DataError` イベントでの後段吸収や再解釈には依存しない。
 
 ### 例外方針
 - `CellValueNeeded` では例外を投げない。
