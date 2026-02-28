@@ -10,41 +10,54 @@
 ## 実行チェックリスト（要件順）
 
 ### W-01: R-P0-01 起動表示成立
-- status: FAIL
+- status: PASS
 - evidence:
-  - ファイル証跡: `AEIOU/WindowsFormsApplication1/Form1.cs` に `VirtualMode` 設定および `CellValueNeeded` ハンドラ定義が存在しない（`rg -n "VirtualMode|CellValueNeeded" AEIOU/WindowsFormsApplication1/Form1.cs` の結果0件）。
-  - ログ証跡: `rg -n "VirtualMode|CellValueNeeded" AEIOU/WindowsFormsApplication1/Form1.cs` -> no match（exit code 1）。
+  - ファイル証跡:
+    - `AEIOU/WindowsFormsApplication1/Form1.Designer.cs` で `dataGridView1.VirtualMode = true;` が設定され、`CellValueNeeded` / `CellValuePushed` がイベント配線されている。
+    - `AEIOU/WindowsFormsApplication1/Form1.cs` で `dataGridView1_CellValueNeeded` ハンドラが実装され、有効セル範囲で `TryGetCellValue` を経由して表示値を返却している。
+  - ログ証跡:
+    1) `rg -n "VirtualMode = true|CellValueNeeded \+=|CellValuePushed \+=" AEIOU/WindowsFormsApplication1/Form1.Designer.cs`
+    2) `rg -n "dataGridView1_CellValueNeeded\(|TryGetCellValue\(e\.ColumnIndex, e\.RowIndex" AEIOU/WindowsFormsApplication1/Form1.cs`
   - 再現手順:
-    1) `rg -n "VirtualMode|CellValueNeeded" AEIOU/WindowsFormsApplication1/Form1.cs`
-    2) 0件であることを確認。
-    3) `R-P0-01` の前提（VirtualMode=true起動経路）が未配線と判定。
+    1) 上記2コマンドを実行し、DesignerでVirtualMode有効化とイベント配線を確認する。
+    2) `CellValueNeeded` 実装で `TryGetCellValue` が呼ばれていることを確認する。
+    3) `R-P0-01` の前提（VirtualMode=true起動経路と値供給イベント）が成立していると判定する。
 - note:
-  - R-P0-01 未達。VirtualMode配線（設定+値供給イベント）を実装後に再判定。
+  - 旧記録は実装前スナップショットであり、現行コードとの差分により再採取結果はPASSへ更新。
 
 ### W-02: R-P0-02 値取得契約
-- status: FAIL
+- status: PASS
 - evidence:
-  - ファイル証跡: `TryGetCellValue` は `private bool TryGetCellValue(int col, int row, out string value)` のみで、`failureReason` を返す契約が未実装（`AEIOU/WindowsFormsApplication1/Form1.cs`）。
+  - ファイル証跡:
+    - `AEIOU/WindowsFormsApplication1/Form1.cs` に `private bool TryGetCellValue(int col, int row, out string value, out string failureReason)` が実装されている。
+    - `dataGridView1_CellValueNeeded` が `TryGetCellValue(e.ColumnIndex, e.RowIndex, out value)` を一意の値取得経路として利用している。
+    - 3引数版 `TryGetCellValue` は4引数版へ委譲し、`failureReason` 契約を保持している。
   - ログ証跡:
-    - `rg -n "TryGetCellValue\(|failureReason|CellValueNeeded" AEIOU/WindowsFormsApplication1/Form1.cs` -> `TryGetCellValue` は検出されるが `failureReason` / `CellValueNeeded` は0件。
+    1) `rg -n "dataGridView1_CellValueNeeded\(|TryGetCellValue\(int col, int row, out string value, out string failureReason\)|TryGetCellValue\(int col, int row, out string value\)" AEIOU/WindowsFormsApplication1/Form1.cs`
+    2) `rg -n "failureReason" AEIOU/WindowsFormsApplication1/Form1.cs`
   - 再現手順:
-    1) `rg -n "TryGetCellValue\(|failureReason|CellValueNeeded" AEIOU/WindowsFormsApplication1/Form1.cs`
-    2) `TryGetCellValue` シグネチャが out string のみであることを確認。
-    3) `R-P0-02` 要件（`CellValueNeeded -> TryGetCellValue` 一意経路、failureReason返却）未充足と判定。
+    1) 上記コマンドで `CellValueNeeded` と `TryGetCellValue` 両シグネチャを確認する。
+    2) `CellValueNeeded` が `TryGetCellValue` を呼ぶ実装を確認する。
+    3) 4引数版で `failureReason` を返却し、3引数版が同契約へ委譲していることを確認し、`R-P0-02` 達成と判定する。
 - note:
-  - R-P0-02 未達。`CellValueNeeded` 経路固定と `failureReason` 返却方式の設計・実装が必要。
+  - 旧記録時点では `failureReason` 契約未導入だったが、現行コードでは導入済み。
 
 ### W-03: R-P0-03 責務境界固定
-- status: FAIL
+- status: PASS
 - evidence:
-  - ファイル証跡: `dataGridView1_CellPainting` 内から `checkContinuty` を経由して `TryGetCellValue` を参照しており、描画イベント内に値取得責務が混在（`AEIOU/WindowsFormsApplication1/Form1.cs`）。
-  - ログ証跡: `rg -n "dataGridView1_CellPainting|checkContinuty|TryGetCellValue" AEIOU/WindowsFormsApplication1/Form1.cs` で同一責務経路を確認。
+  - ファイル証跡:
+    - `AEIOU/WindowsFormsApplication1/Form1.cs` の `checkContinuty` は `continuityStateService.GetContinuityFlag` の参照のみで、セル値取得 (`TryGetCellValue`) を実行しない。
+    - `dataGridView1_CellPainting` は `checkContinuty` の結果と描画サービス (`gridCellStyleResolver` / `gridCellRenderer`) を使った描画処理に限定されている。
+  - ログ証跡:
+    1) `rg -n "checkContinuty\(|GetContinuityFlag|dataGridView1_CellPainting\(" AEIOU/WindowsFormsApplication1/Form1.cs`
+    2) `awk 'NR>=1267 && NR<=1316 {print}' AEIOU/WindowsFormsApplication1/Form1.cs | rg -n "TryGetCellValue"`
+       - 結果: no match（exit code 1）
   - 再現手順:
-    1) `rg -n "dataGridView1_CellPainting|checkContinuty|TryGetCellValue" AEIOU/WindowsFormsApplication1/Form1.cs`
-    2) `CellPainting -> checkContinuty -> TryGetCellValue` の呼び出し連鎖を確認。
-    3) `R-P0-03`（CellPainting描画専任）未達と判定。
+    1) 1)の `rg` で `checkContinuty` が事前計算済み継続状態参照のみであることを確認する。
+    2) 2)の `awk|rg` で `CellPainting` 本体に `TryGetCellValue` 呼び出しがないことを確認する。
+    3) `CellPainting -> checkContinuty -> TryGetCellValue` 連鎖が解消され、`R-P0-03`（描画専任）が成立していると判定する。
 - note:
-  - R-P0-03 未達。描画判定用データを事前計算/キャッシュ化し、CellPaintingから値取得を排除すること。
+  - 旧記録は `checkContinuty` が直接値取得していた時期の情報であり、現行では事前計算参照方式に置換済み。
 
 ### W-04: R-P1-01 イベント割当整合
 - status: BLOCKED
@@ -99,13 +112,10 @@
   - 解除条件（R-P1-04）: VM2各タスクでDone報告を作成し、少なくとも1件は「未解決事項ID/影響/暫定評価 + 再現手順4点 + 証跡リンク」を満たしたサンプルを添付する。
 
 ## 判定サマリ
-- P0完了: No
+- P0完了: Yes
 - P1完了: No
 - PRE完了（R-P0+R-P1全PASS）: No
 - 残課題（R-P2含む）:
-  - R-P0-01: VirtualMode起動経路と表示成立の実測証跡を追加。
-  - R-P0-02: `CellValueNeeded -> TryGetCellValue` 契約一本化と failureReason 返却仕様の明文化。
-  - R-P0-03: CellPaintingから値取得責務を分離。
   - R-P1-01: イベント割当マップ正本の作成（対象/対象外理由付き）。
   - R-P1-02: 3サービス実体の作成と責務マトリクス化。
   - R-P1-03: smoke checklist 実施結果の記録。
