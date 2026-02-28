@@ -3,6 +3,10 @@
 - ワークストリーム: `feature_virtualmode_spike_001`
 - 目的: 実装中の重要判断（採用/却下、順序変更、方針転換）の根拠を記録する。
 
+## 運用ルール（増分抑制）
+- 同一テーマの微修正は新規IDを乱発せず、既存IDへ「補足」として追記する。
+- `worklog` は関連判断ID参照のみを残し、詳細理由は本書に集約する。
+
 ## 2026-02-28
 
 ### D-001: ドキュメント分割運用に decision_log を追加
@@ -22,3 +26,17 @@
 - 理由: 2026-02-28の実施内容には重複抑制の責務再整理（D-002）も含まれるため。
 - 影響範囲: `worklog_20260228_001.md` の時系列ログ1件。
 - 見直し条件: 参照ID運用を変更する場合は、過去ログを同一規約へ正規化する。
+
+### D-004: 計測終了フックは `CellPainting` 側 + `Application.DoEvents` を採用（補足更新あり）
+- 判断: 入力遅延の1サンプル単位を `KeyDown` 開始〜 `CellPainting` 到達後（`Application.DoEvents` 実行後）で計測する。
+- 補足: 計測未開始の描画サイクルでは `Application.DoEvents` を実行しないよう `HasPendingSample` ガードを追加した。
+- 理由: Step 1の要件である「入力イベント開始〜画面更新完了寄りの地点」を維持しつつ、計測対象外サイクルでの再入リスクを抑えるため。
+- 影響範囲: `Form1.cs` の `dataGridView1_KeyDown`, `dataGridView1_CellPainting`, `InputLatencyProbe`, `TryEndInputLatencyMeasurement`。
+- 見直し条件: 手動計測でサンプル欠損・過剰が判明した場合、終了フック候補（`CellValueNeeded` 等）を再評価する。
+
+### D-005: VirtualMode疎通はダミー2次元配列を中核に採用（補足更新あり）
+- 判断: スパイク段階では `string[,]` を VirtualMode の唯一の読み書き源として扱い、`CellValueNeeded` / `CellValuePushed` で直接参照・更新する。
+- 補足: ダミー経路の独立性を保つため、初期値は空文字で生成し、`CellValuePushed` から `SetCellValue`（実モデル側）反映を除去した。
+- 理由: SSOT Step 2-3の目的（接続性確認）を最小実装で満たし、実モデル結合の不確実性を切り離すため。
+- 影響範囲: `Form1.cs` の VirtualMode設定、ダミーデータ準備処理、値取得/更新イベント。
+- 見直し条件: 次フェーズで実モデル接続検証へ移行する際に、反映先を `TimingSheetModel` へ段階導入する。

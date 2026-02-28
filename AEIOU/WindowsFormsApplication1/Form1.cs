@@ -282,6 +282,46 @@ namespace AEIOU
 {
     public partial class Form1 : Form
     {
+	    private class InputLatencyProbe
+	    {
+	        private Stopwatch stopwatch = new Stopwatch();
+	        private List<long> samples = new List<long>();
+	        private bool hasPendingSample;
+
+	        public void Begin()
+	        {
+	            stopwatch.Reset();
+	            stopwatch.Start();
+	            hasPendingSample = true;
+	        }
+
+	        public bool TryEnd(string hookName, out long elapsedMilliseconds)
+	        {
+	            elapsedMilliseconds = 0;
+	            if (!hasPendingSample)
+	            {
+	                return false;
+	            }
+
+	            stopwatch.Stop();
+	            hasPendingSample = false;
+	            elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+	            samples.Add(elapsedMilliseconds);
+	            Debug.WriteLine(string.Format("[VirtualModeSpike] InputLatency {0}ms ({1})", elapsedMilliseconds, hookName));
+	            return true;
+	        }
+
+	        public int SampleCount
+	        {
+	            get { return samples.Count; }
+	        }
+
+	        public bool HasPendingSample
+	        {
+	            get { return hasPendingSample; }
+	        }
+	    }
+
 	    //----------------------------------------------------------------------------------------
 	    // 配色
 	    ColorDefinitions gridPalette = new ColorDefinitions();        //グリッド描画用 色設定
@@ -318,6 +358,11 @@ namespace AEIOU
 
         // 繰り返しダイアログ
         private RepeatInputBox _repeatInputDialog;
+
+        // VirtualMode スパイク用（後で撤去しやすいように集約）
+        private const bool EnableVirtualModeSpike = true;
+        private string[,] virtualModeDummyCells;
+        private InputLatencyProbe inputLatencyProbe = new InputLatencyProbe();
 
         //----------------------------------------------------------------------------------------
         // コンストラクタ
@@ -424,6 +469,7 @@ namespace AEIOU
 
             // 作業データの初期化
             InitializeWork(true);
+            ConfigureVirtualModeSpike();
 
             // 先行分離サービスの初期化
             gridSelectionService = new GridSelectionService(dataGridView1, setting);
@@ -524,6 +570,8 @@ namespace AEIOU
             mouseDownPoint = new Point(-1, -1);     //マウス押下位置
             isRectDrag = false;                     //範囲移動状態
             isFirstEdit = true;
+
+            PrepareVirtualModeDummyData();
         }
 
         //----------------------------------------------------------------------------------------
@@ -538,6 +586,7 @@ namespace AEIOU
                 selectRange = new Rect(0, 0, 1, 1);             //選択範囲
                 isRectDrag = false;                             //範囲移動状態
                 isFirstEdit = true;
+                PrepareVirtualModeDummyData();
             }
             if ((target & InitializeTarget.Timing) != 0)
             {
@@ -553,6 +602,7 @@ namespace AEIOU
                         SetCellValue(j, i, "");
                     }
                 isFirstEdit = true;
+                PrepareVirtualModeDummyData();
             }
             if ((target & InitializeTarget.CopyBuffer) != 0)
             {
@@ -620,6 +670,11 @@ namespace AEIOU
             for (int i = 0; i < rowCount; i++)
                 for (int j = 0; j < columnCount; j++)
                     SetCellValue(j, i, "");
+
+            if (EnableVirtualModeSpike)
+            {
+                dataGridView1.VirtualMode = true;
+            }
 
         }
 
@@ -1316,6 +1371,126 @@ namespace AEIOU
 
             //描画を要求
             gridCellRenderer.PaintCell(e);
+            TryEndInputLatencyMeasurement("CellPainting");
+
+        }
+
+        private void ConfigureVirtualModeSpike()
+        {
+            if (!EnableVirtualModeSpike)
+            {
+                return;
+            }
+
+            dataGridView1.VirtualMode = true;
+            dataGridView1.CellValueNeeded += dataGridView1_CellValueNeeded;
+            dataGridView1.CellValuePushed += dataGridView1_CellValuePushed;
+            PrepareVirtualModeDummyData();
+        }
+
+        private void PrepareVirtualModeDummyData()
+        {
+            if (!EnableVirtualModeSpike)
+            {
+                return;
+            }
+
+            int columnCount = dataGridView1.ColumnCount;
+            int rowCount = dataGridView1.RowCount;
+            virtualModeDummyCells = new string[columnCount, rowCount];
+
+            for (int row = 0; row < rowCount; row++)
+            {
+                for (int col = 0; col < columnCount; col++)
+                {
+                    virtualModeDummyCells[col, row] = "";
+                }
+            }
+        }
+
+        private void BeginInputLatencyMeasurement()
+        {
+            if (!EnableVirtualModeSpike)
+            {
+                return;
+            }
+
+            inputLatencyProbe.Begin();
+        }
+
+        private void TryEndInputLatencyMeasurement(string hookName)
+        {
+            if (!EnableVirtualModeSpike)
+            {
+                return;
+            }
+
+            if (!inputLatencyProbe.HasPendingSample)
+            {
+                return;
+            }
+
+            Application.DoEvents();
+
+            long elapsed;
+            inputLatencyProbe.TryEnd(hookName, out elapsed);
+        }
+
+        private bool TryGetVirtualDummyValue(int col, int row, out string value)
+        {
+            value = "";
+            if (virtualModeDummyCells == null)
+            {
+                return false;
+            }
+
+            if (col < 0 || row < 0)
+            {
+                return false;
+            }
+
+            if (col >= virtualModeDummyCells.GetLength(0) || row >= virtualModeDummyCells.GetLength(1))
+            {
+                return false;
+            }
+
+            value = virtualModeDummyCells[col, row] ?? "";
+            return true;
+        }
+
+        private void dataGridView1_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
+        {
+            if (!EnableVirtualModeSpike)
+            {
+                return;
+            }
+
+            string value;
+            if (TryGetVirtualDummyValue(e.ColumnIndex, e.RowIndex, out value))
+            {
+                e.Value = value;
+                return;
+            }
+
+            e.Value = "";
+        }
+
+        private void dataGridView1_CellValuePushed(object sender, DataGridViewCellValueEventArgs e)
+        {
+            if (!EnableVirtualModeSpike)
+            {
+                return;
+            }
+
+            string normalizedValue = e.Value == null ? "" : e.Value.ToString();
+            if (virtualModeDummyCells != null &&
+                e.ColumnIndex >= 0 &&
+                e.RowIndex >= 0 &&
+                e.ColumnIndex < virtualModeDummyCells.GetLength(0) &&
+                e.RowIndex < virtualModeDummyCells.GetLength(1))
+            {
+                virtualModeDummyCells[e.ColumnIndex, e.RowIndex] = normalizedValue;
+            }
 
         }
 
@@ -1819,6 +1994,8 @@ namespace AEIOU
         // KeyDownイベントハンドラ
         private void dataGridView1_KeyDown(object sender, KeyEventArgs e)
         {
+            BeginInputLatencyMeasurement();
+
             int keyValue = setting.keys.convKey(e.KeyValue, e.Alt, e.Control, e.Shift);
             Keys convertedKeyData = (Keys)keyValue;
             if (tryExecuteShortcut(contextMenuStrip1.Items, convertedKeyData) ||
