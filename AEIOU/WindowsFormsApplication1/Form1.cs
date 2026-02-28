@@ -282,8 +282,8 @@ namespace AEIOU
 {
     public partial class Form1 : Form
     {
-	    private class InputLatencyProbe
-	    {
+		    private class InputLatencyProbe
+		    {
 	        private class InputLatencySample
 	        {
 	            public int SampleIndex;
@@ -300,8 +300,11 @@ namespace AEIOU
 	        private string summaryOutputFilePath;
 	        private bool hasWrittenHeader;
 	        private bool hasWrittenSummaryHeader;
-	        private string pendingStartContext = "unknown";
-	        private const int BatchSize = 100;
+        private string pendingStartContext = "unknown";
+        private bool hasPendingEndRequest;
+        private int activeSampleToken;
+        private int pendingEndRequestToken;
+        private const int BatchSize = 100;
 
 	        public void SetOutputFilePath(string path)
 	        {
@@ -321,42 +324,69 @@ namespace AEIOU
 	        {
 	            get { return summaryOutputFilePath; }
 	        }
+        public void Begin(string startContext)
+        {
+            stopwatch.Reset();
+            stopwatch.Start();
+            hasPendingSample = true;
+            hasPendingEndRequest = false;
+            activeSampleToken++;
+            pendingEndRequestToken = activeSampleToken;
+            pendingStartContext = string.IsNullOrEmpty(startContext) ? "unknown" : startContext;
+        }
 
-	        public void Begin(string startContext)
-	        {
-	            stopwatch.Reset();
-	            stopwatch.Start();
-	            hasPendingSample = true;
-	            pendingStartContext = string.IsNullOrEmpty(startContext) ? "unknown" : startContext;
-	        }
+        public bool TryMarkEndRequest(out int requestToken)
+        {
+            requestToken = 0;
+            if (!hasPendingSample)
+            {
+                return false;
+            }
 
-	        public bool TryEnd(string hookName, out long elapsedMilliseconds)
-	        {
-	            elapsedMilliseconds = 0;
-	            if (!hasPendingSample)
-	            {
-	                return false;
-	            }
+            if (hasPendingEndRequest)
+            {
+                return false;
+            }
 
-	            stopwatch.Stop();
-	            hasPendingSample = false;
-	            elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+            hasPendingEndRequest = true;
+            pendingEndRequestToken = activeSampleToken;
+            requestToken = pendingEndRequestToken;
+            return true;
+        }
 
-	            InputLatencySample sample = new InputLatencySample();
-	            sample.SampleIndex = samples.Count + 1;
-	            sample.ElapsedMilliseconds = elapsedMilliseconds;
-	            sample.StartContext = pendingStartContext;
-	            sample.EndHook = hookName;
-	            sample.RecordedAt = DateTime.Now;
-	            samples.Add(sample);
+        public bool TryEnd(int expectedToken, string hookName, out long elapsedMilliseconds)
+        {
+            elapsedMilliseconds = 0;
+            if (!hasPendingSample || !hasPendingEndRequest)
+            {
+                return false;
+            }
 
-	            Debug.WriteLine(string.Format("[VirtualModeSpike] InputLatency {0}ms ({1})", elapsedMilliseconds, hookName));
-	            AppendSampleToOutput(sample);
-	            AppendBatchSummaryIfReady();
-	            return true;
-	        }
+            if (pendingEndRequestToken != expectedToken)
+            {
+                return false;
+            }
 
-	        private void AppendSampleToOutput(InputLatencySample sample)
+            hasPendingEndRequest = false;
+            stopwatch.Stop();
+            hasPendingSample = false;
+            elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+
+            InputLatencySample sample = new InputLatencySample();
+            sample.SampleIndex = samples.Count + 1;
+            sample.ElapsedMilliseconds = elapsedMilliseconds;
+            sample.StartContext = pendingStartContext;
+            sample.EndHook = hookName;
+            sample.RecordedAt = DateTime.Now;
+            samples.Add(sample);
+
+            Debug.WriteLine(string.Format("[VirtualModeSpike] InputLatency {0}ms ({1})", elapsedMilliseconds, hookName));
+            AppendSampleToOutput(sample);
+            AppendBatchSummaryIfReady();
+            return true;
+        }
+
+        private void AppendSampleToOutput(InputLatencySample sample)
 	        {
 	            if (string.IsNullOrEmpty(outputFilePath))
 	            {
@@ -1579,10 +1609,17 @@ namespace AEIOU
                 return;
             }
 
-            Application.DoEvents();
+            int requestToken;
+            if (!inputLatencyProbe.TryMarkEndRequest(out requestToken))
+            {
+                return;
+            }
 
-            long elapsed;
-            inputLatencyProbe.TryEnd(hookName, out elapsed);
+            this.BeginInvoke((MethodInvoker)delegate
+            {
+                long elapsed;
+                inputLatencyProbe.TryEnd(requestToken, hookName + "+BeginInvoke", out elapsed);
+            });
         }
 
         private string BuildInputLatencyStartContext(KeyEventArgs e)
