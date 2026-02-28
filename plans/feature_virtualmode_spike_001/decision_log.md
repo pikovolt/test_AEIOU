@@ -82,3 +82,9 @@
 - 理由: `DoEvents` は描画中に入力イベントを再入処理し得るため、シナリオB（連続移動）での状態破壊・再入リスクが高い。Step 4のロングテール切り分けを進める上でも、計測機構自体の副作用を最小化する必要があるため。
 - 影響範囲: `Form1.cs` の `InputLatencyProbe`（終了予約状態管理）と `TryEndInputLatencyMeasurement`（終了フック実装）。
 - 見直し条件: `BeginInvoke` 置換後にサンプル欠損や終了遅延の偏りが観測された場合、終了フック候補（`CellValueNeeded` 併用など）を比較再評価する。
+
+### D-013: `BeginInvoke` 終了予約にサンプルトークン照合を追加
+- 判断: `TryMarkEndRequest` でサンプルトークンを払い出し、`BeginInvoke` 側 `TryEnd` で一致確認してから停止する。
+- 理由: 連続入力で次サンプルが開始された後に旧予約コールバックが実行されると、新サンプルを誤終了する競合が起こり得るため。
+- 影響範囲: `Form1.cs` の `InputLatencyProbe`（`activeSampleToken` / `pendingEndRequestToken` と `TryEnd` シグネチャ）および `TryEndInputLatencyMeasurement`。
+- 見直し条件: トークン照合後もサンプル欠損が出る場合は、終了フック位置（`CellPainting` 以外）を再評価する。
