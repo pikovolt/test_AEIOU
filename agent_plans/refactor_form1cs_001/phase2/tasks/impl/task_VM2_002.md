@@ -3,8 +3,12 @@
 ## 目的
 VirtualMode表示に必要な読み出し経路を `CellValueNeeded` へ集約し、表示成立を担保する。
 
+## 関連サービス
+- `GridDataSyncService`（同期）
+
 ## 実施内容
 - `CellValueNeeded` で参照データを返す実装へ切り替える。
+- `GridDataSyncService` を経由した read 経路に統一する。
 - 行列インデックス境界の防御を入れる。
 - 既存表示ロジックとの差異を確認する。
 

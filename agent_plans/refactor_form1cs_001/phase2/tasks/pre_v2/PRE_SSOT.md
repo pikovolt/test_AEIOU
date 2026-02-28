@@ -58,6 +58,12 @@
 - `GridInputInterpreter` / `GridViewUpdater` / `GridDataSyncService` の責務重複がない。
 - UI層（`Form1`）の責務が肥大化しない。
 
+##### R-P1-02 サービス導入方針（固定）
+- `GridInputInterpreter`: **新規導入**（入力解釈専用）。
+- `GridViewUpdater`: **既存 `GridCellRenderer` 拡張**として導入（表示更新専用）。
+- `GridDataSyncService`: **既存 `GridViewManager` 拡張**として導入（値取得/同期専用）。
+- `Form1` は「イベント中継・依存注入・UI境界」に限定し、入力解釈/表示更新/同期を保持しない。
+
 #### R-P1-03 回帰観点固定
 - イベント順序依存の回帰観点を持つ。
 - Undo/Redo粒度の回帰観点を持つ。
@@ -95,3 +101,12 @@
 ## 5. 変更管理ルール
 - 本SSOTの更新は、同ディレクトリの `PRE_decision_log.md` に記録する。
 - 実行記録は `PRE_worklog.md` に記録する。
+
+## 6. 用語正本（PRE/IMPL共通）
+- 責務軸の正本語彙は `入力解釈 / 表示更新 / 同期` とする。
+- サービス名の正本語彙は `GridInputInterpreter` / `GridViewUpdater` / `GridDataSyncService` とする。
+- IMPLタスク対応:
+  - VM2-002: `GridDataSyncService`（`CellValueNeeded` read配線）
+  - VM2-003: `GridDataSyncService`（`CellValuePushed` write配線）
+  - VM2-004: `GridDataSyncService`（Row/Column同期）
+  - VM2-006: `GridViewUpdater`（`Invalidate`境界最適化）
