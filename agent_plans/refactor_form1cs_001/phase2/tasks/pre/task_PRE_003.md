@@ -44,9 +44,19 @@
 | VM-PRE-11 | 画面リサイズ時に表示再計算が破綻せず、操作不能にならない。 | SHOULD | 手動操作（ウィンドウ拡大/縮小）＋目視確認。 |
 | VM-PRE-12 | 既存イベント配線（SelectionChanged等）と干渉せず重複処理が起きない。 | SHOULD | ログ確認（イベント発火回数）＋手動操作。 |
 
+### ログ確認の共通手順（全チェックID共通）
+
+ログ確認を伴う判定では、最低限次を統一して記録する。
+
+- **対象ログファイル/出力先**: アプリケーションログ（ファイルパス）、標準出力、デバッグコンソール等の確認対象を明記する。
+- **観測時間範囲**: テスト操作開始〜終了の時刻を範囲で記録する（例: `10:14:03〜10:16:40`）。
+- **失敗判定キーワード**: `Exception` / `Error` / `Fatal` / `Unhandled` を基本とし、必要に応じて機能固有キーワードを追加する。
+
+MUST項目（VM-PRE-01〜06）の `PASS` は、目視（または操作）結果と上記ログ確認が両方成立した場合のみ許可する。
+
 ## チェック結果記録テンプレート（VM-PRE-01〜12）
 
-> 各チェックIDの実施時に、以下4項目を必ず記録する。
+> 各チェックIDの実施時に、以下必須項目を必ず記録する。
 >
 > 判定ルール補足:
 > - MUST（VM-PRE-01〜06）は `PASS/FAIL` の2値判定を原則とし、`N/A` は禁止とする。
@@ -85,76 +95,125 @@ MUSTは `PASS/FAIL` 2値が原則であり、`N/A` は以下を**全て満たす
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-02
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-03
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-04
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-05
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-06
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-07
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL/N/A):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-08
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL/N/A):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-09
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL/N/A):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-10
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL/N/A):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-11
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL/N/A):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ### VM-PRE-12
 - 実施日時:
 - データ条件:
 - 結果(PASS/FAIL/N/A):
+- logSource:
+- logTimeRange:
+- query/keyword:
+- evidencePath:
 - 観測ログ:
 
 ## IMPL着手可否判定
 - MUST（VM-PRE-01〜06）は **全件 `PASS`** を原則とし、1件でも `FAIL` があれば着手不可。
+- MUST（VM-PRE-01〜06）の `PASS` 条件は **目視/操作結果が期待どおり** かつ **ログ証跡（`logSource` / `logTimeRange` / `query/keyword` / `evidencePath`）が記録済み** の両立とする。
 - MUST（VM-PRE-01〜06）の `N/A` 件数は **0件必須** とする。
 - MUSTで `N/A` をどうしても使う場合は「`N/A` 例外運用（MUST/SHOULD共通）」および「MUSTで `N/A` を例外許容するための追加承認条件」の条件充足が必須。条件不足の `N/A` は `FAIL` と同等に扱う。
 - SHOULD（VM-PRE-07〜12）は `PASS` を推奨し、`FAIL` は既知課題として持ち越し可（要チケット化）。
@@ -196,6 +255,7 @@ PRE完了時に、`task_VM2_001.md` へ最低限以下を引き継ぐ。
 - **再現手順**: 前提データ、操作手順、期待結果、実結果を時系列で記載。
 - **暫定回避**: 現時点で有効な回避策（運用回避・設定回避・操作回避）と適用条件。
 - **MUST `N/A` 理由と代替証跡ID**: 例外運用したMUST ID、`N/A` 理由、2者承認情報、代替試験で担保した観点、証跡IDを紐付けて記載。
+- **ログ証跡ID**: 各チェックIDに対応する `evidencePath`/証跡ID（ログ保存先、添付ログ、検索条件）を転記し、`PASS` 判定の根拠ログを追跡できる状態にする。
 
 ## SHOULD持ち越し時のチケット化ルール
 SHOULD項目（VM-PRE-07〜12）を持ち越す場合は、以下ルールでチケット化する。
