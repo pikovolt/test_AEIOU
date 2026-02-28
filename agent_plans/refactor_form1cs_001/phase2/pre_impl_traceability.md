@@ -22,7 +22,7 @@
 | U-PRE003-GATE | `task_PRE_003.md` | `実装ゲートチェックリスト` | 起動/表示成立の受け入れ基準 |
 | U-PRE003-HANDOVER | `task_PRE_003.md` | `task_VM2_001.md` への引き継ぎ必須情報 | 未解決事項・再現手順の引き継ぎ |
 | U-PRE004-CONTRACT | `task_PRE_004.md` | `値返却契約（CellValueNeeded）` | `CellValueNeeded` 返却仕様 |
-| U-PRE004-TRYGET | `task_PRE_004.md` | `TryGetCellValue` 戻り契約（インターフェース） | 値解決IFの固定 |
+| U-PRE004-TRYGET | `task_PRE_004.md` | `TryGetCellValue` 戻り契約（インターフェース・正本） | 値解決IFの固定（参照起点: `task_PRE_004.md` 同見出し） |
 | U-PRE004-BOUNDARY | `task_PRE_004.md` | `責務境界（再掲）` | 値解決と描画責務の分離 |
 
 ## PRE見出しユニット→IMPL マトリクス

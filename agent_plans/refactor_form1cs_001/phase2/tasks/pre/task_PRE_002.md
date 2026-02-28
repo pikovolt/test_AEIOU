@@ -105,12 +105,21 @@
   - `duplicateToolStripMenuItem_Click`
 
 ### C. 既存 `TryGetCellValue` / `SetCellValue` / Undo処理との接続責務（確定）
+- 契約の正本（優先仕様）
+  - `TryGetCellValue` 契約は **`task_PRE_004.md` の「TryGetCellValue 戻り契約（インターフェース・正本）」を正** とする。
+  - 本セクションは接続責務の整理を目的とし、型/シグネチャ/失敗契約の定義は PRE-004 正本へ従属する。
 - `TryGetCellValue`（`Form1` の既存ヘルパ）
   - 直接利用者: `GridInputInterpreter`
-  - 接続方針: `IGridCellReader`（`bool TryGetCellValue(int col, int row, out string value)`）を介して注入。初期実装は `Form1` アダプタで既存メソッドを委譲する。
+  - 接続方針: `ICellValueResolver`（`bool TryGetCellValue(int rowIndex, int columnIndex, out object value, out CellValueFailureReason failureReason)`）を介して注入。初期実装は `Form1` アダプタで既存メソッドを委譲する。
+  - 契約要点（PRE-004に統一）:
+    - 引数順は `rowIndex` → `columnIndex` に固定する。
+    - 成功値は表示文字列（`string`）に固定し、インターフェースは互換目的で `out object value` を採用する。
+    - 失敗時は `false` を返し、`failureReason` を **必須返却** とする（成功時は `CellValueFailureReason.None`）。
+    - 診断ログは `CellValueNeeded` 側で記録し、`TryGetCellValue` は理由分類の返却に責務を限定する。
 - `SetCellValue`（`Form1` の既存ヘルパ）
   - 直接利用者: `GridViewUpdater`
-  - 接続方針: `IGridCellWriter`（`void SetCellValue(int col, int row, string value)`）を介して注入。`GridViewUpdater` は値比較（`SetCellValueIfChanged` 相当）まで担当する。
+  - 接続方針: `IGridCellWriter`（`void SetCellValue(int columnIndex, int rowIndex, string value)`）を介して注入。`GridViewUpdater` は値比較（`SetCellValueIfChanged` 相当）まで担当する。
+  - 備考: `SetCellValue` は既存呼び出し互換の都合で `columnIndex` → `rowIndex` を維持し、`TryGetCellValue` 契約とは分離して扱う。
 - Undo関連（`gridViewManager.Undo/Redo`, `flushUndoHistory`, `OperationGroup`）
   - 直接利用者: `GridDataSyncService`
   - 接続方針: `IUndoGateway` を新設し、`BeginGroup/EndGroup/Undo/Redo/Flush` を集約。`Form1` はUIイベントからUndoコマンドを受けた時のみゲートウェイを呼び、実際の記録境界の決定は `GridDataSyncService.Commit` 側に寄せる。
