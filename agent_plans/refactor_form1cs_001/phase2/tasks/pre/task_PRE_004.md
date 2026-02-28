@@ -60,8 +60,14 @@
 - 型不一致時動作は `TryGetCellValue == false`、`failureReason = CellValueFailureReason.TypeMismatch`、`CellValueNeeded` は `string.Empty` を返却、の組み合わせに統一する。
 - 上記失敗系では例外を送出せず、診断ログ必須項目を記録して UI 継続を優先する。
 
-### `TryGetCellValue` 戻り契約（インターフェース）
+### `TryGetCellValue` 戻り契約（インターフェース・正本）
 `TryGetCellValue` は以下の戻り契約を満たすインターフェースで扱う。
+
+- 正本宣言: `task_PRE_002.md` の「既存 `TryGetCellValue` / `SetCellValue` / Undo処理との接続責務（確定）」より本見出しを優先する。
+- 差分解消結果（統一仕様）:
+  - メソッドシグネチャは `TryGetCellValue(int rowIndex, int columnIndex, out object value, out CellValueFailureReason failureReason)` を正とする。
+  - 成功値型は表示文字列（`string`）固定とし、`out object` は互換受け口としてのみ使用する。
+  - 失敗時は `failureReason` 必須返却、ログ化責務は `CellValueNeeded` 側に置く。
 
 ```csharp
 public interface ICellValueResolver
