@@ -28,9 +28,9 @@
    依存（前提タスク）: VM2-001〜VM2-007
 
 ## 着手条件
-- IMPLレーンの着手条件は、必須PREタスク（PRE-001〜PRE-004）の完了とする。
-- VM2ごとの必須PRE判定は [`pre_impl_traceability.md`](./pre_impl_traceability.md) の「VM2ごとの必須PREチェックリスト（機械判定用）」に従う。
-- 例外的に先行検証が必要な場合も、正式着手（タスク開始宣言・PR作成）は必須PRE完了後に行う。
+- IMPLレーンの着手条件は、**VM2ごとの必須PRE見出しユニット（U-PRExxx）の完了**とする（PREファイル全体の完了は前提にしない）。
+- VM2ごとの必須PRE判定は [`pre_impl_traceability.md`](./pre_impl_traceability.md) の「VM2ごとの必須ユニットチェックリスト（機械判定用）」を**唯一の判定ソース**として行う。
+- 例外的に先行検証が必要な場合も、正式着手（タスク開始宣言・PR作成）は当該VM2に必要なU-PRExxx完了後に行う。
 
 ## 移行中ルール（pre/impl 命名規約）
 - 旧 `task_VM2_001.md` / `task_VM2_002.md` は、PREレーンへ移動し `task_PRE_003.md` / `task_PRE_004.md` として扱う。
