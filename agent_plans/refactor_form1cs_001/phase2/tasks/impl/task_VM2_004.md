@@ -18,8 +18,8 @@
 - VM2-003
 
 ## Done定義参照
-- 共通定義 `DONE_TEMPLATE_VM2.md` を参照する。
-- 配置場所: `agent_plans/refactor_form1cs_001/phase2/definitions/DONE_TEMPLATE_VM2.md`
+- 共通定義 `DONE_TEMPLATE_IMPL.md` を参照する。
+- 配置場所: `agent_plans/refactor_form1cs_001/phase2/definitions/DONE_TEMPLATE_IMPL.md`
 - 完了報告は、上記定義の必須欄をすべて埋めること。
 
 ## PRルール
