@@ -91,6 +91,26 @@ public enum CellValueFailureReason
 }
 ```
 
+### ICellValueResolver Migration Convention (Required)
+`ICellValueResolver` 実装時は、以下の移行規約を **必須** とする。
+
+- 必須アダプタ名:
+  - `Form1` 既存ヘルパへ委譲する初期実装のクラス名は **`Form1CellValueResolverAdapter`** に固定する。
+  - 同責務の別名実装は作成しない（レビュー時の識別性を優先）。
+- アダプタ内の引数変換規則:
+  - 外部契約（`ICellValueResolver`）は **`(rowIndex, columnIndex)`** を受け取る。
+  - 既存 `Form1` 側委譲呼び出しは **`(col, row)`** を要求するため、アダプタ内で `columnIndex -> col`、`rowIndex -> row` へ必ず変換して渡す。
+  - 変換後の順序で既存メソッドへ委譲し、呼び出し元へは外部契約順（`rowIndex, columnIndex`）を露出し続ける。
+
+#### レビュー時チェックリスト（移行規約）
+- 行列入れ違い検出の代表ケースを最低3件確認する。
+  - 先頭座標: `(rowIndex=0, columnIndex=0)`
+  - 末尾座標: `(rowIndex=maxRow, columnIndex=maxCol)`
+  - 非対称座標: `(rowIndex=1, columnIndex=3)` と `(rowIndex=3, columnIndex=1)`
+- 上記ケースで、アダプタ内部の既存委譲引数がそれぞれ `(col=rowIndexではない, row=columnIndexではない)` になっていないことを確認する。
+- 範囲外入力時に `TryGetCellValue == false` かつ `failureReason == CellValueFailureReason.OutOfRange` が返ることを確認する。
+- 範囲外ケースは先頭未満（例: `-1,0`）/末尾超過（例: `maxRow+1,maxCol`）の双方で `OutOfRange` を期待値として一致確認する。
+
 - `bool` は成功可否を示し、`true` の場合のみ `value` を有効値として扱う。
 - 成功値型は `string`（表示文字列）に固定し、`out object value` はインターフェース互換性維持のための受け口として継続する。
 - .NET 3.5 / C# 3 相当の記法を前提とし、型記法は `object` を使用する（null許容は運用上許可する）。
