@@ -24,14 +24,14 @@
 ## イベント棚卸し（Phase2で触る可能性が高いものに限定）
 
 ### Phase2対象（必須レビュー）
-| イベント | 主責務 | 副責務 | 抽出優先度 |
-| --- | --- | --- | --- |
-| `dataGridView1_KeyDown` | キーボード入力解釈（移動/編集/ショートカット） | 選択範囲更新、スクロール、書き込み系処理の起動 | High |
-| `dataGridView1_KeyPress` | 直接入力文字の受理/変換 | セル値反映トリガ | High |
-| `dataGridView1_CellPainting` | セル描画（表示ルール適用） | フレーム番号等の補助描画、再描画条件分岐 | High |
-| `pasteFromAEToolStripMenuItem_Click` | AE由来データの貼り付け制御 | クリップボード解析、範囲書き込み、Undo文脈管理 | High |
-| `insertCellToolStripMenuItem_Click` | セル挿入操作の実行 | 既存データシフト、複数セル更新、再描画 | Med |
-| `deleteCellToolStripMenuItem_Click` | セル削除操作の実行 | データ詰め処理、複数セル更新、再描画 | Med |
+| イベント | 主責務 | 副責務 | 識別子ベース探索情報（Form1.cs） | 副作用分類チェック | 抽出候補（最小関数レベル）と初手IMPL |
+| --- | --- | --- | --- | --- | --- |
+| `dataGridView1_KeyDown` | キーボード入力解釈（移動/編集/ショートカット） | 選択範囲更新、スクロール、書き込み系処理の起動 | メソッド: `dataGridView1_KeyDown`<br>関連呼び出し: `deleteRect_with_backspace`, `calcRect_with_enter`, `gridSelectionService.MoveSelection`, `flushUndoHistory`, `dataGridView1.Invalidate`<br>特徴コメント: `// 画面2/3より下に移動した場合の画面送り` | データ更新: ☑<br>選択変更: ☑<br>Invalidate: ☑<br>Undo記録: ☑<br>外部UI更新: ☐ | `MoveSelection` 前後の「範囲計算/境界補正」切り出し → **VM2-005**<br>入力種別ごとの「編集書き込み分岐」切り出し → **VM2-003**<br>`Invalidate` 呼び出し条件の集約 → **VM2-006** |
+| `dataGridView1_KeyPress` | 直接入力文字の受理/変換（現状は空実装） | セル値反映トリガ（将来拡張余地） | メソッド: `dataGridView1_KeyPress`<br>関連呼び出し: なし（`return` のみ）<br>特徴コメント: `// (なにもしない)` | データ更新: ☐<br>選択変更: ☐<br>Invalidate: ☐<br>Undo記録: ☐<br>外部UI更新: ☐ | 文字入力の「受理判定（許可/拒否）」関数化 → **VM2-003**<br>`KeyDown` との責務境界（イベント分配）定義 → **VM2-005** |
+| `dataGridView1_CellPainting` | セル描画（表示ルール適用） | フレーム番号等の補助描画、再描画条件分岐 | メソッド: `dataGridView1_CellPainting`<br>関連呼び出し: `drawFrameNumber`, `checkContinuty`, `gridCellStyleResolver.ResolveBackColor`, `calcBorderState`, `gridCellRenderer.ApplyTimingCellState`, `gridCellRenderer.PaintCell`<br>特徴コメント: `// (仮)フレーム数の表示 [ここから]` | データ更新: ☐<br>選択変更: ☐<br>Invalidate: ☐（本体からは要求しない）<br>Undo記録: ☐<br>外部UI更新: ☑（描画出力） | 背景色解決の「入力値→色」関数化 → **VM2-002**<br>ボーダー判定の「描画境界解決」関数化 → **VM2-006**<br>ヘッダ列描画の「フレーム番号描画判定」切り出し → **VM2-002** |
+| `pasteFromAEToolStripMenuItem_Click` | AE由来データの貼り付け制御 | クリップボード解析、範囲書き込み、Undo文脈管理 | メソッド: `pasteFromAEToolStripMenuItem_Click`<br>関連呼び出し: `Clipboard.GetText`, `ApplyCellWrites`, `dataGridView1.Invalidate`, `flushUndoHistory`<br>特徴コメント: `// "TimeRemap"で始まる行を探す` | データ更新: ☑<br>選択変更: ☐<br>Invalidate: ☑<br>Undo記録: ☑（履歴フラッシュ含む）<br>外部UI更新: ☑（FPSメニュー反映） | クリップボード行の「ヘッダ/FPS解析」切り出し → **VM2-003**<br>AE値の「秒→フレーム変換」関数化 → **VM2-003**<br>書き込み後の「UI反映境界（Invalidate/メニュー同期）」整理 → **VM2-006** |
+| `insertCellToolStripMenuItem_Click` | セル挿入操作の実行 | 既存データシフト、複数セル更新、再描画 | メソッド: `insertCellToolStripMenuItem_Click`<br>関連呼び出し: `resizeDataGridView1`, `adjustWindowSize`, `CopyColumn`, `ClearColumn`, `flushUndoHistory`, `InitializeWork`<br>特徴コメント: `// カレントセルの位置を空ける` | データ更新: ☑<br>選択変更: ☐<br>Invalidate: ☐（サイズ変更側に委譲）<br>Undo記録: ☑（履歴フラッシュ）<br>外部UI更新: ☑（ウィンドウ調整） | 列シフトの「移動元/移動先インデックス解決」関数化 → **VM2-004**<br>空列初期化の「挿入後クリア処理」分離 → **VM2-003**<br>サイズ変更と表示同期の境界整理 → **VM2-004** |
+| `deleteCellToolStripMenuItem_Click` | セル削除操作の実行 | データ詰め処理、複数セル更新、再描画 | メソッド: `deleteCellToolStripMenuItem_Click`<br>関連呼び出し: `CopyColumn`, `resizeDataGridView1`, `adjustWindowSize`, `flushUndoHistory`, `InitializeWork`<br>特徴コメント: `// カレントセルの位置を詰める` | データ更新: ☑<br>選択変更: ☐<br>Invalidate: ☐（サイズ変更側に委譲）<br>Undo記録: ☑（履歴フラッシュ）<br>外部UI更新: ☑（ウィンドウ調整） | 列詰めの「シフト終端計算」関数化 → **VM2-004**<br>削除後サイズ反映の「Row/Column同期」分離 → **VM2-004**<br>削除操作の履歴境界（Undo粒度）整理 → **VM2-007** |
 
 ### 対象外（参照のみ）
 | イベント | 1行サマリ | 抽出優先度 |
