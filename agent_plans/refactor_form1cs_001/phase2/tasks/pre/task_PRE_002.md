@@ -132,6 +132,17 @@
 実装メモ:
 - 既存の `InvalidOperationException` / `ArgumentOutOfRangeException` はUI層（`GridInputInterpreter`/`GridViewUpdater`）のガード用途で継続利用し、上記2例外は `GridDataSyncService` の業務境界でのみ送出する。
 
+### E. 非SDKプロジェクト前提の `.csproj` 更新手順（必須）
+- 対象プロジェクト: `AEIOU/WindowsFormsApplication1/AEIOU.csproj`
+- 本プロジェクトは **SDK形式ではない** 前提で、`<ItemGroup>` に `Compile Include` を明示追加する。
+- 以下の追加を **必須作業** とする（未登録の場合のみ追記し、重複登録はしない）。
+  - `<Compile Include="Application\\Grid\\GridInputInterpreter.cs" />`
+  - `<Compile Include="Application\\Grid\\GridViewUpdater.cs" />`
+  - `<Compile Include="Application\\Grid\\GridDataSyncService.cs" />`
+  - `<Compile Include="Application\\Grid\\Exceptions\\DomainValidationException.cs" />`
+  - `<Compile Include="Application\\Grid\\Exceptions\\DataSyncException.cs" />`
+- 追加後に、上記ファイルが `AEIOU.csproj` に登録されておりビルド対象になっていることを確認する。
+
 ## 依存オブジェクト一覧と注入方向
 - `DataGridView`（UIコンポーネント）
   - 注入方向: `Form1` → `GridViewUpdater`（コンストラクタ注入）
@@ -159,6 +170,7 @@
 - 抽出設計が本ファイルに記載されている。
 - 実装時の互換性リスクが列挙されている。
 - 共通定義 `DONE_TEMPLATE_PRE.md` の必須欄がすべて記入済みである。
+- （IMPL完了条件追加）新規ファイルが `AEIOU.csproj` へ登録され、ビルド対象化されていること。
 
 ## Done定義参照
 - 共通定義 `DONE_TEMPLATE_PRE.md` を参照する。
