@@ -19,6 +19,58 @@
 | モデル未初期化（データソース未ロード / 解放済み） | `string.Empty`（フォールバック） | 例外なし | 空表示で継続し、画面操作を阻害しない |
 | バインド不一致（列定義とモデルプロパティが不整合） | `string.Empty`（フォールバック） | 例外なし | 空表示で継続し、異常はログ/診断経路で検知する |
 
+### 列型ごとの返却ポリシー
+- 文字列列: モデル値を `string` として返却し、`null` は `string.Empty` に正規化する。
+- 数値列: モデル値を各列が要求する数値型（`int` / `decimal` / `double` 等）のまま返却し、`null` は `DBNull.Value` ではなく表示用フォールバック（`string.Empty`）に統一する。
+- 日時列: モデル値を `DateTime`（必要に応じて `DateTime?`）として返却し、未設定 (`null`) は空表示フォールバック（`string.Empty`）を返却する。
+- 上記いずれも `CellValueNeeded` 内で例外変換を行わず、返却前に列定義と型の整合性を `TryGetCellValue` で検証する。
+
+### 編集中セルの優先値ルール
+- 対象セルが編集中の場合、表示値の解決順序は「編集中バッファ値 > モデル保持値」とする。
+- 編集中バッファが取得できる場合は、その値を `CellValueNeeded` の返却値として最優先採用する。
+- 編集中バッファが未確定・取得不可の場合のみ、モデル値（`TryGetCellValue` の通常経路）にフォールバックする。
+- 編集確定（コミット）後はモデル値を唯一の正とし、バッファ値は参照しない。
+
+### フォールバック時の診断ログ必須項目
+フォールバック返却（`string.Empty` 等）が発生した場合、診断ログに以下を必須出力する。
+
+- `rowIndex`
+- `columnIndex`
+- `columnName`（列定義名 / `DataPropertyName`）
+- `reasonCategory`（例: `OutOfRange`, `ModelUninitialized`, `BindingMismatch`, `NullValue`）
+- `occurrenceCount`（同一カテゴリ・同一列での発生回数）
+
+ログは UI 継続性を優先して非例外で記録し、`CellValueNeeded` の制御フローを中断させない。
+
+### `TryGetCellValue` 戻り契約（インターフェース）
+`TryGetCellValue` は以下の戻り契約を満たすインターフェースで扱う。
+
+```csharp
+public interface ICellValueResolver
+{
+    bool TryGetCellValue(
+        int rowIndex,
+        int columnIndex,
+        out object? value,
+        out CellValueFailureReason failureReason);
+}
+
+public enum CellValueFailureReason
+{
+    None,
+    OutOfRange,
+    ModelUninitialized,
+    BindingMismatch,
+    NullValue,
+    Unknown
+}
+```
+
+- `bool` は成功可否を示し、`true` の場合のみ `value` を有効値として扱う。
+- `value` は成功時に列型ポリシーに従った値を返し、失敗時は `null`（または呼び出し側で無視可能な値）とする。
+- `failureReason` は失敗理由を必ず返し、成功時は `CellValueFailureReason.None` とする。
+- `CellValueNeeded` は `TryGetCellValue == false` の場合にフォールバック値を返し、同時に診断ログ必須項目を記録する。
+
 ### 例外方針
 - `CellValueNeeded` では例外を投げない。
 - `DataError` イベントへの依存で吸収する設計を禁止する。
