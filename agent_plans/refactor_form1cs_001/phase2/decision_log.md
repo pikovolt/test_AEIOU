@@ -4,10 +4,11 @@
 - 実装詳細ではなく、計画・方針の変更のみ記録する。
 - 各項目に日付、変更内容、理由、影響範囲を含める。
 - 各判断エントリには、必須欄として以下を必ず明記する。
-  - `lane: pre|impl`
+  - `lane: pre` または `lane: impl`（単一値のみ。複数レーンに跨る場合は主レーンを選び、他レーンは `affects` または「影響範囲」で表現する）
   - `affects: task_PRE_xxx or task_VM2_xxx`
 
 ## テンプレート
+※ 以下の `lane` / `affects` は記入例ではなく必須入力値（プレースホルダのまま残さないこと）。
 ### YYYY-MM-DD: タイトル
 - lane: pre|impl
 - affects: task_PRE_xxx or task_VM2_xxx
@@ -17,7 +18,7 @@
 - フォローアップ:
 
 ### 2026-02-28: ID衝突解消と命名規約変更
-- lane: pre|impl
+- lane: pre
 - affects: task_PRE_003, task_PRE_004, task_VM2_001
 - 変更内容:
   - 旧 `task_VM2_001.md` / `task_VM2_002.md` を PRE レーンへ移動し、`task_PRE_003.md` / `task_PRE_004.md` に改名した。
@@ -44,4 +45,3 @@
   - `tasks/impl/task_VM2_002.md` のタスク実体。
 - フォローアップ:
   - レーン定義（overview）と実ファイル（tasks配下）の差分チェックを更新時に必須化する。
-
