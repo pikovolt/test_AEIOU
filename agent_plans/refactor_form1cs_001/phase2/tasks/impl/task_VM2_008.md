@@ -29,3 +29,15 @@ Phase 2 の完了可否を判定できるよう、VirtualMode実装タスクの�
 
 ## PRルール
 - 本タスクのみを変更対象とする（1タスク=1PR）。
+
+## Done報告集約リンク（Gate判定入力固定）
+- [done_VM2_001](../../reports/impl_done/done_VM2_001.md)
+- [done_VM2_002](../../reports/impl_done/done_VM2_002.md)
+- [done_VM2_003](../../reports/impl_done/done_VM2_003.md)
+- [done_VM2_004](../../reports/impl_done/done_VM2_004.md)
+- [done_VM2_005](../../reports/impl_done/done_VM2_005.md)
+- [done_VM2_006](../../reports/impl_done/done_VM2_006.md)
+- [done_VM2_007](../../reports/impl_done/done_VM2_007.md)
+- [done_VM2_008](../../reports/impl_done/done_VM2_008.md)
+
+上記リンク群を Phase2 Gate 判定の固定入力とする。
