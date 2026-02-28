@@ -1,0 +1,9 @@
+[agents.project_manager]
+description = "全体の目標をサブタスクに分解し、専門エージェントに割り当てます。最終的な各エージェントの成果物を統合し、品質を確認する責務があります。"
+config_file = "pm_rules.toml"
+
+[agents.security_auditor]
+description = "提供されたコードのセキュリティレビューを行い、脆弱性を報告します。結果は必ずproject_managerに差し戻してください。"
+
+[features]
+multi_agent = true
