@@ -61,16 +61,21 @@
   - 旧記録は `checkContinuty` が直接値取得していた時期の情報であり、現行では事前計算参照方式に置換済み。
 
 ### W-04: R-P1-01 イベント割当整合
-- status: BLOCKED
+- 関連ユニット: `unit_PRE_P1_01_event_mapping_consistency.md`（正本参照: `../../event_mapping_ssot.md`）
+- status: PASS
 - evidence:
-  - ファイル証跡: PRE定義は存在するが、Phase2対象イベントの「単一定義（正本）」文書が未作成（`agent_plans/refactor_form1cs_001/phase2/tasks/pre_v2/unit_PRE_P1_01_event_mapping_consistency.md` は要件のみ）。
-  - ログ証跡: `rg -n "イベント割当|mapping|CellValueNeeded|CellValuePushed|KeyDown|KeyPress|CellPainting" agent_plans/refactor_form1cs_001/phase2/tasks/pre_v2 agent_plans/refactor_form1cs_001/phase2/overview.md` で実体マッピング表を確認できず。
+  - ファイル証跡:
+    - `agent_plans/refactor_form1cs_001/phase2/event_mapping_ssot.md` に、Phase2 のイベント割当（イベント名/担当層/対応IMPLタスクID/対象外理由）を単一表で定義。
+    - `agent_plans/refactor_form1cs_001/phase2/tasks/pre_v2/unit_PRE_P1_01_event_mapping_consistency.md` に正本参照を追加。
+  - ログ証跡:
+    1) `rg -n "CellPainting|CellValueNeeded|CellValuePushed|KeyDown|KeyPress|担当層|対象外理由" agent_plans/refactor_form1cs_001/phase2/event_mapping_ssot.md`
+    2) `rg -n "event_mapping_ssot.md" agent_plans/refactor_form1cs_001/phase2/tasks/pre_v2/unit_PRE_P1_01_event_mapping_consistency.md agent_plans/refactor_form1cs_001/phase2/tasks/pre_v2/PRE_worklog.md`
   - 再現手順:
-    1) 上記 `rg` を実行。
-    2) 要件文のみで、イベント割当の実体一覧（採用/対象外理由付き）がないことを確認。
+    1) 1)の `rg` で必須5イベントを含む表定義と対象外理由列を確認する。
+    2) 2)の `rg` で `unit_PRE_P1_01` と `PRE_worklog` から同一正本への参照が追加されていることを確認する。
+    3) R-P1-01 の判定基準（単一定義整合）が満たされていることを確認する。
 - note:
-  - BLOCKED理由（R-P1-01）: 判定対象となるイベント割当マップの正本が未整備。
-  - 解除条件（R-P1-01）: `phase2` 配下に「対象イベント・割当先・対象外理由」を1表で管理するマッピング文書を追加し、参照先を `PRE_worklog` に記録する。
+  - 今後イベント割当が更新される場合は、本正本（`event_mapping_ssot.md`）を先に更新し、参照ドキュメントとの差分がないことを同時確認する。
 
 ### W-05: R-P1-02 抽出設計整合
 - status: BLOCKED
