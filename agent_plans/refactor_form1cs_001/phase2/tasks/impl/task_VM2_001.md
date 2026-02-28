@@ -13,9 +13,12 @@
 - 初期表示が既存期待値を満たす。
 - 次タスク（`CellValueNeeded`）への前提条件が明記されている。
 
-## 依存タスク
-- PRE-003
-- PRE-004
+## 依存ユニット（PRE見出し単位）
+- `U-PRE001-EVT`（`task_PRE_001.md`）
+- `U-PRE003-GATE` / `U-PRE003-HANDOVER`（`task_PRE_003.md`）
+
+参照（着手時点で必須ではない）:
+- `U-PRE004-CONTRACT` / `U-PRE004-TRYGET` / `U-PRE004-BOUNDARY`（`task_PRE_004.md`）
 
 ## Done定義参照
 - 共通定義 `DONE_TEMPLATE_IMPL.md` を参照する。
