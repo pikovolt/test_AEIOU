@@ -1403,8 +1403,7 @@ namespace AEIOU
             {
                 for (int col = 0; col < columnCount; col++)
                 {
-                    string value = GetCellValue(col, row);
-                    virtualModeDummyCells[col, row] = value == null ? "" : value;
+                    virtualModeDummyCells[col, row] = "";
                 }
             }
         }
@@ -1493,7 +1492,6 @@ namespace AEIOU
                 virtualModeDummyCells[e.ColumnIndex, e.RowIndex] = normalizedValue;
             }
 
-            SetCellValue(e.ColumnIndex, e.RowIndex, normalizedValue);
         }
 
         //----------------------------------------------------------------------------------------

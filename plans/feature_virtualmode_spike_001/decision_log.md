@@ -41,3 +41,10 @@
 - 理由: 入力計測サンプルが存在しない描画サイクルで `DoEvents` が再入を誘発し、計測対象外の副作用を増やすリスクを抑えるため。
 - 影響範囲: `Form1.cs` の `InputLatencyProbe` / `TryEndInputLatencyMeasurement`。
 - 見直し条件: 手動検証で計測漏れが増える場合は終了フック設計（`CellPainting` 以外）を再評価する。
+
+
+### D-007: VirtualModeスパイク中は更新先をダミーデータのみに限定
+- 判断: `CellValuePushed` で `SetCellValue`（実モデル/表示キャッシュ側）への反映を行わず、`virtualModeDummyCells` のみを更新する。
+- 理由: SSOTの非対象（実モデル結合）を厳守し、VirtualMode疎通の不確実性を単独で検証するため。
+- 影響範囲: `Form1.cs` の `PrepareVirtualModeDummyData`, `dataGridView1_CellValuePushed`。
+- 見直し条件: 次フェーズで実モデル接続検証へ移行する際に、反映先を `TimingSheetModel` へ段階導入する。
