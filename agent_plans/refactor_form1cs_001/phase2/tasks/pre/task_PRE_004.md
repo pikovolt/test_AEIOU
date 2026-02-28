@@ -114,7 +114,7 @@ public enum CellValueFailureReason
 ## 完了条件
 - `CellValueNeeded` 実装前提となる設計観点が明記されている。
 - IMPLタスクの入出力前提に引き継げる。
-- 共通定義 `DONE_TEMPLATE_PRE.md` の必須欄がすべて記入済みである。
+- 本ファイル内の `DONE_TEMPLATE_PRE 記入` セクションに、共通定義 `DONE_TEMPLATE_PRE.md` の必須欄がすべて記入済みである。
 
 ## 参照入力（依存最小化）
 - `task_PRE_003.md` の `実装ゲートチェックリスト`（必要時のみ参照）
@@ -125,6 +125,24 @@ public enum CellValueFailureReason
 - 共通定義 `DONE_TEMPLATE_PRE.md` を参照する。
 - 配置場所: `agent_plans/refactor_form1cs_001/phase2/definitions/DONE_TEMPLATE_PRE.md`
 - 完了報告は、上記定義の必須欄をすべて埋めること。
+
+## DONE_TEMPLATE_PRE 記入
+- 対象範囲（今回扱ったファイル/機能/イベント）:
+  - `CellValueNeeded` 導入前の値返却契約、`TryGetCellValue` 戻り契約、境界防御と責務境界（CellPainting/KeyDown/KeyPressとの分離）。
+- 非対象（今回やらないこと）:
+  - `CellValueNeeded` 本実装、`TryGetCellValue` 具象クラス追加、DataGridViewイベント実配線変更、実機での性能最適化。
+- 証跡リンク（調査メモ、設計資料、関連Issue/PRなど）:
+  - 本ファイル（`agent_plans/refactor_form1cs_001/phase2/tasks/pre/task_PRE_004.md`）の `値返却契約` / `フォールバック仕様` / `TryGetCellValue 戻り契約` セクション。
+- 現状分析サマリ（現行構造/課題/制約）:
+  - 値解決経路が分散したまま VirtualMode を導入すると、型不一致や境界外参照時の挙動が不統一になり、描画例外・空白表示の再現性が高まる。
+- 設計方針（抽出方針、責務分割、インターフェース案）:
+  - 値取得を `TryGetCellValue` に一本化し、`CellValueNeeded` は契約どおり返却のみ担当、失敗時は `string.Empty`＋診断ログ記録で UI 継続を優先する。
+- 互換性/回帰リスク列挙（最小3観点）:
+  - リスク1: 列型正規化ルールの不統一で、表示値が既存挙動と乖離する。
+  - リスク2: 編集中バッファ優先ルールの欠落で、編集中セルに古いモデル値が表示される。
+  - リスク3: `TryGetCellValue` 失敗時の理由分類が不足し、障害解析時に原因特定が遅延する。
+- 実装フェーズへの引き継ぎ事項（前提条件/未確定事項）:
+  - 失敗理由 `CellValueFailureReason` の列挙値を実装側で固定し、`CellValueNeeded` 非例外方針と診断ログ必須項目（row/column/reason/count）をレビュー観点に含める。
 
 ## PRルール
 - 本タスクのみを変更対象とする（1タスク=1PR）。
