@@ -69,7 +69,7 @@ public interface ICellValueResolver
     bool TryGetCellValue(
         int rowIndex,
         int columnIndex,
-        out object? value,
+        out object value,
         out CellValueFailureReason failureReason);
 }
 
@@ -86,13 +86,14 @@ public enum CellValueFailureReason
 ```
 
 - `bool` は成功可否を示し、`true` の場合のみ `value` を有効値として扱う。
-- 成功値型は `string`（表示文字列）に固定し、`out object? value` はインターフェース互換性維持のための受け口として継続する。
+- 成功値型は `string`（表示文字列）に固定し、`out object value` はインターフェース互換性維持のための受け口として継続する。
+- .NET 3.5 / C# 3 相当の記法を前提とし、型記法は `object` を使用する（null許容は運用上許可する）。
 - `TryGetCellValue` は成功判定前に、以下の順で列メタ情報から型を確定する。
   1. `columnIndex` から列定義を特定する。
   2. 列定義の `DataPropertyName` / 列種別 / `ValueType` から期待型を決定する。
   3. モデル値が期待型として解釈可能かを検証し、表示文字列へ正規化する。
   4. 正規化完了時のみ `true` とし、`value` に正規化済み文字列を設定する。
-- 型確定または正規化に失敗した場合は `false` を返し、`value = null`、`failureReason = CellValueFailureReason.TypeMismatch`（型不一致時動作）に統一する。
+- 型確定または正規化に失敗した場合は `false` を返し、`value = null`（運用上の失敗値）、`failureReason = CellValueFailureReason.TypeMismatch`（型不一致時動作）に統一する。
 - `failureReason` は失敗理由を必ず返し、成功時は `CellValueFailureReason.None` とする。
 - `CellValueNeeded` は `TryGetCellValue == false` の場合に失敗時値 `string.Empty`（フォールバック空文字）を返し、同時に診断ログ必須項目を記録する。
 
