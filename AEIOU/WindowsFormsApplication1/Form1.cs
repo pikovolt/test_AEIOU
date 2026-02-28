@@ -315,6 +315,7 @@ namespace AEIOU
         GridCellStyleResolver gridCellStyleResolver;
         GridCellRenderer gridCellRenderer;
         TimingSheetModel timingSheetModel;
+        ContinuityStateService continuityStateService;
 
         // 繰り返しダイアログ
         private RepeatInputBox _repeatInputDialog;
@@ -430,6 +431,8 @@ namespace AEIOU
             gridScrollService = new GridScrollService(dataGridView1, setting);
             gridCellStyleResolver = new GridCellStyleResolver();
             gridCellRenderer = new GridCellRenderer(dataGridView1, setting, GetCellValue);
+            continuityStateService = new ContinuityStateService(setting, GetCellValue);
+            continuityStateService.Reinitialize(GetSheetColumnCount(), GetSheetRowCount());
 
             // 読み込みファイル指定がある場合 ファイル読込を行う
             if (cmds.Length > 1 && File.Exists(cmds[1]))
@@ -518,6 +521,11 @@ namespace AEIOU
             // アンドゥメニュを初期化
             gridViewManager.InitializeWork(dataGridView1, timingSheetModel);
 
+            if (continuityStateService != null)
+            {
+                continuityStateService.Reinitialize(GetSheetColumnCount(), GetSheetRowCount());
+            }
+
             // 各種変数の初期化
             selectRange = new Rect(0, 0, 1, 1);     //選択範囲
             copyRect = new Rect(-1, -1, 0, 0);      //コピー範囲
@@ -552,6 +560,12 @@ namespace AEIOU
                     {
                         SetCellValue(j, i, "");
                     }
+
+                if (continuityStateService != null)
+                {
+                    continuityStateService.Reinitialize(GetSheetColumnCount(), GetSheetRowCount());
+                }
+
                 isFirstEdit = true;
             }
             if ((target & InitializeTarget.CopyBuffer) != 0)
@@ -1241,31 +1255,11 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
-        // タイミング継続か否かの確認
+        // タイミング継続か否かの確認（事前計算済み結果の参照のみ）
         private bool checkContinuty(int X, int Y)
         {
-            // 遡って状態を確認
-            string failureReason;
-            for (int i = Y; i >= 0; i--)
-            {
-                string currentValue;
-                if (!TryGetCellValue(X, i, out currentValue, out failureReason) || currentValue == "")
-                {
-                    currentValue = string.Empty;
-                    continue;
-                }
-
-                // カラセルを見付けたら false を返す
-                if (currentValue == setting.KaraCell)
-                {
-                    return false;
-                }
-
-                // タイミングの入力を見付けたら trueを返す
-                return true;
-            }
-
-            return false;
+            return continuityStateService != null &&
+                   continuityStateService.GetContinuityFlag(X, Y);
         }
 
         //----------------------------------------------------------------------------------------
@@ -1420,6 +1414,11 @@ namespace AEIOU
                 {
                     gridViewManager.SetCellDisplayValue(col, row, normalizedValue);
                 }
+            }
+
+            if (continuityStateService != null)
+            {
+                continuityStateService.RecalculateColumn(col, GetSheetRowCount());
             }
         }
 
