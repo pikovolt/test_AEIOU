@@ -306,7 +306,8 @@ namespace AEIOU
 	        public void SetOutputFilePath(string path)
 	        {
 	            outputFilePath = path;
-	            summaryOutputFilePath = string.IsNullOrEmpty(path) ? "" : Path.Combine(Path.GetDirectoryName(path), InputLatencySummaryFileName);
+	            string outputDirectory = string.IsNullOrEmpty(path) ? "" : Path.GetDirectoryName(path);
+	            summaryOutputFilePath = string.IsNullOrEmpty(outputDirectory) ? "" : Path.Combine(outputDirectory, InputLatencySummaryFileName);
 	            hasWrittenHeader = !string.IsNullOrEmpty(path) && File.Exists(path) && (new FileInfo(path).Length > 0);
 	            hasWrittenSummaryHeader = !string.IsNullOrEmpty(summaryOutputFilePath) && File.Exists(summaryOutputFilePath) && (new FileInfo(summaryOutputFilePath).Length > 0);
 	        }
@@ -368,8 +369,24 @@ namespace AEIOU
 	                hasWrittenHeader = true;
 	            }
 
-	            string line = string.Format("{0},{1},{2},{3},{4}", sample.SampleIndex, sample.ElapsedMilliseconds, sample.StartContext, sample.EndHook, sample.RecordedAt.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+	            string line = string.Format("{0},{1},{2},{3},{4}",
+	                sample.SampleIndex,
+	                sample.ElapsedMilliseconds,
+	                EscapeCsvField(sample.StartContext),
+	                EscapeCsvField(sample.EndHook),
+	                sample.RecordedAt.ToString("yyyy-MM-dd HH:mm:ss.fff"));
 	            File.AppendAllText(outputFilePath, line + Environment.NewLine, Encoding.UTF8);
+	        }
+
+	        private string EscapeCsvField(string value)
+	        {
+	            if (value == null)
+	            {
+	                return "\"\"";
+	            }
+
+	            string escaped = value.Replace("\"", "\"\"");
+	            return string.Format("\"{0}\"", escaped);
 	        }
 
 	        private void AppendBatchSummaryIfReady()
@@ -1573,7 +1590,7 @@ namespace AEIOU
             string keyName = e == null ? "unknown" : e.KeyCode.ToString();
             int col = dataGridView1.CurrentCell == null ? -1 : dataGridView1.CurrentCell.ColumnIndex;
             int row = dataGridView1.CurrentCell == null ? -1 : dataGridView1.CurrentCell.RowIndex;
-            return string.Format("key:{0};cell:{1},{2};edit:{3}", keyName, col, row, dataGridView1.IsCurrentCellInEditMode ? 1 : 0);
+            return string.Format("key:{0};cell:{1}:{2};edit:{3}", keyName, col, row, dataGridView1.IsCurrentCellInEditMode ? 1 : 0);
         }
 
         private bool TryGetVirtualDummyValue(int col, int row, out string value)
