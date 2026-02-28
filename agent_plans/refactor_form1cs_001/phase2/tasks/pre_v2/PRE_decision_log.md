@@ -61,3 +61,20 @@
   - VM2実装時は、各PRで「関連サービス」節の語彙と実装上の責務配置が一致することを確認する。
 - ssotRefs:
   - R-P1-02
+
+### PREV2-DEC-004
+- date: 2026-02-28
+- summary: PRE_worklog の W-01〜W-03 を現行コードに合わせて再採取し、FAIL判定をPASSへ更新した。
+- reason:
+  - 旧記録は `Form1` の VirtualMode/Event配線・`TryGetCellValue` 契約・`checkContinuty` 実装の更新前状態を保持したままになっていた（更新漏れ）。
+  - あわせて R-P0-03 の評価観点を「CellPainting からの直接値取得禁止」へ明確化し、`continuityStateService` 参照方式は要件適合と定義した（定義運用の明文化）。
+- impact:
+  - PREのP0判定は現行実装と整合し、`P0完了: Yes` に更新。
+  - 実装との差分起因で発生していた監査ノイズ（旧FAIL記録の残存）を解消。
+- followup:
+  - P0関連実装に変更が入った場合は、同一PRで `PRE_worklog` の該当W項目を必ず再採取する。
+  - 「更新漏れ」と「判定定義変更」を区別して `PRE_decision_log` に必ず記録する。
+- ssotRefs:
+  - R-P0-01
+  - R-P0-02
+  - R-P0-03
