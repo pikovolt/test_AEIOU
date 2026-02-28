@@ -81,37 +81,11 @@
 補足:
 - 既存実装（`Form1`, `GridViewManager` など）が `namespace AEIOU` を使用しているため、`Form1.cs` 側では `using AEIOU.Application.Grid;` を追加して段階導入する。
 
-### B. `Form1` からの呼び出し入口（イベントハンドラ）マッピング
-- `GridInputInterpreter`（入力イベント解釈）
-  - `dataGridView1_KeyDown`
-  - `dataGridView1_KeyPress`
-  - `dataGridView1_CellDoubleClick`
-  - `dataGridView1_CellMouseUp`
-  - `pasteFromAEToolStripMenuItem_Click`（AE貼り付け）
-    - クリップボード解析・値変換（`Units Per Second`/`Time Remap` 解析、秒→フレーム変換）を担当。
-    - 接続VM2: **VM2-003**（PRE-001の抽出候補と同粒度で一致）。
-- `GridViewUpdater`（表示反映）
-  - `pasteToolStripMenuItem_Click`
-  - `insertCellToolStripMenuItem_Click`
-  - `deleteCellToolStripMenuItem_Click`
-  - `dataGridView1_ColumnHeaderMouseClick`
-  - `pasteFromAEToolStripMenuItem_Click`（AE貼り付け）
-    - グリッド反映（`ApplyCellWrites` 後の `dataGridView1.Invalidate`、FPSメニュー同期）を担当。
-    - 接続VM2: **VM2-006**（UI反映境界の整理）。
-- `GridDataSyncService`（モデル反映/Undo）
-  - `setNakanukiToolStripMenuItem_Click`
-  - `setKiribariToolStripMenuItem_Click`
-  - `cancelNakanukiToolStripMenuItem_Click`
-  - `cancelKiribariToolStripMenuItem_Click`
-  - `sequentialNumberToolStripMenuItem_Click`
-  - `repeatNumberToolStripMenuItem_Click`
-  - `replaceToolStripMenuItem_Click`
-  - `reverseToolStripMenuItem_Click`
-  - `fourArithmeticOperationToolStripMenuItem_Click`
-  - `duplicateToolStripMenuItem_Click`
-  - `pasteFromAEToolStripMenuItem_Click`（AE貼り付け）
-    - Undo境界・履歴確定（`ApplyCellWrites("AEペースト", writes)` と `flushUndoHistory` の境界管理）を担当。
-    - 接続VM2: **VM2-007**（履歴粒度・確定タイミングの分離）。
+### B. `Form1` からの呼び出し入口マッピング（正本参照）
+- イベント割当の正本は **PRE-001「Phase2イベント責務マトリクス（正本）」** を参照する。
+- 本節では差分記載を行わず、PRE-001と同一の割当を採用する。
+- `dataGridView1_CellMouseUp` / `dataGridView1_ColumnHeaderMouseClick` は **Low（対象外）** とし、PRE-001の対象外定義と矛盾しないように扱う。
+- `pasteFromAEToolStripMenuItem_Click` の接続責務（入力解釈 / 表示反映 / Undo境界）は、正本マトリクスに記載した担当サービス候補と接続VM2に従う。
 
 ### C. 既存 `TryGetCellValue` / `SetCellValue` / Undo処理との接続責務（確定）
 - 契約の正本（優先仕様）
@@ -189,6 +163,7 @@
 - 抽出設計が本ファイルに記載されている。
 - 実装時の互換性リスクが列挙されている。
 - 本ファイル内の `DONE_TEMPLATE_PRE 記入` セクションに、共通定義 `DONE_TEMPLATE_PRE.md` の必須欄がすべて記入済みである。
+- PRE-001とPRE-002でイベント割当が一致していること。
 
 補足:
 - `.csproj` への `Compile Include` 追加とビルド対象化確認は、上記「実装受け渡し最小情報」の `E. 非SDKプロジェクト前提の .csproj 更新手順（必須）` を実装フェーズ側の完了条件として扱う。
