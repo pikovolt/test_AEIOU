@@ -14,7 +14,8 @@
 - 次タスク（`CellValueNeeded`）への前提条件が明記されている。
 
 ## 依存タスク
-- なし（起点タスク）
+- PRE-003
+- PRE-004
 
 ## Done定義参照
 - 共通定義 `DONE_TEMPLATE_IMPL.md` を参照する。
