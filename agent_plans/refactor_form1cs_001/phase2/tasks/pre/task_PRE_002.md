@@ -65,6 +65,73 @@
   - ドメイン制約違反は `DomainValidationException`（業務エラーとして扱う）。
   - 永続化・整合性エラーは `DataSyncException` でラップして上位へ通知。
 
+## 実装受け渡し最小情報（Phase2 IMPL向け）
+
+### A. 3クラスの配置先と namespace（確定）
+- `GridInputInterpreter`
+  - 配置先: `AEIOU/WindowsFormsApplication1/Application/Grid/GridInputInterpreter.cs`
+  - namespace: `AEIOU.Application.Grid`
+- `GridViewUpdater`
+  - 配置先: `AEIOU/WindowsFormsApplication1/Application/Grid/GridViewUpdater.cs`
+  - namespace: `AEIOU.Application.Grid`
+- `GridDataSyncService`
+  - 配置先: `AEIOU/WindowsFormsApplication1/Application/Grid/GridDataSyncService.cs`
+  - namespace: `AEIOU.Application.Grid`
+
+補足:
+- 既存実装（`Form1`, `GridViewManager` など）が `namespace AEIOU` を使用しているため、`Form1.cs` 側では `using AEIOU.Application.Grid;` を追加して段階導入する。
+
+### B. `Form1` からの呼び出し入口（イベントハンドラ）マッピング
+- `GridInputInterpreter`（入力イベント解釈）
+  - `dataGridView1_KeyDown`
+  - `dataGridView1_KeyPress`
+  - `dataGridView1_CellDoubleClick`
+  - `dataGridView1_CellMouseUp`
+- `GridViewUpdater`（表示反映）
+  - `pasteToolStripMenuItem_Click`
+  - `insertCellToolStripMenuItem_Click`
+  - `deleteCellToolStripMenuItem_Click`
+  - `dataGridView1_ColumnHeaderMouseClick`
+- `GridDataSyncService`（モデル反映/Undo）
+  - `setNakanukiToolStripMenuItem_Click`
+  - `setKiribariToolStripMenuItem_Click`
+  - `cancelNakanukiToolStripMenuItem_Click`
+  - `cancelKiribariToolStripMenuItem_Click`
+  - `sequentialNumberToolStripMenuItem_Click`
+  - `repeatNumberToolStripMenuItem_Click`
+  - `replaceToolStripMenuItem_Click`
+  - `reverseToolStripMenuItem_Click`
+  - `fourArithmeticOperationToolStripMenuItem_Click`
+  - `duplicateToolStripMenuItem_Click`
+
+### C. 既存 `TryGetCellValue` / `SetCellValue` / Undo処理との接続責務（確定）
+- `TryGetCellValue`（`Form1` の既存ヘルパ）
+  - 直接利用者: `GridInputInterpreter`
+  - 接続方針: `IGridCellReader`（`bool TryGetCellValue(int col, int row, out string value)`）を介して注入。初期実装は `Form1` アダプタで既存メソッドを委譲する。
+- `SetCellValue`（`Form1` の既存ヘルパ）
+  - 直接利用者: `GridViewUpdater`
+  - 接続方針: `IGridCellWriter`（`void SetCellValue(int col, int row, string value)`）を介して注入。`GridViewUpdater` は値比較（`SetCellValueIfChanged` 相当）まで担当する。
+- Undo関連（`gridViewManager.Undo/Redo`, `flushUndoHistory`, `OperationGroup`）
+  - 直接利用者: `GridDataSyncService`
+  - 接続方針: `IUndoGateway` を新設し、`BeginGroup/EndGroup/Undo/Redo/Flush` を集約。`Form1` はUIイベントからUndoコマンドを受けた時のみゲートウェイを呼び、実際の記録境界の決定は `GridDataSyncService.Commit` 側に寄せる。
+
+### D. 例外型の定義方針（未定義禁止のため確定）
+- `DomainValidationException`
+  - **新規作成する**。
+  - 配置先: `AEIOU/WindowsFormsApplication1/Application/Grid/Exceptions/DomainValidationException.cs`
+  - namespace: `AEIOU.Application.Grid.Exceptions`
+  - 継承: `Exception`
+  - 用途: 入力値・業務制約違反（ユーザー修正可能）を表現。
+- `DataSyncException`
+  - **新規作成する**。
+  - 配置先: `AEIOU/WindowsFormsApplication1/Application/Grid/Exceptions/DataSyncException.cs`
+  - namespace: `AEIOU.Application.Grid.Exceptions`
+  - 継承: `Exception`
+  - 用途: モデル反映失敗、Undo記録失敗、整合性破綻などのシステム系異常をラップ。
+
+実装メモ:
+- 既存の `InvalidOperationException` / `ArgumentOutOfRangeException` はUI層（`GridInputInterpreter`/`GridViewUpdater`）のガード用途で継続利用し、上記2例外は `GridDataSyncService` の業務境界でのみ送出する。
+
 ## 依存オブジェクト一覧と注入方向
 - `DataGridView`（UIコンポーネント）
   - 注入方向: `Form1` → `GridViewUpdater`（コンストラクタ注入）
