@@ -125,6 +125,26 @@ namespace AEIOU
             return _model.GetCell(col, row);
         }
 
+        public void SyncGridShape(int columnCount, int rowCount)
+        {
+            if (_view == null)
+            {
+                return;
+            }
+
+            _view.RowCount = rowCount;
+        }
+
+        public bool TryHandleCellValueNeeded(int col, int row, out string value)
+        {
+            return TryGetCellValue(col, row, out value);
+        }
+
+        public void PushCellValue(int col, int row, object rawValue)
+        {
+            SetCellValue(col, row, rawValue == null ? string.Empty : rawValue.ToString());
+        }
+
         public bool TryGetCellValue(int col, int row, out string value, out string failureReason)
         {
             if (_model == null)

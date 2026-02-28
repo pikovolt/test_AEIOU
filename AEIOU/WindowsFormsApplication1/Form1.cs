@@ -314,6 +314,7 @@ namespace AEIOU
         GridScrollService gridScrollService;
         GridCellStyleResolver gridCellStyleResolver;
         GridCellRenderer gridCellRenderer;
+        GridInputInterpreter gridInputInterpreter;
         TimingSheetModel timingSheetModel;
         ContinuityStateService continuityStateService;
 
@@ -325,6 +326,7 @@ namespace AEIOU
         public Form1()
         {
             InitializeComponent();
+            gridViewManager.View = dataGridView1;
 
             // 自分のウィンドウハンドルを取得しておく
             this.owner = Control.FromHandle(this.Handle);
@@ -431,6 +433,7 @@ namespace AEIOU
             gridScrollService = new GridScrollService(dataGridView1, setting);
             gridCellStyleResolver = new GridCellStyleResolver();
             gridCellRenderer = new GridCellRenderer(dataGridView1, setting, GetCellValue);
+            gridInputInterpreter = new GridInputInterpreter(setting.keys);
             continuityStateService = new ContinuityStateService(setting, GetCellValue);
             continuityStateService.Reinitialize(GetSheetColumnCount(), GetSheetRowCount());
 
@@ -630,7 +633,7 @@ namespace AEIOU
             }
 
             // 初期化 (行の生成 : 中身は空)
-            dataGridView1.RowCount = rowCount;
+            gridViewManager.SyncGridShape(columnCount, rowCount);
             for (int i = 0; i < rowCount; i++)
                 for (int j = 0; j < columnCount; j++)
                     SetCellValue(j, i, "");
@@ -1267,14 +1270,8 @@ namespace AEIOU
         private void dataGridView1_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
         {
             // (仮)フレーム数の表示 [ここから]------------------------------------------------------------
-            if (e.ColumnIndex == -1)
+            if (gridCellRenderer.TryPaintRowHeader(e, drawFrameNumber))
             {
-                if (e.RowIndex < 0) return; // フレーム数表示列の最上段の場合には、描画処理を一切行わない
-
-                //フレーム数の描画
-                // ※フレーム数を表示するセルに対応するセルが存在しない為、TimingCellの描画はできない
-                // ※また、setting情報を丸ごとTimingCellの描画に投げるのも微妙なのでとりあえずここで描画
-                drawFrameNumber(e);
                 return;
             }
             // (仮)フレーム数の表示 [ここまで]------------------------------------------------------------
@@ -1293,8 +1290,7 @@ namespace AEIOU
                 mouseDownPoint);
 
             //背景色を設定
-            e.CellStyle.BackColor = bgColor;
-            e.CellStyle.SelectionBackColor = bgColor;
+            gridCellRenderer.ApplyBackColor(e, bgColor);
 
             //値の取得範囲を制限
             //※ヘッダー部で値取得すると、中身がnullの為に例外が発生する
@@ -1324,7 +1320,7 @@ namespace AEIOU
             }
 
             string value;
-            e.Value = TryGetCellValue(e.ColumnIndex, e.RowIndex, out value)
+            e.Value = gridViewManager.TryHandleCellValueNeeded(e.ColumnIndex, e.RowIndex, out value)
                 ? value ?? string.Empty
                 : string.Empty;
         }
@@ -1336,7 +1332,12 @@ namespace AEIOU
                 return;
             }
 
-            SetCellValue(e.ColumnIndex, e.RowIndex, e.Value == null ? string.Empty : e.Value.ToString());
+            gridViewManager.PushCellValue(e.ColumnIndex, e.RowIndex, e.Value);
+
+            if (continuityStateService != null)
+            {
+                continuityStateService.RecalculateColumn(e.ColumnIndex, GetSheetRowCount());
+            }
         }
 
         //----------------------------------------------------------------------------------------
@@ -1872,15 +1873,12 @@ namespace AEIOU
         // KeyDownイベントハンドラ
         private void dataGridView1_KeyDown(object sender, KeyEventArgs e)
         {
-            int keyValue = setting.keys.convKey(e.KeyValue, e.Alt, e.Control, e.Shift);
-            Keys convertedKeyData = (Keys)keyValue;
-            if (tryExecuteShortcut(contextMenuStrip1.Items, convertedKeyData) ||
-                tryExecuteShortcut(contextMenuStrip1.Items, e.KeyData))
+            if (gridInputInterpreter.TryHandleShortcut(e, contextMenuStrip1.Items, tryExecuteShortcut))
             {
-                e.Handled = true;
-                e.SuppressKeyPress = true;
                 return;
             }
+
+            int keyValue = gridInputInterpreter.ConvertKeyValue(e);
 
             bool isCellEdit = false;
             switch (keyValue & 0x0ff)

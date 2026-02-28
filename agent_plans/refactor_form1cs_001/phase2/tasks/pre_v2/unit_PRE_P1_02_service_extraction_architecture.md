@@ -11,9 +11,9 @@
 
 | サービス名 | 方針 | 根拠（現行実装） | 担当責務 |
 | --- | --- | --- | --- |
-| `GridInputInterpreter` | **新規導入** | `Form1` の `dataGridView1_KeyDown` / `dataGridView1_KeyPress` が入力解釈と操作実行を同時に担っているため、入力解釈を独立させる。 | キー入力・編集入力の解釈、入力コマンド化、入力由来の境界判定。 |
-| `GridViewUpdater` | **既存 `GridCellRenderer` 拡張で導入** | `GridCellRenderer` がセル描画状態適用を保持しているため、表示更新の集約先として拡張する。 | 描画状態適用、`Invalidate` 境界制御、選択表示・再描画更新。 |
-| `GridDataSyncService` | **既存 `GridViewManager` 拡張で導入** | `GridViewManager` が `RowCount` / `ColumnCount` / モデル値アクセスを管理しているため、同期責務を一元化しやすい。 | 行列件数同期、`CellValueNeeded/CellValuePushed` 連携、モデル-表示の更新同期。 |
+| `GridInputInterpreter` | **新規導入（確定）** | `Form1` の `dataGridView1_KeyDown` 先頭で `setting.keys.convKey` とショートカット判定を直接実施していた処理を、`GridInputInterpreter.ConvertKeyValue` / `TryHandleShortcut` へ移譲済み。 | キー入力・編集入力の解釈、入力コマンド化、入力由来の境界判定。 |
+| `GridViewUpdater` | **既存 `GridCellRenderer` 拡張で代替（確定）** | `GridCellRenderer` に `TryPaintRowHeader` / `ApplyBackColor` / `Invalidate` を追加し、`dataGridView1_CellPainting` の表示更新境界を委譲済み。 | 描画状態適用、`Invalidate` 境界制御、選択表示・再描画更新。 |
+| `GridDataSyncService` | **既存 `GridViewManager` 拡張で代替（確定）** | `GridViewManager` に `SyncGridShape` / `TryHandleCellValueNeeded` / `PushCellValue` を追加し、`CellValueNeeded` / `CellValuePushed` と行数同期の委譲先として利用開始。 | 行列件数同期、`CellValueNeeded/CellValuePushed` 連携、モデル-表示の更新同期。 |
 
 ## `AEIOU/WindowsFormsApplication1` 責務分離マッピング
 

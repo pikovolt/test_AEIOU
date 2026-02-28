@@ -78,17 +78,22 @@
   - 今後イベント割当が更新される場合は、本正本（`event_mapping_ssot.md`）を先に更新し、参照ドキュメントとの差分がないことを同時確認する。
 
 ### W-05: R-P1-02 抽出設計整合
-- status: BLOCKED
+- status: PASS
 - evidence:
-  - ファイル証跡: 要件で指定された `GridInputInterpreter` / `GridViewUpdater` / `GridDataSyncService` の実体ファイルが存在しない（`rg --files | rg "GridInputInterpreter|GridViewUpdater|GridDataSyncService"` 0件）。
-  - ログ証跡: `rg -n "GridInputInterpreter|GridViewUpdater|GridDataSyncService" AEIOU/WindowsFormsApplication1 agent_plans/refactor_form1cs_001/phase2 -S` -> 要件文以外の実装参照なし。
+  - ファイル証跡:
+    - `AEIOU/WindowsFormsApplication1/GridInputInterpreter.cs` を新規追加し、`ConvertKeyValue` / `TryHandleShortcut` で入力解釈責務を集約。
+    - `AEIOU/WindowsFormsApplication1/GridCellRenderer.cs` に `TryPaintRowHeader` / `ApplyBackColor` / `Invalidate` を追加し、`GridViewUpdater` 責務を既存クラス拡張で吸収。
+    - `AEIOU/WindowsFormsApplication1/GridViewManager.cs` に `SyncGridShape` / `TryHandleCellValueNeeded` / `PushCellValue` を追加し、`GridDataSyncService` 責務を既存クラス拡張で吸収。
+    - `AEIOU/WindowsFormsApplication1/Form1.cs` の `dataGridView1_KeyDown` / `dataGridView1_CellPainting` / `dataGridView1_CellValueNeeded` / `dataGridView1_CellValuePushed` が、解釈・表示更新・同期を各サービスへ委譲する形に更新。
+  - ログ証跡:
+    1) `rg --files AEIOU/WindowsFormsApplication1 | rg "GridInputInterpreter|GridCellRenderer|GridViewManager"`
+    2) `rg -n "TryHandleShortcut|ConvertKeyValue|TryPaintRowHeader|ApplyBackColor|TryHandleCellValueNeeded|PushCellValue|SyncGridShape" AEIOU/WindowsFormsApplication1/Form1.cs AEIOU/WindowsFormsApplication1/GridInputInterpreter.cs AEIOU/WindowsFormsApplication1/GridCellRenderer.cs AEIOU/WindowsFormsApplication1/GridViewManager.cs`
   - 再現手順:
-    1) `rg --files | rg "GridInputInterpreter|GridViewUpdater|GridDataSyncService"`
-    2) 実体未作成を確認。
-    3) 責務重複有無の比較母集団が不足し、判定不能とする。
+    1) 1) の `rg --files` で新規/拡張対象クラス実体を確認する。
+    2) 2) の `rg -n` で `Form1` の対象イベントハンドラが該当サービス呼び出しへ置換されたことを確認する。
+    3) `入力解釈=GridInputInterpreter` / `表示更新=GridCellRenderer拡張` / `同期=GridViewManager拡張` の責務分離が重複なく成立していると判定する。
 - note:
-  - BLOCKED理由（R-P1-02）: 対象サービスが未実装で責務比較ができない。
-  - 解除条件（R-P1-02）: 3サービスのインターフェース/クラス定義（責務境界コメント付き）を追加し、責務マトリクスで重複なしを確認する。
+  - 再判定（R-P1-02）: BLOCKED解除。要求3責務は「新規1 + 既存拡張2」で実装し、責務重複なしを確認した。
 
 ### W-06: R-P1-03 回帰観点固定
 - status: FAIL
@@ -125,6 +130,6 @@
 - PRE完了（R-P0+R-P1全PASS）: No
 - 残課題（R-P2含む）:
   - R-P1-01: イベント割当マップ正本の作成（対象/対象外理由付き）。
-  - R-P1-02: 3サービス実体の作成と責務マトリクス化。
+  - R-P1-02: 完了（新規1 + 既存拡張2 で責務分離を確定）。
   - R-P1-03: smoke checklist 実施結果の記録。
   - R-P2: ログフォーマット・チケット命名・補助テンプレート運用の統一。
