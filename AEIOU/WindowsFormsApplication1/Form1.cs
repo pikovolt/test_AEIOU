@@ -1319,6 +1319,30 @@ namespace AEIOU
 
         }
 
+        private void dataGridView1_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
+        {
+            if (!IsValidCellIndex(e.ColumnIndex, e.RowIndex))
+            {
+                e.Value = string.Empty;
+                return;
+            }
+
+            string value;
+            e.Value = TryGetCellValue(e.ColumnIndex, e.RowIndex, out value)
+                ? value ?? string.Empty
+                : string.Empty;
+        }
+
+        private void dataGridView1_CellValuePushed(object sender, DataGridViewCellValueEventArgs e)
+        {
+            if (!IsValidCellIndex(e.ColumnIndex, e.RowIndex))
+            {
+                return;
+            }
+
+            SetCellValue(e.ColumnIndex, e.RowIndex, e.Value == null ? string.Empty : e.Value.ToString());
+        }
+
         //----------------------------------------------------------------------------------------
         // 選択範囲の取得
         private Rect getSelectedRect()
@@ -1328,12 +1352,13 @@ namespace AEIOU
 
         private string GetCellValue(int col, int row)
         {
-            if (IsGridViewManagerBoundToCurrentModel())
+            string value;
+            if (!TryGetCellValue(col, row, out value))
             {
-                return gridViewManager.GetCellValue(col, row);
+                return string.Empty;
             }
 
-            return timingSheetModel.GetCell(col, row);
+            return value ?? string.Empty;
         }
 
         private bool TryGetCellValue(int col, int row, out string value)
@@ -1352,8 +1377,21 @@ namespace AEIOU
             return !TryGetCellValue(col, row, out value) || value == "";
         }
 
+        private bool IsValidCellIndex(int col, int row)
+        {
+            return col >= 0 &&
+                   row >= 0 &&
+                   col < GetSheetColumnCount() &&
+                   row < GetSheetRowCount();
+        }
+
         private void SetCellValue(int col, int row, string value)
         {
+            if (!IsValidCellIndex(col, row))
+            {
+                return;
+            }
+
             if (IsGridViewManagerBoundToCurrentModel())
             {
                 gridViewManager.SetCellValue(col, row, value);
