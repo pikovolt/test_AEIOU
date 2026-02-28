@@ -11,11 +11,11 @@
 ## 完了条件
 - 抽出設計が本ファイルに記載されている。
 - 実装時の互換性リスクが列挙されている。
-- 共通定義 `DONE_TEMPLATE_VM2.md` の必須欄がすべて記入済みである。
+- 共通定義 `DONE_TEMPLATE_PRE.md` の必須欄がすべて記入済みである。
 
 ## Done定義参照
-- 共通定義 `DONE_TEMPLATE_VM2.md` を参照する。
-- 配置場所: `agent_plans/refactor_form1cs_001/phase2/definitions/DONE_TEMPLATE_VM2.md`
+- 共通定義 `DONE_TEMPLATE_PRE.md` を参照する。
+- 配置場所: `agent_plans/refactor_form1cs_001/phase2/definitions/DONE_TEMPLATE_PRE.md`
 - 完了報告は、上記定義の必須欄をすべて埋めること。
 
 ## PRルール
