@@ -43,6 +43,7 @@
   - 旧記録時点では `failureReason` 契約未導入だったが、現行コードでは導入済み。
 
 ### W-03: R-P0-03 責務境界固定
+- 関連ユニット: `unit_PRE_P0_03_boundary_separation.md`（実施記録は本セクションを正本とする）
 - status: PASS
 - evidence:
   - ファイル証跡:

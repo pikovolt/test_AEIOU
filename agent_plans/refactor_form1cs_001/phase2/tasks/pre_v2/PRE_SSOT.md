@@ -99,6 +99,7 @@
 - R-P2は改善対象として別管理し、ブロッカーにはしない。
 
 ## 5. 変更管理ルール
+- `unit_PRE_*.md` は要件・完了判定のみを記載し、実施ログ（PASS/FAIL/BLOCKED・変更記録）は `PRE_worklog.md` に記録する。
 - 本SSOTの更新は、同ディレクトリの `PRE_decision_log.md` に記録する。
 - 実行記録は `PRE_worklog.md` に記録する。
 
