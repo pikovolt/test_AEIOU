@@ -87,11 +87,17 @@
   - `dataGridView1_KeyPress`
   - `dataGridView1_CellDoubleClick`
   - `dataGridView1_CellMouseUp`
+  - `pasteFromAEToolStripMenuItem_Click`（AE貼り付け）
+    - クリップボード解析・値変換（`Units Per Second`/`Time Remap` 解析、秒→フレーム変換）を担当。
+    - 接続VM2: **VM2-003**（PRE-001の抽出候補と同粒度で一致）。
 - `GridViewUpdater`（表示反映）
   - `pasteToolStripMenuItem_Click`
   - `insertCellToolStripMenuItem_Click`
   - `deleteCellToolStripMenuItem_Click`
   - `dataGridView1_ColumnHeaderMouseClick`
+  - `pasteFromAEToolStripMenuItem_Click`（AE貼り付け）
+    - グリッド反映（`ApplyCellWrites` 後の `dataGridView1.Invalidate`、FPSメニュー同期）を担当。
+    - 接続VM2: **VM2-006**（UI反映境界の整理）。
 - `GridDataSyncService`（モデル反映/Undo）
   - `setNakanukiToolStripMenuItem_Click`
   - `setKiribariToolStripMenuItem_Click`
@@ -103,6 +109,9 @@
   - `reverseToolStripMenuItem_Click`
   - `fourArithmeticOperationToolStripMenuItem_Click`
   - `duplicateToolStripMenuItem_Click`
+  - `pasteFromAEToolStripMenuItem_Click`（AE貼り付け）
+    - Undo境界・履歴確定（`ApplyCellWrites("AEペースト", writes)` と `flushUndoHistory` の境界管理）を担当。
+    - 接続VM2: **VM2-007**（履歴粒度・確定タイミングの分離）。
 
 ### C. 既存 `TryGetCellValue` / `SetCellValue` / Undo処理との接続責務（確定）
 - 契約の正本（優先仕様）
