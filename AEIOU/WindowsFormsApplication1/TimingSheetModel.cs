@@ -4,6 +4,9 @@ namespace AEIOU
 {
     public class TimingSheetModel
     {
+        public const string TryGetCellFailureReasonNone = "";
+        public const string TryGetCellFailureReasonOutOfRange = "OutOfRange";
+
         private readonly string[,] _cells;
         private readonly string[] _headers;
 
@@ -41,16 +44,24 @@ namespace AEIOU
             return _cells[col, row];
         }
 
-        public bool TryGetCell(int col, int row, out string value)
+        public bool TryGetCell(int col, int row, out string value, out string failureReason)
         {
             if (!IsInRange(col, row))
             {
-                value = "";
+                value = string.Empty;
+                failureReason = TryGetCellFailureReasonOutOfRange;
                 return false;
             }
 
             value = _cells[col, row];
+            failureReason = TryGetCellFailureReasonNone;
             return true;
+        }
+
+        public bool TryGetCell(int col, int row, out string value)
+        {
+            string failureReason;
+            return TryGetCell(col, row, out value, out failureReason);
         }
 
         public void SetCell(int col, int row, string value)

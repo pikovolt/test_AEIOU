@@ -125,9 +125,22 @@ namespace AEIOU
             return _model.GetCell(col, row);
         }
 
+        public bool TryGetCellValue(int col, int row, out string value, out string failureReason)
+        {
+            if (_model == null)
+            {
+                value = string.Empty;
+                failureReason = "ModelNotInitialized";
+                return false;
+            }
+
+            return _model.TryGetCell(col, row, out value, out failureReason);
+        }
+
         public bool TryGetCellValue(int col, int row, out string value)
         {
-            return _model.TryGetCell(col, row, out value);
+            string failureReason;
+            return TryGetCellValue(col, row, out value, out failureReason);
         }
 
         public void SetCellValue(int col, int row, string value)

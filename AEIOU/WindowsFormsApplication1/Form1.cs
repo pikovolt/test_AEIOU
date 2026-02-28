@@ -1245,11 +1245,13 @@ namespace AEIOU
         private bool checkContinuty(int X, int Y)
         {
             // 遡って状態を確認
+            string failureReason;
             for (int i = Y; i >= 0; i--)
             {
                 string currentValue;
-                if (!TryGetCellValue(X, i, out currentValue) || currentValue == "")
+                if (!TryGetCellValue(X, i, out currentValue, out failureReason) || currentValue == "")
                 {
+                    currentValue = string.Empty;
                     continue;
                 }
 
@@ -1336,20 +1338,34 @@ namespace AEIOU
             return timingSheetModel.GetCell(col, row);
         }
 
-        private bool TryGetCellValue(int col, int row, out string value)
+        private bool TryGetCellValue(int col, int row, out string value, out string failureReason)
         {
             if (IsGridViewManagerBoundToCurrentModel())
             {
-                return gridViewManager.TryGetCellValue(col, row, out value);
+                return gridViewManager.TryGetCellValue(col, row, out value, out failureReason);
             }
 
-            return timingSheetModel.TryGetCell(col, row, out value);
+            if (timingSheetModel == null)
+            {
+                value = string.Empty;
+                failureReason = "ModelNotInitialized";
+                return false;
+            }
+
+            return timingSheetModel.TryGetCell(col, row, out value, out failureReason);
+        }
+
+        private bool TryGetCellValue(int col, int row, out string value)
+        {
+            string failureReason;
+            return TryGetCellValue(col, row, out value, out failureReason);
         }
 
         private bool IsCellEmpty(int col, int row)
         {
             string value;
-            return !TryGetCellValue(col, row, out value) || value == "";
+            string failureReason;
+            return !TryGetCellValue(col, row, out value, out failureReason) || value == "";
         }
 
         private void SetCellValue(int col, int row, string value)
@@ -2973,8 +2989,11 @@ namespace AEIOU
 
                 // タイミング情報をセルに書き込む
                 // ※書き込むセルが空欄の場合は、使用カウントを＋１
-                if (!TryGetCellValue(col, frm, out string currentValue))
+                string currentValue;
+                string failureReason;
+                if (!TryGetCellValue(col, frm, out currentValue, out failureReason))
                 {
+                    currentValue = string.Empty;
                     continue;
                 }
 
@@ -3663,12 +3682,14 @@ namespace AEIOU
                 Cnt = selectRange.Height;
 
                 List<CellWriteEntry> writes = new List<CellWriteEntry>();
+                string failureReason;
                 // 置き換え
                 for (int i = 0; i < Cnt; i++)
                 {
                     string currentValue;
-                    if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
+                    if (!TryGetCellValue(Col, Row + i, out currentValue, out failureReason) || currentValue == "")
                     {
+                        currentValue = string.Empty;
                         continue;
                     }
 
@@ -3691,6 +3712,7 @@ namespace AEIOU
         {
             //反転
             int i, c, l, Col, Row, Cnt;
+            string failureReason;
             Col = selectRange.Left;
             Row = selectRange.Top;
             Cnt = selectRange.Height;
@@ -3701,8 +3723,9 @@ namespace AEIOU
             for(i = 0; i < Cnt; i++)
             {
                 string val;
-                if (!TryGetCellValue(Col, Row + i, out val))
+                if (!TryGetCellValue(Col, Row + i, out val, out failureReason))
                 {
+                    val = string.Empty;
                     continue;
                 }
 
@@ -3715,8 +3738,9 @@ namespace AEIOU
             for (i = 0; i < Cnt; i++)
             {
                 string currentValue;
-                if (!TryGetCellValue(Col, Row + i, out currentValue) || currentValue == "")
+                if (!TryGetCellValue(Col, Row + i, out currentValue, out failureReason) || currentValue == "")
                 {
+                    currentValue = string.Empty;
                     continue;
                 }
 
@@ -3782,15 +3806,17 @@ namespace AEIOU
 
                 Rect r = selectRange;
                 List<CellWriteEntry> arithmeticWrites = new List<CellWriteEntry>();
+                string failureReason;
                 for (int c = r.Left; c <= r.Right; c++)
                 {
                     for (int i = r.Top; i <= r.Bottom; i++)
                     {
                         string currentValue;
-                        if (!TryGetCellValue(c, i, out currentValue) ||
+                        if (!TryGetCellValue(c, i, out currentValue, out failureReason) ||
                             currentValue == "" ||
                             currentValue == setting.KaraCell)
                         {
+                            currentValue = string.Empty;
                             continue;
                         }
 
