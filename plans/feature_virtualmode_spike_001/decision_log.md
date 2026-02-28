@@ -22,3 +22,15 @@
 - 理由: 2026-02-28の実施内容には重複抑制の責務再整理（D-002）も含まれるため。
 - 影響範囲: `worklog_20260228_001.md` の時系列ログ1件。
 - 見直し条件: 参照ID運用を変更する場合は、過去ログを同一規約へ正規化する。
+
+### D-004: 計測終了フックは `CellPainting` 側 + `Application.DoEvents` を採用
+- 判断: 入力遅延の1サンプル単位を `KeyDown` 開始〜 `CellPainting` 到達後（`Application.DoEvents` 実行後）で計測する。
+- 理由: Step 1の要件である「入力イベント開始〜画面更新完了寄りの地点」までを、既存ロジックへの侵襲を抑えて取得するため。
+- 影響範囲: `Form1.cs` の `dataGridView1_KeyDown`, `dataGridView1_CellPainting`, `InputLatencyProbe`。
+- 見直し条件: 手動計測でサンプル欠損・過剰が判明した場合、終了フック候補（`CellValueNeeded` 等）を再評価する。
+
+### D-005: VirtualMode疎通はダミー2次元配列を中核に採用
+- 判断: スパイク段階では `string[,]` を VirtualMode の唯一の読み書き源として扱い、`CellValueNeeded` / `CellValuePushed` で直接参照・更新する。
+- 理由: SSOT Step 2-3の目的（接続性確認）を最小実装で満たし、実モデル結合の不確実性を切り離すため。
+- 影響範囲: `Form1.cs` の VirtualMode設定、ダミーデータ準備処理、値取得/更新イベント。
+- 見直し条件: Phase移行時に `TimingSheetModel` 直結へ進む場合、ダミーデータ層の撤去または `#if DEBUG` 化を判断する。
