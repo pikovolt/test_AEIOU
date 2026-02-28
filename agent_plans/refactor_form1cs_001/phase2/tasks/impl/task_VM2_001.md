@@ -20,6 +20,11 @@
 参照（着手時点で必須ではない）:
 - `U-PRE004-CONTRACT` / `U-PRE004-TRYGET` / `U-PRE004-BOUNDARY`（`task_PRE_004.md`）
 
+## `task_PRE_003.md` からの引き継ぎ受領要件
+- PRE側のチェック結果を受領する際、各チェックIDに対応する**ログ証跡ID**（`evidencePath` または同等の追跡ID）を必須項目として転記する。
+- MUST `PASS` 判定については、目視/操作記録だけでなく、`logSource` / `logTimeRange` / `query/keyword` と紐付くログ証跡IDを受領していることを着手前に確認する。
+- 引き継ぎ記録にログ証跡IDが欠落している項目は「受領不備」として扱い、IMPL着手判定を保留する。
+
 ## Done定義参照
 - 共通定義 `DONE_TEMPLATE_IMPL.md` を参照する。
 - 配置場所: `agent_plans/refactor_form1cs_001/phase2/definitions/DONE_TEMPLATE_IMPL.md`
