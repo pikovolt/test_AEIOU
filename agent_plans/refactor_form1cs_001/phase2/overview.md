@@ -40,9 +40,13 @@
 - IMPLタスクは `task_VM2_xxx.md`、PREタスクは `task_PRE_xxx.md` を使用する。
 
 ## 依存ルール
-- PREタスクはPREレーン内でのみ依存を張る。
-- IMPLタスクはIMPLレーン内でのみ依存を張る。
-- レーン間依存は **PRE→IMPL の一方向依存のみ許可** する。
+### 1) タスク依存
+- PREタスクのタスク依存は PRE のみ（`PRE-xxx` 同士）。
+- IMPLタスクのタスク依存は IMPL のみ（`VM2-xxx` 同士）。
+
+### 2) 着手ゲート依存
+- レーン間の依存は、**着手ゲート依存としての PRE→IMPL（`U-PRExxx` → IMPL着手）** のみ許可する。
+- VM2ごとの必須 `U-PRExxx` は [`pre_impl_traceability.md`](./pre_impl_traceability.md) を唯一の判定ソースとする。
 - **VM2番号はIMPL専用、PRE番号はPRE専用** とし、同一番号帯の二重利用を禁止する。
 
 ## 完了条件
