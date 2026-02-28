@@ -34,6 +34,7 @@
 ## 移行中ルール（pre/impl 命名規約）
 - 旧 `task_VM2_001.md` / `task_VM2_002.md` は、PREレーンへ移動し `task_PRE_003.md` / `task_PRE_004.md` として扱う。
 - `tasks/impl/task_VM2_001.md` は新規作成した IMPL 起点タスクとして運用する。
+- `tasks/impl/task_VM2_002.md` は IMPL レーンの実装タスクとして維持する（削除しない）。
 - **移行期間中の暫定ルール: PREレーンでは VM2 番号を新規発行しない。**
 - IMPLタスクは `task_VM2_xxx.md`、PREタスクは `task_PRE_xxx.md` を使用する。
 
