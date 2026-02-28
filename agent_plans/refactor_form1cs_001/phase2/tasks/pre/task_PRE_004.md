@@ -8,6 +8,15 @@
 - 行列インデックス境界の防御観点を定義する。
 - 既存表示ロジックとの差分確認観点を列挙する。
 
+## 着手判定ユニット（独立運用）
+- `U-PRE004-CONTRACT`: `値返却契約（CellValueNeeded）` の確定。
+- `U-PRE004-TRYGET`: `TryGetCellValue` 戻り契約（インターフェース） の確定。
+- `U-PRE004-BOUNDARY`: `責務境界（再掲）` の確定。
+
+運用ルール:
+- 3ユニットはレビュー順序を固定しない。VM2要件に合わせて必要ユニットから先に確定可能。
+- IMPL側は PRE-004 全体完了ではなく、必要ユニットの消化を着手条件とする。
+
 ## 値返却契約（CellValueNeeded）
 `CellValueNeeded` の値返却は、以下の契約に従って実装・レビューする。
 
@@ -85,8 +94,10 @@ public enum CellValueFailureReason
 - IMPLタスクの入出力前提に引き継げる。
 - 共通定義 `DONE_TEMPLATE_PRE.md` の必須欄がすべて記入済みである。
 
-## 依存タスク
-- PRE-003
+## 参照入力（依存最小化）
+- `task_PRE_003.md` の `実装ゲートチェックリスト`（必要時のみ参照）
+
+> PRE-003 の完了待ちは不要。`CellValueNeeded` 設計に必要な範囲のみ参照して確定する。
 
 ## Done定義参照
 - 共通定義 `DONE_TEMPLATE_PRE.md` を参照する。
