@@ -116,6 +116,7 @@
 ### C. 既存 `TryGetCellValue` / `SetCellValue` / Undo処理との接続責務（確定）
 - 契約の正本（優先仕様）
   - `TryGetCellValue` 契約は **`task_PRE_004.md` の「TryGetCellValue 戻り契約（インターフェース・正本）」を正** とする。
+  - `ICellValueResolver` のアダプタ命名・引数変換・レビュー観点は **`task_PRE_004.md` の「ICellValueResolver Migration Convention (Required)」** を参照し、**実装時はこの規約に従う**。
   - 本セクションは接続責務の整理を目的とし、型/シグネチャ/失敗契約の定義は PRE-004 正本へ従属する。
 - `TryGetCellValue`（`Form1` の既存ヘルパ）
   - 直接利用者: `GridInputInterpreter`
