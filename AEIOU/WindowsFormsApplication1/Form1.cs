@@ -287,6 +287,19 @@ namespace AEIOU
 	        private Stopwatch stopwatch = new Stopwatch();
 	        private List<long> samples = new List<long>();
 	        private bool hasPendingSample;
+	        private string outputFilePath;
+	        private bool hasWrittenHeader;
+
+	        public void SetOutputFilePath(string path)
+	        {
+	            outputFilePath = path;
+	            hasWrittenHeader = !string.IsNullOrEmpty(path) && File.Exists(path) && (new FileInfo(path).Length > 0);
+	        }
+
+	        public string OutputFilePath
+	        {
+	            get { return outputFilePath; }
+	        }
 
 	        public void Begin()
 	        {
@@ -308,7 +321,25 @@ namespace AEIOU
 	            elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
 	            samples.Add(elapsedMilliseconds);
 	            Debug.WriteLine(string.Format("[VirtualModeSpike] InputLatency {0}ms ({1})", elapsedMilliseconds, hookName));
+	            AppendSampleToOutput(elapsedMilliseconds, hookName);
 	            return true;
+	        }
+
+	        private void AppendSampleToOutput(long elapsedMilliseconds, string hookName)
+	        {
+	            if (string.IsNullOrEmpty(outputFilePath))
+	            {
+	                return;
+	            }
+
+	            if (!hasWrittenHeader)
+	            {
+	                File.AppendAllText(outputFilePath, "sample_index,elapsed_ms,hook,recorded_at" + Environment.NewLine, Encoding.UTF8);
+	                hasWrittenHeader = true;
+	            }
+
+	            string line = string.Format("{0},{1},{2},{3}", samples.Count, elapsedMilliseconds, hookName, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+	            File.AppendAllText(outputFilePath, line + Environment.NewLine, Encoding.UTF8);
 	        }
 
 	        public int SampleCount
@@ -361,6 +392,7 @@ namespace AEIOU
 
         // VirtualMode スパイク用（後で撤去しやすいように集約）
         private const bool EnableVirtualModeSpike = true;
+        private const string InputLatencySampleFileName = "virtualmode_input_latency_samples.csv";
         private string[,] virtualModeDummyCells;
         private InputLatencyProbe inputLatencyProbe = new InputLatencyProbe();
 
@@ -1381,6 +1413,10 @@ namespace AEIOU
             {
                 return;
             }
+
+            string sampleOutputPath = Path.Combine(setting.CurrentDir, InputLatencySampleFileName);
+            inputLatencyProbe.SetOutputFilePath(sampleOutputPath);
+            Debug.WriteLine(string.Format("[VirtualModeSpike] InputLatency sample output: {0}", sampleOutputPath));
 
             dataGridView1.VirtualMode = true;
             dataGridView1.CellValueNeeded += dataGridView1_CellValueNeeded;
