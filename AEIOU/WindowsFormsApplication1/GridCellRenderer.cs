@@ -40,5 +40,35 @@ namespace AEIOU
             e.Paint(e.ClipBounds, e.PaintParts);
             e.Handled = true;
         }
+
+        public bool TryPaintRowHeader(DataGridViewCellPaintingEventArgs e, Action<DataGridViewCellPaintingEventArgs> rowHeaderPainter)
+        {
+            if (e.ColumnIndex != -1)
+            {
+                return false;
+            }
+
+            if (e.RowIndex < 0)
+            {
+                return true;
+            }
+
+            rowHeaderPainter(e);
+            return true;
+        }
+
+        public void ApplyBackColor(DataGridViewCellPaintingEventArgs e, System.Drawing.Color backColor)
+        {
+            e.CellStyle.BackColor = backColor;
+            e.CellStyle.SelectionBackColor = backColor;
+        }
+
+        public void Invalidate()
+        {
+            if (_view != null)
+            {
+                _view.Invalidate();
+            }
+        }
     }
 }
