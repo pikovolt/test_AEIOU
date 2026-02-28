@@ -30,6 +30,9 @@ Phase 2 の完了可否を判定できるよう、VirtualMode実装タスクの�
 ## PRルール
 - 本タスクのみを変更対象とする（1タスク=1PR）。
 
+## 運用ルール（Gate判定前の必須更新）
+- Gate 判定（Go/No-Go/条件付き）を記載する前に、`smoke_virtualmode.md` の全項目へ実施結果（チェック状態と必要メモ）を反映することを必須とする。
+
 ## Done報告集約リンク（Gate判定入力固定）
 - [done_VM2_001](../../reports/impl_done/done_VM2_001.md)
 - [done_VM2_002](../../reports/impl_done/done_VM2_002.md)
