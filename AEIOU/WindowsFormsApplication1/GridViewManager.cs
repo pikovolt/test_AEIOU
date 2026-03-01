@@ -8,12 +8,16 @@ namespace AEIOU
 {
     public class GridViewManager
     {
+        public delegate void CellValueChangedHandler(int col, int row, string value);
+
         private UndoManager _undoManager;
         private DataGridView _view;
         private string[,] _copyBuffer;              // DataGridView向けのコピーバッファを保持
         private Rect _copyRect;                     // コピー範囲を保持
         private Stack<OperationGroup> _groupStack;  // OperationGroupの入れ子対応
         private TimingSheetModel _model;
+
+        public event CellValueChangedHandler CellValueChanged;
 
         public DataGridView View
         {
@@ -165,31 +169,39 @@ namespace AEIOU
 
         public void SetCellValue(int col, int row, string value)
         {
+            EnsureModelBoundForWrite();
             string normalizedValue = NormalizeCellValue(value);
             _model.SetCell(col, row, normalizedValue);
             SetCellDisplayValue(col, row, normalizedValue);
+            NotifyCellValueChanged(col, row, normalizedValue);
         }
 
         public string SetCellValueWithUndo(int col, int row, string value)
         {
+            EnsureModelBoundForWrite();
             string normalizedValue = NormalizeCellValue(value);
             string oldValue = _model.SetCellWithUndo(col, row, normalizedValue);
             SetCellDisplayValue(col, row, normalizedValue);
+            NotifyCellValueChanged(col, row, normalizedValue);
             return oldValue;
         }
 
         public void ApplyUndoCellValue(int col, int row, string value)
         {
+            EnsureModelBoundForWrite();
             string normalizedValue = NormalizeCellValue(value);
             _model.ApplyUndoCell(col, row, normalizedValue);
             SetCellDisplayValue(col, row, normalizedValue);
+            NotifyCellValueChanged(col, row, normalizedValue);
         }
 
         public void ApplyRedoCellValue(int col, int row, string value)
         {
+            EnsureModelBoundForWrite();
             string normalizedValue = NormalizeCellValue(value);
             _model.ApplyRedoCell(col, row, normalizedValue);
             SetCellDisplayValue(col, row, normalizedValue);
+            NotifyCellValueChanged(col, row, normalizedValue);
         }
 
         public string GetHeaderValue(int col)
@@ -199,6 +211,7 @@ namespace AEIOU
 
         public void SetHeaderValue(int col, string value)
         {
+            EnsureModelBoundForWrite();
             string normalizedValue = NormalizeCellValue(value);
             _model.SetHeader(col, normalizedValue);
             SetHeaderDisplayValue(col, normalizedValue);
@@ -208,6 +221,16 @@ namespace AEIOU
         {
             if (_view == null)
             {
+                return;
+            }
+
+            if (_view.VirtualMode)
+            {
+                if (col >= 0 && row >= 0 && col < _view.ColumnCount && row < _view.RowCount)
+                {
+                    _view.InvalidateCell(col, row);
+                }
+
                 return;
             }
 
@@ -298,6 +321,23 @@ namespace AEIOU
         private string NormalizeCellValue(string value)
         {
             return value ?? "";
+        }
+
+        private void EnsureModelBoundForWrite()
+        {
+            if (_model == null)
+            {
+                throw new InvalidOperationException("GridViewManager write operation requires a bound model. Call InitializeWork(view, model) before write APIs.");
+            }
+        }
+
+        private void NotifyCellValueChanged(int col, int row, string value)
+        {
+            CellValueChangedHandler handler = CellValueChanged;
+            if (handler != null)
+            {
+                handler(col, row, value);
+            }
         }
 
     }
