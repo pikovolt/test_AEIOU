@@ -13,6 +13,10 @@
 - 証跡リンク（実行ログ、確認メモ、関連Issue/PRなど）:
   - [task_VM2_002](../../tasks/impl/task_VM2_002.md)
   - [task_VM2_001](../../tasks/impl/task_VM2_001.md)
+  - `Form1.cs:1360-1372` — `dataGridView1_CellValueNeeded()` （CellValueNeeded イベントハンドラ本体）
+  - `Form1.cs:1369` — `gridViewManager.TryHandleCellValueNeeded(col, row, out value)` （値取得呼び出し）
+  - `GridViewManager.cs:142-145` — `TryHandleCellValueNeeded()` → `TryGetCellValue()` （read経路実装）
+  - `GridViewManager.cs:152-162` — `TryGetCellValue()` → `_model.TryGetCell()` （モデルからの取得）
 
 ## IMPL判定項目（動作成立・回帰確認・非対象明記）
 - 動作成立（成功条件と確認結果）:
@@ -30,5 +34,5 @@
   - 前提: VM2-001 完了、VirtualMode 表示成立済み。
   - 操作: 縦横スクロールを繰り返し、表示値再取得を確認。
   - 期待: CellValueNeeded 経由で値が欠落せず表示される。
-  - 実結果: 期待どおり（欠落再現なし）。
+  - 実結果: 期待どおり（欠落再現なし）。`Form1.cs:1360-1372 dataGridView1_CellValueNeeded` → `GridViewManager.cs:142 TryHandleCellValueNeeded` → `_model.TryGetCell` の経路でスクロール時に値が都度供給される。
   - 証跡リンク: [task_VM2_002](../../tasks/impl/task_VM2_002.md)

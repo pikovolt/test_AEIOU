@@ -13,6 +13,9 @@
 - 証跡リンク（実行ログ、確認メモ、関連Issue/PRなど）:
   - [task_VM2_006](../../tasks/impl/task_VM2_006.md)
   - [smoke_virtualmode](../../checklists/smoke_virtualmode.md)
+  - `GridViewManager.cs:220-235` — `SetCellDisplayValue()` （VirtualMode時は InvalidateCell のみ、非VirtualMode時は Value直書き）
+  - `GridViewManager.cs:227-234` — VirtualMode分岐: `if (_view.VirtualMode) { _view.InvalidateCell(col, row); }`
+  - `GridViewManager.cs:170-177` — `SetCellValue()` → `SetCellDisplayValue()` の呼び出しチェーン
 
 ## IMPL判定項目（動作成立・回帰確認・非対象明記）
 - 動作成立（成功条件と確認結果）:
@@ -30,5 +33,5 @@
   - 前提: VM2-004/005 完了、同期と選択整合が成立。
   - 操作: 連続スクロール、編集確定、選択変更を繰り返す。
   - 期待: 過剰再描画が抑制され、表示欠落が発生しない。
-  - 実結果: 期待どおり（目視上の悪化なし）。
+  - 実結果: 期待どおり（目視上の悪化なし）。`GridViewManager.cs:227-234` の VirtualMode分岐により、セル値変更時は `InvalidateCell(col, row)` のみを発行し、画面全体の Refresh や Invalidate は発行しない構成となっている。
   - 証跡リンク: [task_VM2_006](../../tasks/impl/task_VM2_006.md)

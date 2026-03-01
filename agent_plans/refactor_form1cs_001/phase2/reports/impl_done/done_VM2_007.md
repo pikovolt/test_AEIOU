@@ -13,6 +13,9 @@
 - 証跡リンク（実行ログ、確認メモ、関連Issue/PRなど）:
   - [task_VM2_007](../../tasks/impl/task_VM2_007.md)
   - [task_VM2_003](../../tasks/impl/task_VM2_003.md)
+  - `GridViewManager.cs:117-120` — `Undo()` → `_undoManager.Undo(this)` （Undo呼び出し）
+  - `GridViewManager.cs:122-125` — `Redo()` → `_undoManager.Redo(this)` （Redo呼び出し）
+  - `UndoManager.cs:26-35` — `Undo(GridViewManager manager)` （スタック操作・反映実装）
 
 ## IMPL判定項目（動作成立・回帰確認・非対象明記）
 - 動作成立（成功条件と確認結果）:
@@ -30,5 +33,5 @@
   - 前提: VM2-003/005 完了、編集反映と選択遷移が成立。
   - 操作: 単一セル編集→Undo/Redo、範囲編集→Undo/Redo を実行。
   - 期待: 主要ケースで復元漏れなく往復できる。
-  - 実結果: 期待どおり（主要ケース成立）。
+  - 実結果: 期待どおり（主要ケース成立）。`GridViewManager.cs:117 Undo()` → `UndoManager.cs:26 Undo(manager)` でスタックから操作を取り出し `operation.Undo(manager)` で値を復元。Redo は逆方向で同経路。
   - 証跡リンク: [task_VM2_007](../../tasks/impl/task_VM2_007.md)

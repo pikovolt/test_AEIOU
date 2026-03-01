@@ -55,4 +55,11 @@ exeファイルをツリーの奥の方に置いていますが、お試し用�
 　・対応は、まずは間接的にでも当方にコンタクトできる方のみに限定させていただこうと考えております。  
 　・それなりに責任を持って対応するには限度がある為です。ご理解の程よろしくお願い致します。
 
+# 開発ドキュメント（SSOT導線）
+
+- 最上位SSOT: `architecture.md`
+- `plans/` 運用ガイド: `plans/README.md`
+- agent運用入口: `plans/refactor_form1cs_002/README.md`
+- Form1 リファクタ正本: `agent_plans/refactor_form1cs_001/README.md`
+
 

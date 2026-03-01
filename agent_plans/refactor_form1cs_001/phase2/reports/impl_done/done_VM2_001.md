@@ -13,6 +13,9 @@
 - 証跡リンク（実行ログ、確認メモ、関連Issue/PRなど）:
   - [task_VM2_001](../../tasks/impl/task_VM2_001.md)
   - [smoke_virtualmode](../../checklists/smoke_virtualmode.md)
+  - `Form1.Designer.cs:135` — `this.dataGridView1.VirtualMode = true;` （VirtualMode有効化設定）
+  - `Form1.cs:430` — `InitializeWork(true)` （Form1コンストラクタからの初期化呼び出し）
+  - `Form1.cs:633-672` — `dataGridInitialize()` （ColumnCount/RowCount設定・初期行生成）
 
 ## IMPL判定項目（動作成立・回帰確認・非対象明記）
 - 動作成立（成功条件と確認結果）:
@@ -30,5 +33,5 @@
   - 前提: VirtualMode=true、既存データ表示可能な状態。
   - 操作: アプリ起動→グリッド初期表示→初回スクロール。
   - 期待: 初期表示崩壊なし、例外なし。
-  - 実結果: 期待どおり（崩壊/例外なし）。
+  - 実結果: 期待どおり（崩壊/例外なし）。VirtualMode=true は `Form1.Designer.cs:135` で設定済み、初期表示は `Form1.cs:430→InitializeWork(true)→dataGridInitialize()` で行列構築後に CellValueNeeded 経由で描画される。
   - 証跡リンク: [task_VM2_001](../../tasks/impl/task_VM2_001.md)

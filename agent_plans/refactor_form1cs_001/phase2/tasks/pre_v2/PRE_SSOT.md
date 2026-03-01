@@ -48,6 +48,12 @@
 - `KeyDown/KeyPress` は入力制御責務のみ。
 - 値取得責務は専用経路に集約される。
 
+> **Phase 2 適用範囲注記**（根拠: PREV2-DEC-005 / GAP-H2 精査報告 2026-03-01）
+> - Phase 2 における「CellPainting は描画責務のみ」の達成範囲は**「CellPainting ハンドラが直接値取得・データ書込を行わない」**ことを指す。
+> - `calcBorderState()`（100行超）、`drawFrameNumber()` 等の Form1 残存ロジックは、「描画ロジックの Form1 分離」に相当し **Phase 3（描画分離）スコープ**として正式に帰属する。
+> - 同様に「KeyDown/KeyPress は入力制御責務のみ」の完全分離（`GridInputInterpreter` への委譲）も **Phase 3〜4 スコープ**である。
+> - Phase 2 の PASS 判定はこの適用範囲での充足を意味し、Phase 3 での再評価が必要。
+
 ### R-P1（High）
 
 #### R-P1-01 イベント割当整合

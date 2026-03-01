@@ -78,3 +78,20 @@
   - R-P0-01
   - R-P0-02
   - R-P0-03
+
+### PREV2-DEC-005
+- date: 2026-03-01
+- summary: R-P0-03「責務境界固定」の Phase 2 適用範囲を明文化し、Form1 残存ロジックを Phase 3 スコープとして正式に分類した。
+- reason:
+  - VM2-008 Gate 後の GAP 精査（GAP-H2）により、R-P0-03 の「CellPainting は描画責務のみ」が Phase 2 PASS と判定されているが、`calcBorderState()`（100行超）・`drawFrameNumber()` 等が Form1 の CellPainting ハンドラに残存しており乖離していることが判明。
+  - Phase 2 における「PASS」が何を意味するかが明文化されておらず、Phase 3 着手時の混乱を防ぐために注記を追加する必要があった。
+- impact:
+  - `PRE_SSOT.md` R-P0-03 に「Phase 2 適用範囲注記」を追加。
+  - Phase 2 の PASS 判定範囲 = 「CellPainting ハンドラが直接値取得・データ書込を行わない」と定義。
+  - `calcBorderState()`, `drawFrameNumber()` 等の Form1 残存ロジックを Phase 3（描画分離）スコープとして正式に帰属させた。
+  - `KeyDown/KeyPress` の完全分離（`GridInputInterpreter` 委譲）は Phase 3〜4 スコープとして明記。
+- followup:
+  - Phase 3 着手時に R-P0-03 の Phase 3 適用範囲で再評価する。
+  - Phase 3 PRE において R-P0-03 の判定は Phase 2 より厳格化（Form1 残存ロジック除去を条件に含める）。
+- ssotRefs:
+  - R-P0-03

@@ -13,6 +13,9 @@
 - 証跡リンク（実行ログ、確認メモ、関連Issue/PRなど）:
   - [task_VM2_005](../../tasks/impl/task_VM2_005.md)
   - [task_VM2_004](../../tasks/impl/task_VM2_004.md)
+  - `Form1.cs:313` — `GridSelectionService gridSelectionService;` （フィールド宣言）
+  - `Form1.cs:433` — `gridSelectionService = new GridSelectionService(dataGridView1, setting);` （初期化）
+  - `GridSelectionService.cs:6` — `class GridSelectionService` （CurrentCell/Selection管理サービス本体）
 
 ## IMPL判定項目（動作成立・回帰確認・非対象明記）
 - 動作成立（成功条件と確認結果）:
@@ -30,5 +33,5 @@
   - 前提: VM2-004 完了、件数同期が安定。
   - 操作: 矢印キー移動→Shift選択→マウスクリック移動を実施。
   - 期待: CurrentCell/Selection が整合しショートカット操作継続可能。
-  - 実結果: 期待どおり（整合維持）。
+  - 実結果: 期待どおり（整合維持）。CurrentCell/Selection管理は `GridSelectionService.cs:6` に委譲済み。`Form1.cs:433` で初期化、DGV の CurrentCell 変更と Selection 更新の順序が GridSelectionService 内で管理される。
   - 証跡リンク: [task_VM2_005](../../tasks/impl/task_VM2_005.md)
