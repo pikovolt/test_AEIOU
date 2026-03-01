@@ -317,6 +317,7 @@ namespace AEIOU
         GridInputInterpreter gridInputInterpreter;
         TimingSheetModel timingSheetModel;
         ContinuityStateService continuityStateService;
+        bool isCellValuePushedBound;
 
         // 繰り返しダイアログ
         private RepeatInputBox _repeatInputDialog;
@@ -501,6 +502,8 @@ namespace AEIOU
         // 作業内容の初期化
         public void InitializeWork(bool isBoot)
         {
+            SetCellValuePushedBinding(false);
+
             timingSheetModel = new TimingSheetModel(setting.ColLength, setting.RowLength);
 
             // ヘッダ、各カラム及び行数の設定
@@ -523,6 +526,8 @@ namespace AEIOU
 
             // アンドゥメニュを初期化
             gridViewManager.InitializeWork(dataGridView1, timingSheetModel);
+            gridViewManager.CellValueChanged -= OnGridViewManagerCellValueChanged;
+            gridViewManager.CellValueChanged += OnGridViewManagerCellValueChanged;
 
             if (continuityStateService != null)
             {
@@ -535,6 +540,8 @@ namespace AEIOU
             mouseDownPoint = new Point(-1, -1);     //マウス押下位置
             isRectDrag = false;                     //範囲移動状態
             isFirstEdit = true;
+
+            SetCellValuePushedBinding(true);
         }
 
         //----------------------------------------------------------------------------------------
@@ -552,6 +559,8 @@ namespace AEIOU
             }
             if ((target & InitializeTarget.Timing) != 0)
             {
+                SetCellValuePushedBinding(false);
+
                 // シートの入力情報（タイミング）の初期化
                 // ※バージョンの扱いをどうするのかは未定
                 timingSheetModel = new TimingSheetModel(setting.ColLength, setting.RowLength);
@@ -570,6 +579,8 @@ namespace AEIOU
                 }
 
                 isFirstEdit = true;
+
+                SetCellValuePushedBinding(true);
             }
             if ((target & InitializeTarget.CopyBuffer) != 0)
             {
@@ -595,6 +606,26 @@ namespace AEIOU
                 addRange = new List<Range>();
             }
 
+        }
+
+        private void SetCellValuePushedBinding(bool enabled)
+        {
+            if (enabled)
+            {
+                if (!isCellValuePushedBound)
+                {
+                    dataGridView1.CellValuePushed += new DataGridViewCellValueEventHandler(this.dataGridView1_CellValuePushed);
+                    isCellValuePushedBound = true;
+                }
+
+                return;
+            }
+
+            if (isCellValuePushedBound)
+            {
+                dataGridView1.CellValuePushed -= new DataGridViewCellValueEventHandler(this.dataGridView1_CellValuePushed);
+                isCellValuePushedBound = false;
+            }
         }
 
         //----------------------------------------------------------------------------------------
@@ -1263,6 +1294,21 @@ namespace AEIOU
         {
             return continuityStateService != null &&
                    continuityStateService.GetContinuityFlag(X, Y);
+        }
+
+        private void OnGridViewManagerCellValueChanged(int col, int row, string value)
+        {
+            if (continuityStateService == null)
+            {
+                return;
+            }
+
+            if (col < 0 || col >= GetSheetColumnCount())
+            {
+                return;
+            }
+
+            continuityStateService.RecalculateColumn(col, GetSheetRowCount());
         }
 
         //----------------------------------------------------------------------------------------
