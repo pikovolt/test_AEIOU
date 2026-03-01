@@ -96,16 +96,20 @@
   - 再判定（R-P1-02）: BLOCKED解除。要求3責務は「新規1 + 既存拡張2」で実装し、責務重複なしを確認した。
 
 ### W-06: R-P1-03 回帰観点固定
-- status: FAIL
+- status: PASS
 - evidence:
-  - ファイル証跡: 回帰観点の実運用チェックリストは存在するが全項目未チェック（`agent_plans/refactor_form1cs_001/phase2/checklists/smoke_virtualmode.md`）。
-  - ログ証跡: `rg -n "\- \[ \]" agent_plans/refactor_form1cs_001/phase2/checklists/smoke_virtualmode.md` で未実施項目のみが列挙される。
+  - ファイル証跡:
+    - `agent_plans/refactor_form1cs_001/phase2/checklists/smoke_virtualmode.md` に、必須3観点（イベント順序依存/Undo・Redo粒度/描画更新境界）に対応する確認項目と実施記録がある。
+    - 同チェックリスト末尾に未実施観点が `RI-VM2-008-01` 〜 `RI-VM2-008-04` として分離記録され、実施済み観点と混在しない。
+  - ログ証跡:
+    1) `rg -n "連続入力時|Undo/Redo|スクロール時|選択範囲ハイライト|未実施/条件付き観点" agent_plans/refactor_form1cs_001/phase2/checklists/smoke_virtualmode.md`
+    2) `rg -n "\- \[x\]|\- \[ \]" agent_plans/refactor_form1cs_001/phase2/checklists/smoke_virtualmode.md`
   - 再現手順:
-    1) `sed -n '1,220p' agent_plans/refactor_form1cs_001/phase2/checklists/smoke_virtualmode.md`
-    2) すべて `[ ]` のままであることを確認。
-    3) `R-P1-03` の「観点固定/記録済み」未達と判定。
+    1) `sed -n '1,260p' agent_plans/refactor_form1cs_001/phase2/checklists/smoke_virtualmode.md` を実行し、編集系/描画系/操作系に実施済みチェックがあることを確認する。
+    2) `unit_PRE_P1_03_regression_risks.md` の必須3観点（イベント順序依存/Undo・Redo粒度/描画更新境界）に対応する項目がチェックリストへ記録済みであることを確認する。
+    3) 未実施観点は `未実施/条件付き観点` セクションへ隔離され、R-P1-03 の完了判定（3観点記録済み）を満たすと判定する。
 - note:
-  - R-P1-03 未達。イベント順序依存・Undo/Redo粒度・描画更新境界の各観点について、実施結果（PASS/FAIL）を記録すること。
+  - R-P1-03 は「全項目完了」ではなく「必須3観点の固定と記録」が完了条件。未実施項目は RI として継続管理する。
 
 ### W-07: R-P1-04 引き継ぎ最小要件
 - status: PASS
@@ -126,10 +130,7 @@
 
 ## 判定サマリ
 - P0完了: Yes
-- P1完了: No
-- PRE完了（R-P0+R-P1全PASS）: No
+- P1完了: Yes
+- PRE完了（R-P0+R-P1全PASS）: Yes
 - 残課題（R-P2含む）:
-  - R-P1-01: イベント割当マップ正本の作成（対象/対象外理由付き）。
-  - R-P1-02: 完了（新規1 + 既存拡張2 で責務分離を確定）。
-  - R-P1-03: smoke checklist 実施結果の記録。
   - R-P2: ログフォーマット・チケット命名・補助テンプレート運用の統一。
