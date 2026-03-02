@@ -141,18 +141,8 @@ namespace AEIOU
             }
             else
             {
-                // Delete: セル消去
-                gridViewManager.BeginGroup("セル削除");
-                for (int i=selectRange.Left; i<=selectRange.Right; i++) {
-                    gridCellValueService.ApplyValue(new Rect(i, selectRange.Y, 1, 1), "");
-                }
-                gridViewManager.EndGroup();
-                int top = selectRange.Y - selectRange.Height;
-                if (top < 0)
-                {
-                    top = 0;
-                }
-                selectRange = gridSelectionService.MoveSelection(selectRange, selectRange.X, top);
+                // Delete: 選択範囲の内容削除（移動なし）
+                deleteRect(selectRange);
             }
         }
 
