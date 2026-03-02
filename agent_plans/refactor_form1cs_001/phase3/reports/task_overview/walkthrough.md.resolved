@@ -1,0 +1,47 @@
+# 第3フェーズ ウォークスルー: 描画と入力の責務の分離
+
+このドキュメントでは、[Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs)リファクタリングプロジェクトの第3フェーズで完了した作業を要約します。主な目標は、描画ロジックとイベントハンドリングをメインフォームクラスから分離し、保守性とテスト容易性を向上させることでした。
+
+## 完了したタスク
+
+計画された5つのタスクを無事に完了し、特定の責務を専用のクラスに抽出しました。
+
+1.  **[P3-001] ヘッダー描画の抽出**:
+    *   フレーム番号のフォーマット処理を扱う [GridFrameLabelFormatter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridFrameLabelFormatter.cs) を作成しました。
+    *   セルヘッダーの実際の描画を扱う [GridFrameHeaderPainter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridFrameHeaderPainter.cs) を作成しました。
+    *   [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) の [drawFrameNumber](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1063-1074) をリファクタリングし、これらのクラスに委譲するようにしました。
+
+2.  **[P3-002] 境界線状態計算の抽出**:
+    *   シートやフレームの境界を決定する複雑なロジックをカプセル化する [GridBorderStateCalculator.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridBorderStateCalculator.cs) を作成しました。
+    *   [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) の [calcBorderState](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1056-1062) をリファクタリングし、このクラスを使用するようにしました。
+
+3.  **[P3-003] KeyDownフロントエンドルーターの抽出**:
+    *   `keyValue` に基づくキー入力のルーティングを扱う [GridShortcutRouter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridShortcutRouter.cs) を作成しました。
+    *   [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) に [IGridShortcutHandler](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridShortcutRouter.cs#6-27) を実装させ、[dataGridView1_KeyDown](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1702-1725) にあった巨大な `switch` 文を、意味のある小さなメソッドに分割しました。
+
+4.  **[P3-004] セル値操作の抽出**:
+    *   低レベルのセル操作（InsertNumber、ApplyValue、InsertEmptyCell）と、それらの Undo/Redo 追跡システム ([GridViewManager](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1083-1097)) との統合を集約する [GridCellValueService.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridCellValueService.cs) を作成しました。
+    *   [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) 内のショートカットハンドラメソッドをリファクタリングし、このサービスを使用するようにしました。
+
+5.  **[P3-005] 残りのマウスハンドラのクリーンアップ**:
+    *   マウスイベントによってトリガーされるドラッグ＆ドロップ操作、選択範囲の追跡、カット/コピー/ペーストのロジックを扱う [GridMouseEventHandler.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridMouseEventHandler.cs) を作成しました。
+    *   [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) の [dataGridView1_CellMouseDown](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1742-1753)、[dataGridView1_CellMouseMove](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1754-1760)、[dataGridView1_CellMouseUp](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1761-1768) をリファクタリングし、このハンドラに委譲するようにしました。
+
+## プロジェクト構造の更新
+
+ロジックが [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) から正常に抽出され、クラスの複雑さが軽減されました。以下の新しいファイルが追加され、[AEIOU.csproj](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/AEIOU.csproj) に登録されました。
+
+*   [GridFrameLabelFormatter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridFrameLabelFormatter.cs)
+*   [GridFrameHeaderPainter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridFrameHeaderPainter.cs)
+*   [GridBorderStateCalculator.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridBorderStateCalculator.cs)
+*   [GridShortcutRouter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridShortcutRouter.cs)
+*   [GridCellValueService.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridCellValueService.cs)
+*   [GridMouseEventHandler.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridMouseEventHandler.cs)
+
+## 次のステップ: 検証
+
+この環境には MSBuild がないため、自動コンパイルとテストを実行できません。コードの変換は静的解析によって検証されました。
+
+手動テストのチェックリストが [agent_plans/refactor_form1cs_001/phase3/reports/impl_done/smoke_phase3.md](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/agent_plans/refactor_form1cs_001/phase3/reports/impl_done/smoke_phase3.md) に生成されています。
+
+これらの変更をローカルの開発環境に反映してアプリケーションをビルドし、スモークテストの手順に従って、リファクタリングされたグリッドが以前とまったく同じように動作することを確認してください。

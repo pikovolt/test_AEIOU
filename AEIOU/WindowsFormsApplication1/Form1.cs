@@ -280,7 +280,7 @@ using System.Threading;
 
 namespace AEIOU
 {
-    public partial class Form1 : Form
+    public partial class Form1 : Form, IGridShortcutHandler
     {
 	    //----------------------------------------------------------------------------------------
 	    // 配色
@@ -296,6 +296,7 @@ namespace AEIOU
 	    Point mouseDownPoint;                       //マウス押下位置
 	    bool isRectDrag;                            //範囲移動状態
 	    bool isFirstEdit;                           //初回編集状態（セル入力を中断するような操作の度に trueにされるべき）
+        bool isCellEdit;                            //セルが編集されたかどうかのフラグ
 
 	    // 配列
 	    int[] aryCellUsedCount;                     //セル使用状況
@@ -307,7 +308,13 @@ namespace AEIOU
 	    List<Range> addRange;                       // 切り貼り範囲
 
         // アンドゥ処理
-        GridViewManager gridViewManager = new GridViewManager();
+        private UndoManager undoMgr = new UndoManager();
+        private GridFrameLabelFormatter gridFrameLabelFormatter;
+        private GridFrameHeaderPainter gridFrameHeaderPainter;
+        private GridBorderStateCalculator gridBorderStateCalculator;
+        private GridShortcutRouter gridShortcutRouter;
+        private GridCellValueService gridCellValueService;
+        private GridMouseEventHandler gridMouseEventHandler;
 
         // 先行分離したサービス
         GridSelectionService gridSelectionService;
@@ -327,7 +334,7 @@ namespace AEIOU
         public Form1()
         {
             InitializeComponent();
-            gridViewManager.View = dataGridView1;
+            //gridViewManager.View = dataGridView1; // This line is removed as gridViewManager is replaced
 
             // 自分のウィンドウハンドルを取得しておく
             this.owner = Control.FromHandle(this.Handle);
@@ -434,7 +441,13 @@ namespace AEIOU
             gridScrollService = new GridScrollService(dataGridView1, setting);
             gridCellStyleResolver = new GridCellStyleResolver();
             gridCellRenderer = new GridCellRenderer(dataGridView1, setting, GetCellValue);
+            gridFrameLabelFormatter = new GridFrameLabelFormatter(setting.Fps, setting.SheetSec);
+            gridFrameHeaderPainter = new GridFrameHeaderPainter(gridFrameLabelFormatter);
+            gridBorderStateCalculator = new GridBorderStateCalculator(setting.Fps, setting.SheetSec, setting.SheetDivide);
             gridInputInterpreter = new GridInputInterpreter(setting.keys);
+            gridShortcutRouter = new GridShortcutRouter(this); // Initialize GridShortcutRouter here
+            gridCellValueService = new GridCellValueService(gridViewManager, GetCellValue, checkCellValue, (col) => aryCellUsedCount[col]++);
+            gridMouseEventHandler = new GridMouseEventHandler(gridViewManager, copyToBuf, cutToBuf, copyToCell, getSelectedRect);
             continuityStateService = new ContinuityStateService(setting, GetCellValue);
             continuityStateService.Reinitialize(GetSheetColumnCount(), GetSheetRowCount());
 
@@ -540,6 +553,7 @@ namespace AEIOU
             mouseDownPoint = new Point(-1, -1);     //マウス押下位置
             isRectDrag = false;                     //範囲移動状態
             isFirstEdit = true;
+            isCellEdit = false;
 
             SetCellValuePushedBinding(true);
         }
@@ -556,6 +570,7 @@ namespace AEIOU
                 selectRange = new Rect(0, 0, 1, 1);             //選択範囲
                 isRectDrag = false;                             //範囲移動状態
                 isFirstEdit = true;
+                isCellEdit = false;
             }
             if ((target & InitializeTarget.Timing) != 0)
             {
@@ -579,6 +594,7 @@ namespace AEIOU
                 }
 
                 isFirstEdit = true;
+                isCellEdit = false;
 
                 SetCellValuePushedBinding(true);
             }
@@ -1034,258 +1050,26 @@ namespace AEIOU
         // フレーム表示文字列の生成
         private String frmToSheet(int frm)
         {
-            String Time = "";
-            int addFrame = 0;
-            int localFrm = 0;
-            bool isAddRange = false;
-
-            //切り貼りフレームのカウント
-            foreach (Range r in addRange)
-            {
-                //切り貼りコマ数の積算
-                if (r.Top <= frm)
-                {
-                    addFrame += (r.Bottom - r.Top + 1);
-                }
-
-                //切り貼り範囲のチェック
-                if (r.Top <= frm && r.Bottom >= frm)
-                {
-                    //範囲内だったら、切り貼り内ローカルのコマ数を計算
-                    // ※また、フレーム表示は１～ なので更に＋１
-                    isAddRange = true;
-                    localFrm = (frm - r.Top) + 1;
-                }
-            }
-
-            // カレントフレームに、切り貼り分を加味
-            // ※また、フレーム表示は１～ なので更に＋１
-            frm = (frm - addFrame) + 1;
-
-            // 24fps
-            if (setting.Fps == 24)
-            {
-                if (isAddRange)
-                {
-                    // 付けたしフレーム表示処理
-                    // フレーム計算(Page + f)
-                    int frm_p = 0;  //ページ数は0
-                    int frm_f = (localFrm - 1) % (setting.SheetSec * 24);
-
-                    if (((localFrm - 1) % 12) == 0)
-                    {
-                        if (frm_p < 10) Time = "0" + frm_p.ToString() + '/';
-                        else Time = frm_p.ToString() + '/';
-                    }
-                    else
-                    {
-                        Time = "     ";
-                    }
-
-                    if ((frm_f + 1) < 10) Time += "0" + (frm_f + 1).ToString();
-                    else Time += (frm_f + 1).ToString();
-
-                }
-                else
-                {
-                    //通常フレーム表示処理
-                    // フレーム計算(Page + f)
-                    int frm_p = (frm - 1) / (setting.SheetSec * setting.Fps) + 1;    //ページ数は１から
-                    int frm_f = (frm - 1) % (setting.SheetSec * setting.Fps);
-
-                    if (((frm - 1) % 12) == 0)
-                    {
-                        if (frm_p < 10) Time = "0" + frm_p.ToString() + '/';
-                        else Time = frm_p.ToString() + '/';
-                    }
-                    else
-                    {
-                        Time = "     ";
-                    }
-
-                    if ((frm_f + 1) < 10) Time += "0" + (frm_f + 1).ToString();
-                    else Time += (frm_f + 1).ToString();
-                }
-            }
-
-            // 1 & 30fps
-            if ((setting.Fps == 1) || (setting.Fps == 30))
-            {
-                if (isAddRange)
-                {
-                    // 付けたしフレーム表示処理
-                    // フレーム計算(Page + f)
-                    int frm_p = 0;  //ページ数は0
-                    int frm_f = (localFrm - 1) % (setting.SheetSec * setting.Fps);
-
-                    if (((localFrm - 1) % 15) == 0)
-                    {
-                        if (frm_p < 10) Time = "0" + frm_p.ToString() + '/';
-                        else Time = frm_p.ToString() + '/';
-                    }
-                    else
-                    {
-                        Time = "     ";
-                    }
-
-                    if ((frm_f + 1) < 10) Time += "0" + (frm_f + 1).ToString();
-                    else Time += (frm_f + 1).ToString();
-
-                }
-                else
-                {
-                    //通常フレーム表示処理
-
-                    // フレーム計算(Page + f)
-                    int frm_p = (frm - 1) / (setting.SheetSec * setting.Fps) + 1;    //ページ数は１から
-                    int frm_f = (frm - 1) % (setting.SheetSec * setting.Fps);
-
-                    if (((frm - 1) % 15) == 0)
-                    {
-                        if (frm_p < 10) Time = "0" + frm_p.ToString() + '/';
-                        else Time = frm_p.ToString() + '/';
-                    }
-                    else
-                    {
-                        Time = "     ";
-                    }
-
-                    if ((frm_f + 1) < 10) Time += "0" + (frm_f + 1).ToString();
-                    else Time += (frm_f + 1).ToString();
-                }
-            }
-
-            return Time;
+            return gridFrameLabelFormatter.FrmToSheet(frm, addRange);
         }
 
         //----------------------------------------------------------------------------------------
         // 基準線描画位置の計算
         private SheetBorder calcBorderState(DataGridViewCellPaintingEventArgs e)
         {
-            SheetBorder retValue = SheetBorder.None;
-            bool bHariFirst = false;
-            int addFrame = 0;
-
-            // 切り貼りフレーム数のカウント
-            {
-                // 先頭フレーム前の切り貼り有無
-                if(addRange.Count > 0)
-                {
-                    if(addRange[0].Top == 0)
-                    {
-                        //有り
-                        bHariFirst = true;
-                    }
-                }
-
-                // 追加のコマ数を数える
-                foreach(Range range in addRange)
-                {
-                    if(range.Top <= e.RowIndex)
-                    {
-                        addFrame += (range.Bottom - range.Top + 1);
-                    }
-                }
-            }
-
-            // [12],24フレーム毎に基準線を引く
-            // (１シート毎に基準線を引く：ページ線)
-            int r = e.RowIndex - addFrame + 1;
-            if (r < 1) r = e.RowIndex + 1;
-            if (setting.Fps == 24 && e.ColumnIndex >= 0)
-            {
-                int sheetline = setting.SheetDivide;
-                if ((((r % sheetline) == 0) && (r != 0)) || ((r == addFrame) && ((e.RowIndex + 1) - addFrame == 0) && (addFrame != 0) && (r != 0)))
-                {
-                    if ((r % 24) == 0)
-                    {
-                        //１秒毎の基準線を描画
-                        retValue = SheetBorder.EverySec;
-                    }
-                    else
-                    {
-                        //ｎコマ毎の基準線を描画
-                        retValue = SheetBorder.EveryNFrames;
-                    }
-
-                    if ((r % (setting.SheetSec * setting.Fps)) == 0 || ((e.RowIndex + 1) == addFrame) && bHariFirst == true)
-                    {
-                        //シート毎の基準線を描画
-                        retValue = SheetBorder.EverySheet;
-                    }
-                }
-            }
-
-            // 1 & 30fps
-            if (((setting.Fps == 1) || (setting.Fps == 30)) && e.ColumnIndex >= 0)
-            {
-                // 15,30フレーム毎に基準線を引く
-                // (１シート毎に基準線を引く：ページ線)
-                if ((((r % 15) == 0) && (r != 0)) || ((r == addFrame) && ((e.RowIndex + 1) - addFrame == 0) && (addFrame != 0) && (r != 0)))
-                {
-                    if ((r % 30) == 0)
-                    {
-                        //１秒毎の基準線を描画
-                        retValue = SheetBorder.EverySec;
-                    }
-                    else
-                    {
-                        //ｎコマ毎の基準線を描画
-                        retValue = SheetBorder.EveryNFrames;
-                    }
-
-                    if ((r % (setting.SheetSec * setting.Fps)) == 0 || ((e.RowIndex + 1) == addFrame) && bHariFirst == true)
-                    {
-                        //シート毎の基準線を描画
-                        retValue = SheetBorder.EverySheet;
-                    }
-                }
-            }
-            return retValue;
+            return gridBorderStateCalculator.CalcBorderState(e, addRange);
         }
 
         //----------------------------------------------------------------------------------------
         // フレーム数 描画
         private void drawFrameNumber(DataGridViewCellPaintingEventArgs e)
         {
-            // 背景塗り
-            using (Brush backColorBrush = new SolidBrush(gridPalette.Header))
-            {
-                e.Graphics.FillRectangle(backColorBrush, e.CellBounds);
-            }
-
-            //範囲を取得
-            Rectangle _rect = e.CellBounds;
-            _rect.Inflate(-2, -2);
-            //文字列を描画
-            String value = "";
-            if(setting.IsDisplayFrameNumber)
-            {
-                // フレーム数 表示
-                value = (e.RowIndex + setting.FirstFrame).ToString();
-            }
-            else
-            {
-                // シート/コマ数 表示
-                value = frmToSheet(e.RowIndex);
-            }
-            TextRenderer.DrawText(
-                e.Graphics,
-                value,
-                e.CellStyle.Font,
-                _rect,
-                e.CellStyle.ForeColor,
-                TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
-
-            //背景(及びヘッダー部の三角カーソル)以外を描画して貰う
-            DataGridViewPaintParts _paintParts =
-                e.PaintParts & ~DataGridViewPaintParts.Background;
-            //_paintParts &= ~DataGridViewPaintParts.ContentBackground;
-            //残りの描画を要求
-            e.Paint(e.ClipBounds, _paintParts);
-
-            //描画完了の通知
-            e.Handled = true;
+            gridFrameHeaderPainter.DrawHeader(
+                e,
+                gridPalette.Header,
+                setting.IsDisplayFrameNumber,
+                setting.FirstFrame,
+                addRange);
         }
 
         //----------------------------------------------------------------------------------------
@@ -1926,683 +1710,11 @@ namespace AEIOU
 
             int keyValue = gridInputInterpreter.ConvertKeyValue(e);
 
-            bool isCellEdit = false;
-            switch (keyValue & 0x0ff)
+            isCellEdit = false; // Reset for this key press
+
+            if (gridShortcutRouter.Route(keyValue, e.KeyValue))
             {
-                case 8:     // BackSpace
-                    {
-                        isCellEdit = deleteRect_with_backspace(isCellEdit);
-                        
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-                    }
-                    break;
-
-                case 13:    // Enter
-                    {
-                        calcRect_with_enter();
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-                    }
-                    break;
-
-                case 33:    // PageUp
-                    {
-                        scrollingRowBackward(keyValue);
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-                    }
-                    break;
-
-                case 34:    // PageDown
-                    {
-                        scrollingRowForward(keyValue);
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-                    }
-                    break;
-
-                case 36:    // Home
-                    {
-                        // カーソルを先頭フレームに戻す
-                        dataGridView1.CurrentCell = dataGridView1[dataGridView1.CurrentCell.ColumnIndex, 0];
-                        selectRange.X = dataGridView1.CurrentCell.ColumnIndex;
-                        selectRange.Y = 0;
-                        selectRange.Width = 1;
-                        selectRange.Height = 1;
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-                    }
-                    break;
-
-                case 37:    // ←
-                    // 選択範囲を縮小
-                    if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.SHIFTKey))
-                    {
-                        // +Shiftの場合
-
-                        // 選択範囲を取得
-                        Rect rect = getSelectedRect();
-
-                        // 領域縮小が可能な場合のみ処理する
-                        if (rect.Width > 1)
-                        {
-                            // 範囲を縮小
-                            for (int i = 0; i < rect.Height; i++)
-                                dataGridView1[rect.Right, rect.Y + i].Selected = false;
-
-                            // 範囲を保存
-                            rect.Width--;
-                            selectRange = rect;
-                        }
-
-                    }
-
-                    // 選択範囲単位の移動
-                    if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.None))
-                    {
-                        // 単に ← の場合
-
-                        // 選択範囲を取得
-                        Rect rect = getSelectedRect();
-
-                        // 選択範囲をクリア
-                        dataGridView1.ClearSelection();
-
-                        // 先頭位置の計算(※上端のはみ出しチェック)
-                        int top = rect.X - 1;
-                        top = (top < 0) ? 0 : top;      // 先頭が 0を下回る場合は 補正する
-
-                        // カーソル位置・選択範囲更新を委譲
-                        selectRange = gridSelectionService.MoveSelection(rect, top, rect.Y);
-
-                        // 描画更新(アクティブセルの色分けの為)
-                        dataGridView1.Invalidate();
-                    }
-
-                    // 処理済みフラグを立てる
-                    e.Handled = true;
-                    break;
-
-                case 38:    //↑
-                    // 選択範囲を縮小
-                    if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.SHIFTKey))
-                    {
-                        // +SHIFT の場合
-
-                        // 選択範囲を取得
-                        Rect rect = getSelectedRect();
-
-                        // 領域縮小が可能な場合のみ処理する
-                        if (rect.Height > 1)
-                        {
-                            // 範囲を縮小
-                            for (int j = 0; j < rect.Width; j++)
-                                dataGridView1[rect.X + j, rect.Bottom].Selected = false;
-
-                            // 範囲を保存
-                            rect.Height--;
-                            selectRange = rect;
-                        }
-
-                    }
-
-                    // 選択範囲単位の移動
-                    {
-                        CombinationKeyState state = setting.keys.getShiftBeforeConvertion(keyValue);
-                        if ((state & CombinationKeyState.ALTKey) == 0 &&
-                            (state & CombinationKeyState.SHIFTKey) == 0)
-                        {
-                            // ↑ 又は ALT+↑ の場合
-
-                            // 選択範囲を取得
-                            Rect rect = getSelectedRect();
-
-                            // 選択範囲をクリア
-                            dataGridView1.ClearSelection();
-
-                            // 先頭位置の計算(※上端のはみ出しチェック)
-                            int top;
-                            if((state & CombinationKeyState.CTRLKey) != 0)
-                            {
-                                // +Ctrl時
-                                top = rect.Y - 1;
-                            }
-                            else
-                            {
-                                // ↑のみ
-                                top = rect.Y - rect.Height;
-                            }
-                            top = (top < 0) ? 0 : top;      // 先頭が 0を下回る場合は 補正する
-
-                            // カーソル位置・選択範囲更新を委譲
-                            selectRange = gridSelectionService.MoveSelection(rect, rect.X, top);
-
-                        }
-                    }
-
-                    // 処理済みフラグを立てる
-                    e.Handled = true;
-                    break;
-
-                case 39:    // →
-                    // 選択範囲を拡大
-                    if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.SHIFTKey))
-                    {
-                        // + SHIFT の場合
-
-                        // 選択範囲を取得
-                        Rect rect = getSelectedRect();
-
-                        // 領域拡大が可能な場合のみ処理する
-                        if ((rect.X + rect.Width) < setting.ColLength)
-                        {
-                            // 範囲を拡大
-                            rect.Width++;
-                            for (int i = 0; i < rect.Height; i++)
-                                dataGridView1[rect.Right, rect.Y + i].Selected = true;
-
-                            // 範囲を保存
-                            selectRange = rect;
-                        }
-
-                    }
-
-                    // 選択範囲単位の移動
-                    if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.None))
-                    {
-                        // 単に → の場合
-
-                        // 選択範囲を取得
-                        Rect rect = getSelectedRect();
-
-                        // 選択範囲をクリア
-                        dataGridView1.ClearSelection();
-
-                        // 先頭位置の計算(※上端のはみ出しチェック)
-                        int top = rect.X + 1;
-                        int limit = setting.ColLength - rect.Width;
-                        top = (top > limit) ? limit : top;      // 先頭が 終端-選択幅(水平方向) を超える場合は 補正する
-
-                        // カーソル位置・選択範囲更新を委譲
-                        selectRange = gridSelectionService.MoveSelection(rect, top, rect.Y);
-
-                        // 描画更新(アクティブセルの色分けの為)
-                        dataGridView1.Invalidate();
-                    }
-                    // 処理済みフラグを立てる
-                    e.Handled = true;
-                    break;
-
-                case 40:    // ↓
-                    // 選択範囲を拡大
-                    if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.SHIFTKey))
-                    {
-                        // +SHIFT の場合
-
-                        // 選択範囲を取得
-                        Rect rect = getSelectedRect();
-
-                        // 領域拡大が可能な場合のみ処理する
-                        if ((rect.Y + rect.Height) < setting.RowLength)
-                        {
-                            // 範囲を拡大
-                            rect.Height++;
-                            for (int j = 0; j < rect.Width; j++)
-                                dataGridView1[rect.X + j, rect.Bottom].Selected = true;
-
-                            // 範囲を保存
-                            selectRange = rect;
-                        }
-
-                    }
-
-                    // 選択範囲単位の移動
-                    {
-                        CombinationKeyState state = setting.keys.getShiftBeforeConvertion(keyValue);
-                        if ((state & CombinationKeyState.ALTKey) == 0 &&
-                            (state & CombinationKeyState.SHIFTKey) == 0)
-                        {
-                            // ↓ 又は CTRL+↓ の場合
-
-                            // 選択範囲を取得
-                            Rect rect = getSelectedRect();
-
-                            // 選択範囲をクリア
-                            dataGridView1.ClearSelection();
-
-                            // 先頭位置の計算(※下端のはみ出しチェック)
-                            int top;
-                            if ((state & CombinationKeyState.CTRLKey) != 0)
-                            {
-                                // +Ctrl時
-                                top = rect.Y + 1;
-                            }
-                            else
-                            {
-                                // ↓のみ
-                                top = rect.Y + rect.Height;
-                            }
-                            int limit = setting.RowLength - rect.Height;
-                            top = (top > limit) ? limit : top;  // 先頭が 終端-選択幅(垂直方向) を超える場合は 補正する
-
-                            // カーソル位置・選択範囲更新を委譲
-                            selectRange = gridSelectionService.MoveSelection(rect, rect.X, top);
-
-                            // 画面2/3より下に移動した場合の画面送り
-                            scrollingForward();
-                        }
-                    }
-                    // 処理済みフラグを立てる
-                    e.Handled = true;
-                    break;
-
-                case 45:    // Insert
-                    {
-                        // 範囲の追加
-                        insertToAllCell(selectRange.Top, selectRange.Height);
-                        calcNakanukiRange(true, selectRange.Top, selectRange.Height);
-                        calcKiribariRange(true, selectRange.Top, selectRange.Height);
-
-                        // アンドゥ履歴をフラッシュ
-                        flushUndoHistory();
-
-                        isFirstEdit = true;
-
-                        // 描画更新(切り貼り範囲反映の為)
-                        dataGridView1.Invalidate();
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-                    }
-                    break;
-
-                case 46:    // Delete
-                    {
-                        if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.SHIFTKey))
-                        {
-                            // +Shiftの場合
-
-                            // 範囲を削除
-                            cutToAllCell(selectRange.Top, selectRange.Height);
-                            calcNakanukiRange(false, selectRange.Top, selectRange.Height);
-                            calcKiribariRange(false, selectRange.Top, selectRange.Height);
-
-                            // アンドゥ履歴をフラッシュ
-                            flushUndoHistory();
-
-                            isFirstEdit = true;
-
-                            // 描画更新(切り貼り範囲反映の為)
-                            dataGridView1.Invalidate();
-
-                            // 処理済みフラグを立てる
-                            e.Handled = true;
-                        }
-                        else if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.None))
-                        {
-                            // 選択範囲のセル内容を消去
-                            deleteRect(getSelectedRect(), false);
-
-                            isFirstEdit = true;
-
-                            // 処理済みフラグを立てる
-                            e.Handled = true;
-
-                            // 描画更新(継続記号の更新の為)
-                            dataGridView1.Invalidate();
-                        }
-                    }
-                    break;
-
-                case 48:    // 0-9(Full-key)
-                case 49:
-                case 50:
-                case 51:
-                case 52:
-                case 53:
-                case 54:
-                case 55:
-                case 56:
-                case 57:
-
-                case 96:    // 0-9(10key)
-                case 97:
-                case 98:
-                case 99:
-                case 100:
-                case 101:
-                case 102:
-                case 103:
-                case 104:
-                case 105:
-                    {
-                        // フルキーのコードはテンキーコードに補正
-                        int key = (e.KeyValue < 96) ? e.KeyValue + 48 : e.KeyValue;
-
-                        // 入力値を計算
-                        byte[] ch = { (byte)key };
-                        ch[0] += (byte)'0';
-                        ch[0] -= 96;
-
-                        OperationGroup group = gridViewManager.BeginGroup("入力");
-
-                        Rect rect = selectRange;
-                        for(int i = 0; i < rect.Width; i++)
-                        {
-                            String new_value = GetCellValue(rect.X + i, rect.Y);
-
-                            // 入力前に情報が入っているか確認
-                            if (!checkCellValue(rect.X + i, rect.Y))
-                            {
-                                // 空白の場合は使用状況を修正
-                                aryCellUsedCount[rect.X + i]++;
-                            }
-
-                            // 初回フラグが立ち, 尚且つ "常に追加"が未チェックの場合のみ 初回編集を上書きにする
-                            if (isFirstEdit && !this.alwaysAppendToolStripMenuItem.Checked)
-                            {
-                                // セルに値を設定(初回編集)
-                                new_value = System.Text.Encoding.GetEncoding(932).GetString(ch);
-                            }
-                            else
-                            {
-                                // セルに値を設定(継続編集)
-                                new_value += System.Text.Encoding.GetEncoding(932).GetString(ch);
-                            }
-                            isCellEdit = true;
-
-                            // アンドゥ情報の記録
-                            var operation = new SetValueOperation(rect.Y, rect.X + i, new_value);
-                            gridViewManager.ExecuteOperation(operation);
-                        }
-
-                        gridViewManager.EndGroup();
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-
-                        // 描画更新(継続記号の更新の為)
-                        dataGridView1.Invalidate();
-                    }
-                    break;
-
-                case 74:    // J
-                case 75:    // K
-                    {
-                        // キーの頭出し
-                        int value = selectRange.Top;
-                        int col, row;
-                        if (e.KeyValue == 74)
-                        {
-                            // 後方検索
-                            for (row = selectRange.Top - 1; row >= 0 && value == selectRange.Top; row--)
-                            {
-                                for (col = selectRange.Left; col <= selectRange.Right; col++)
-                                {
-                                    if (GetCellValue(col, row) == "") continue;
-                                    value = row;
-                                    break;
-                                }
-                            }
-                        }
-                        if (e.KeyValue == 75)
-                        {
-                            // 前方検索
-                            for (row = selectRange.Bottom + 1; row < setting.RowLength && value == selectRange.Top; row++)
-                            {
-                                for (col = selectRange.Left; col <= selectRange.Right; col++)
-                                {
-                                    if (GetCellValue(col, row) == "") continue;
-                                    value = row;
-                                    break;
-                                }
-                            }
-                        }
-
-                        //選択範囲を修正
-                        selectRange.Y = value;
-                        dataGridView1.CurrentCell = dataGridView1[dataGridView1.CurrentCell.ColumnIndex, selectRange.Y];
-
-                        //選択範囲を解除
-                        dataGridView1.ClearSelection();
-
-                        //新しい範囲に設定
-                        for(int i = 0; i < selectRange.Height; i++)
-                            for (int j = 0; j < selectRange.Width; j++)
-                            {
-                                dataGridView1[selectRange.X + j, selectRange.Y + i].Selected = true;
-                            }
-
-                        // 画面2/3より下に移動した場合の画面送り
-                        scrollingForward();
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-                    }
-                    break;
-
-                case 106:   // '*'(10key)
-                    // 選択範囲を拡大
-                    {
-                        // 選択範囲を取得
-                        Rect rect = getSelectedRect();
-
-                        // 領域拡大が可能な場合のみ処理する
-                        if ((rect.Y + rect.Height) < setting.RowLength)
-                        {
-                            // 範囲を拡大
-                            rect.Height++;
-                            for (int j = 0; j < rect.Width; j++)
-                                dataGridView1[rect.X + j, rect.Bottom].Selected = true;
-
-                            // 範囲を保存
-                            selectRange = rect;
-                        }
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-                    }
-                    break;
-
-                case 107:   // '+'(10key)
-                    {
-                        // 入力前に情報が入っているか確認
-                        Rect rect = selectRange;
-                        if (!checkCellValue(rect.X, rect.Y))
-                        {
-                            // 空白の場合は使用状況を修正
-                            aryCellUsedCount[rect.X]++;
-                        }
-
-                        // 手前の入力を検索
-                        int key = 1;
-                        for (int i = rect.Y - 1; i >= 0; i--)
-                        {
-                            // 空白と空セルは無視
-                            String str = GetCellValue(rect.X, i);
-                            if (str == "" ) continue;
-                            if (str == setting.KaraCell) return;    // カラセルが入力されていたら、処理を中断
-
-                            // 値を見付けたら、取得後＋１して検索を終わる
-                            key = int.Parse(str);
-                            key++;
-                            break;
-                        }
-
-                        // アンドゥ情報の記録
-                        var operation = new SetValueOperation(rect.Y, rect.X, key.ToString());
-                        gridViewManager.ExecuteOperation(operation);
-
-                        // 選択範囲をクリア
-                        dataGridView1.ClearSelection();
-
-                        // 先頭位置の計算(※下端のはみ出しチェック)
-                        int len = cursorMoveWithNakaNuki();
-                        if (len > 0)
-                        {
-                            int top = rect.Y + len;
-                            int limit = setting.RowLength - rect.Height;
-                            top = (top > limit) ? limit : top;  // 先頭が 終端-選択幅(垂直方向) を超える場合は 補正する
-
-                            // カーソル位置・選択範囲更新を委譲
-                            selectRange = gridSelectionService.MoveSelection(rect, rect.X, top);
-                        }
-
-                        isFirstEdit = true;
-
-                        // 画面2/3より下に移動した場合の画面送り
-                        scrollingForward();
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-
-                        // 描画更新(継続記号の更新の為)
-                        dataGridView1.Invalidate();
-                    }
-                    break;
-
-                case 109:   // '-'(10key)
-                    {
-                        // 入力前に情報が入っているか確認
-                        Rect rect = selectRange;
-                        if (!checkCellValue(rect.X, rect.Y))
-                        {
-                            // 空白の場合は使用状況を修正
-                            aryCellUsedCount[rect.X]++;
-                        }
-
-                        // 手前の入力を検索
-                        int key = 0;
-                        for (int i = rect.Y - 1; i >= 0; i--)
-                        {
-                            // 空白と空セルは無視
-                            String str = GetCellValue(rect.X, i);
-                            //if (str == "" || str == setting.KaraCell) continue;
-                            if (str == "") continue;
-                            if (str == setting.KaraCell) return;    // カラセルが入力されていたら、処理を中断
-
-                            // 値を見付けたら、取得後－１して検索を終わる
-                            key = int.Parse(str);
-                            key = (key - 1) > 0 ? key-1 : key;  // １以下にならないようにしておく
-                            break;
-                        }
-
-                        // アンドゥ情報の記録
-                        var operation = new SetValueOperation(rect.Y, rect.X, key.ToString());
-                        gridViewManager.ExecuteOperation(operation);
-
-                        // 選択範囲をクリア
-                        dataGridView1.ClearSelection();
-
-                        // 先頭位置の計算(※下端のはみ出しチェック)
-                        int len = cursorMoveWithNakaNuki();
-                        if (len > 0)
-                        {
-                            int top = rect.Y + len;
-                            int limit = setting.RowLength - rect.Height;
-                            top = (top > limit) ? limit : top;  // 先頭が 終端-選択幅(垂直方向) を超える場合は 補正する
-
-                            // カーソル位置・選択範囲更新を委譲
-                            selectRange = gridSelectionService.MoveSelection(rect, rect.X, top);
-                        }
-
-                        isFirstEdit = true;
-
-                        // 画面2/3より下に移動した場合の画面送り
-                        scrollingForward();
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-
-                        // 描画更新(継続記号の更新の為)
-                        dataGridView1.Invalidate();
-                    }
-                    break;
-
-                case 111:   // '/'(10key)
-                    // 選択範囲を縮小
-                    {
-                        // 選択範囲を取得
-                        Rect rect = getSelectedRect();
-
-                        // 領域縮小が可能な場合のみ処理する
-                        if (rect.Height > 1)
-                        {
-                            // 範囲を縮小
-                            for (int j = 0; j < rect.Width; j++)
-                                dataGridView1[rect.X + j, rect.Bottom].Selected = false;
-
-                            // 範囲を保存
-                            rect.Height--;
-                            selectRange = rect;
-                        }
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-                    }
-                    break;
-
-                case 110:   // '.'(10key)
-                case 190:   // '.'(full-key)
-                    {
-                        gridViewManager.BeginGroup("空セルの入力");
-
-                        // 値の入力
-                        Rect rect = selectRange;
-                        for (int i = rect.Left; i <= rect.Right; i++)
-                        {
-                            // 入力前に情報が入っているか確認
-                            if (!checkCellValue(i, rect.Y))
-                            {
-                                // 空白の場合は使用状況を修正
-                                aryCellUsedCount[i]++;
-                            }
-
-                            // アンドゥ情報の記録
-                            var operation = new SetValueOperation(rect.Y, i, setting.KaraCell);
-                            gridViewManager.ExecuteOperation(operation);
-                        }
-
-                        gridViewManager.EndGroup();
-
-                        // 設定によりカーソル移動
-                        int len = cursorMoveWithNakaNuki();
-                        if (!setting.IsKaraNoMove && len > 0)
-                        {
-                            // ※基本的に Enterキー動作と同じ
-
-                            // 選択範囲を取得
-                            rect = selectRange;
-
-                            // 選択範囲をクリア
-                            dataGridView1.ClearSelection();
-
-                            // 先頭位置の計算(※下端のはみ出しチェック)
-                            int top = rect.Y + len;
-                            int btm = setting.RowLength - rect.Height;
-                            top = (top > btm) ? btm : top;  // 先頭が 終端-選択幅(垂直方向) を超える場合は 補正する
-
-                            // カーソル位置・選択範囲更新を委譲
-                            selectRange = gridSelectionService.MoveSelection(rect, rect.X, top);
-
-                            // 画面2/3より下に移動した場合の画面送り
-                            scrollingForward();
-                        }
-
-                        isFirstEdit = true;
-
-                        // 処理済みフラグを立てる
-                        e.Handled = true;
-
-                        // 描画更新(継続記号の更新の為)
-                        dataGridView1.Invalidate();
-                    }
-                    break;
+                e.Handled = true;
             }
 
             //初期編集状態の設定/解除
@@ -2631,26 +1743,7 @@ namespace AEIOU
         // MouseDownイベントハンドラ
         private void dataGridView1_CellMouseDown(object sender, DataGridViewCellMouseEventArgs e)
         {
-            // 左クリックかチェック
-            if ((e.Button & System.Windows.Forms.MouseButtons.Left) != 0)
-            {
-                // 選択範囲内かチェック
-                Rect rect = selectRange;
-                int col = e.ColumnIndex;
-                int row = e.RowIndex;
-                if (rect.Top > row || rect.Bottom < row || rect.Left > col || rect.Right < col)
-                {
-                    // 初期状態に戻す
-                    mouseDownPoint = new Point(-1, -1);
-                    isRectDrag = false;
-                }
-                else if (rect.Top <= row && rect.Bottom >= row && rect.Left <= col && rect.Right >= col)
-                {
-                    // カレントの位置を取得
-                    mouseDownPoint = new Point(col, row);
-                    isRectDrag = true;
-                }
-            }
+            gridMouseEventHandler.HandleMouseDown(e, selectRange, ref mouseDownPoint, ref isRectDrag);
 
             // 描画更新(アクティブセルの色分けの為)
             dataGridView1.Invalidate();
@@ -2662,71 +1755,14 @@ namespace AEIOU
         // MouseMoveイベントハンドラ
         private void dataGridView1_CellMouseMove(object sender, DataGridViewCellMouseEventArgs e)
         {
-            if (isRectDrag)
-            {
-                // 描画更新(範囲描画のため)
-                dataGridView1.Invalidate();
-            }
+            gridMouseEventHandler.HandleMouseMove(e, isRectDrag, dataGridView1);
         }
 
         //----------------------------------------------------------------------------------------
         // MouseUpイベントハンドラ
         private void dataGridView1_CellMouseUp(object sender, DataGridViewCellMouseEventArgs e)
         {
-            // ドラッグ中だった場合は 選択範囲を修正し移動（又はコピー）処理を行う
-            if (isRectDrag)
-            {
-                //選択範囲を解除
-                dataGridView1.ClearSelection();
-
-                //カレントセルは選択しておく
-                dataGridView1.CurrentCell.Selected = true;
-
-                if ((Control.ModifierKeys & Keys.Control) != 0)
-                {
-                    //選択元をコピー＆ペースト
-                    int col = dataGridView1.CurrentCell.ColumnIndex - (mouseDownPoint.X - selectRange.X);
-                    int row = dataGridView1.CurrentCell.RowIndex - (mouseDownPoint.Y - selectRange.Y);
-                    gridViewManager.BeginGroup("選択元をコピー＆ペースト");
-                    copyToBuf(selectRange);
-                    copyToCell(col, row, false);
-                    gridViewManager.EndGroup();
-                }
-                else
-                {
-                    //選択元をカット＆ペースト
-                    int col = dataGridView1.CurrentCell.ColumnIndex - (mouseDownPoint.X - selectRange.X);
-                    int row = dataGridView1.CurrentCell.RowIndex - (mouseDownPoint.Y - selectRange.Y);
-                    gridViewManager.BeginGroup("選択元をカット＆ペースト");
-                    cutToBuf(selectRange, false);
-                    copyToCell(col, row, false);
-                    gridViewManager.EndGroup();
-                }
-            }
-            else
-            {
-                // Ctrlキー同時押しの抑止
-                if ((Control.ModifierKeys & Keys.Control) != 0)
-                {
-                    //MessageBox.Show("Ctrlキー同時押しによるマルチセレクト機能には未対応です。");
-
-                    // 選択領域を解除 (カレントフレームのみ選択する)
-                    dataGridView1.ClearSelection();
-                    dataGridView1.CurrentCell.Selected = true;
-                }
-            }
-
-            // 初期状態に戻す
-            mouseDownPoint = new Point(-1, -1);
-            isRectDrag = false;
-            isFirstEdit = true;
-
-            // 選択範囲を保存
-            selectRange = getSelectedRect();
-
-            // 描画更新(範囲描画のため)
-            dataGridView1.Invalidate();
-
+            gridMouseEventHandler.HandleMouseUp(e, dataGridView1, ref selectRange, ref mouseDownPoint, ref isRectDrag, ref isFirstEdit);
             return;
         }
 

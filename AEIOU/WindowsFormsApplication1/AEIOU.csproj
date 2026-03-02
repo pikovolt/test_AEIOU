@@ -93,6 +93,12 @@
     <Compile Include="GridRect.cs" />
     <Compile Include="GridCellRenderer.cs" />
     <Compile Include="GridCellStyleResolver.cs" />
+    <Compile Include="GridBorderStateCalculator.cs" />
+    <Compile Include="GridFrameHeaderPainter.cs" />
+    <Compile Include="GridFrameLabelFormatter.cs" />
+    <Compile Include="GridShortcutRouter.cs" />
+    <Compile Include="GridCellValueService.cs" />
+    <Compile Include="GridMouseEventHandler.cs" />
     <Compile Include="GridInputInterpreter.cs" />
     <Compile Include="GridScrollService.cs" />
     <Compile Include="GridSelectionService.cs" />

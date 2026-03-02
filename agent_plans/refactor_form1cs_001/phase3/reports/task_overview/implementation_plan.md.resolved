@@ -1,0 +1,51 @@
+# Phase 3 Implementation Plan: Form1.cs Refactoring
+
+この文書は、[Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) の残存責務（描画・入力）の分離を進める Phase 3 の実装計画です。
+現行のコード構造（[CellPainting](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1314-1359), [calcBorderState](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1161-1246), [drawFrameNumber](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1247-1290), [dataGridView1_KeyDown](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1918-2613)）を調査し、事前に `agent_plans` 側で策定された5段階のタスク分割案が妥当であることを確認しました。
+
+## User Review Required
+この計画は既存の `agent_plans` の Phase3 計画を精査・追認したものです。タスクの粒度および順序について問題がないかご確認ください。
+
+## Proposed Changes
+作業は以下の5つのフェーズ（PR）に分割して進行します。
+
+### P3-001: 描画ヘッダ描画の分離
+[CellPainting](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1314-1359) 内で直接行われているフレーム番号等のヘッダ描画を専用クラスに委譲します。
+- #### [MODIFY] [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs)
+- #### [NEW] [GridFrameHeaderPainter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridFrameHeaderPainter.cs)
+- #### [NEW] [GridFrameLabelFormatter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridFrameLabelFormatter.cs)
+
+### P3-002: 境界判定ロジックの分離
+[calcBorderState](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1161-1246) のロジックを独立クラスに切り出し、テスト容易性と描画判定の責務を分離します。
+- #### [MODIFY] [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs)
+- #### [NEW] [GridBorderStateCalculator.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridBorderStateCalculator.cs)
+
+### P3-003: KeyDown前段ルータ化
+肥大化している [dataGridView1_KeyDown](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1918-2613) の先頭での分岐処理（ショートカットや基本キー判定）をルータ化します。
+- #### [MODIFY] [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs)
+- #### [NEW] [GridShortcutRouter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridShortcutRouter.cs)
+
+### P3-004: 選択移動のコマンド化
+[KeyDown](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#2741-2760) 内にベタ書きされている矢印キー等による選択移動・範囲拡張ロジックをコマンドパターンで抽出します。
+- #### [MODIFY] [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs)
+- #### [NEW] [GridMoveSelectionCommand.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridMoveSelectionCommand.cs)
+- #### [NEW] [GridKeyCommandDispatcher.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridKeyCommandDispatcher.cs)
+
+### P3-005: 数値入力/空セル入力の操作分離
+キー入力によるセル値変更を抽出済みの `GridViewOperation` 基盤に乗せ、UNDO/REDO対応を強固にします。
+- #### [MODIFY] [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs)
+- #### [MODIFY] [GridViewOperation.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridViewOperation.cs)
+- #### [MODIFY] [GridViewManager.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridViewManager.cs)
+
+---
+
+## Verification Plan
+
+### Automated Tests
+各実装後に C# のビルド (`msbuild` 等) が通り、既存の単体テストが通ることを確認します。
+
+### Manual Verification
+GUIの見た目・動作に関わるリファクタリングが中心となるため、各ステップの完了後に手動動作確認を行います。
+特に [agent_plans/refactor_form1cs_001/phase3/checklists/smoke_phase3.md](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/agent_plans/refactor_form1cs_001/phase3/checklists/smoke_phase3.md) のチェックリストに沿って以下の主要シナリオを確認します。
+- **描画分離後**: スクロール時、ウィンドウリサイズ時のセルおよびヘッダの描画乱れがないか。境界線（1秒毎、シート毎など）が正しく引かれているか。
+- **入力分離後**: 矢印キー移動、Shift+矢印での範囲選択、数値の直接入力、Enter/BackSpace時の挙動がリファクタリング前と完全に一致するか。Undo/Redoが崩れていないか。

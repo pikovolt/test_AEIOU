@@ -1,0 +1,137 @@
+using System;
+using System.Text;
+
+namespace AEIOU
+{
+    public interface IGridCellValueService
+    {
+        void InsertNumber(Rect selectRange, int key, bool isFirstEdit, bool alwaysAppend);
+        void IncrementValue(Rect selectRange);
+        void DecrementValue(Rect selectRange);
+        void InsertEmptyCell(Rect selectRange, string karaCellSymbol);
+    }
+
+    public class GridCellValueService : IGridCellValueService
+    {
+        private readonly GridViewManager gridViewManager;
+        private readonly Func<int, int, string> getCellValue;
+        private readonly Func<int, int, bool> checkCellValue;
+        private readonly Action<int> incrementCellUsedCount;
+
+        public GridCellValueService(
+            GridViewManager gridViewManager,
+            Func<int, int, string> getCellValue,
+            Func<int, int, bool> checkCellValue,
+            Action<int> incrementCellUsedCount)
+        {
+            this.gridViewManager = gridViewManager;
+            this.getCellValue = getCellValue;
+            this.checkCellValue = checkCellValue;
+            this.incrementCellUsedCount = incrementCellUsedCount;
+        }
+
+        public void InsertNumber(Rect selectRange, int key, bool isFirstEdit, bool alwaysAppend)
+        {
+            // 入力値を計算
+            byte[] ch = { (byte)key };
+            ch[0] += (byte)'0';
+            ch[0] -= 96;
+
+            gridViewManager.BeginGroup("入力");
+
+            for (int i = 0; i < selectRange.Width; i++)
+            {
+                string newValue = getCellValue(selectRange.X + i, selectRange.Y);
+
+                // 入力前に情報が入っているか確認
+                if (!checkCellValue(selectRange.X + i, selectRange.Y))
+                {
+                    // 空白の場合は使用状況を修正
+                    incrementCellUsedCount(selectRange.X + i);
+                }
+
+                // 初回フラグが立ち, 尚且つ "常に追加"が未チェックの場合のみ 初回編集を上書きにする
+                if (isFirstEdit && !alwaysAppend)
+                {
+                    // セルに値を設定(初回編集)
+                    newValue = Encoding.GetEncoding(932).GetString(ch);
+                }
+                else
+                {
+                    // セルに値を設定(継続編集)
+                    newValue += Encoding.GetEncoding(932).GetString(ch);
+                }
+
+                // アンドゥ情報の記録
+                var operation = new SetValueOperation(selectRange.Y, selectRange.X + i, newValue);
+                gridViewManager.ExecuteOperation(operation);
+            }
+
+            gridViewManager.EndGroup();
+        }
+
+        public void IncrementValue(Rect selectRange)
+        {
+             // 入力前に情報が入っているか確認
+            if (!checkCellValue(selectRange.X, selectRange.Y))
+            {
+                // 空白の場合は使用状況を修正
+                incrementCellUsedCount(selectRange.X);
+            }
+
+            // 手前の入力を検索
+            int key = 1;
+            for (int i = selectRange.Y - 1; i >= 0; i--)
+            {
+                // 空白と空セルは無視
+                string str = getCellValue(selectRange.X, i);
+                if (string.IsNullOrEmpty(str)) continue;
+                
+                // TODO: 呼び出し元でKaraCellチェックか、KaraCellの文字列を注入する必要がある。
+                //       現状は Form1 側で取得後、+1して SetValue を呼ぶ形で切り出すのが最適か。
+                //       一旦、純粋に操作記録だけを行うように設計変更する。
+            }
+        }
+        
+        public void DecrementValue(Rect selectRange)
+        {
+             // TODO: 上記と同様
+        }
+        
+        public void InsertEmptyCell(Rect selectRange, string karaCellSymbol)
+        {
+             gridViewManager.BeginGroup("空セルの入力");
+
+            // 値の入力
+            for (int i = selectRange.Left; i <= selectRange.Right; i++)
+            {
+                // 入力前に情報が入っているか確認
+                if (!checkCellValue(i, selectRange.Y))
+                {
+                    // 空白の場合は使用状況を修正
+                    incrementCellUsedCount(i);
+                }
+
+                // アンドゥ情報の記録
+                var operation = new SetValueOperation(selectRange.Y, i, karaCellSymbol);
+                gridViewManager.ExecuteOperation(operation);
+            }
+
+            gridViewManager.EndGroup();
+        }
+        
+        public void ApplyValue(Rect selectRange, string valueToApply)
+        {
+            // 入力前に情報が入っているか確認
+            if (!checkCellValue(selectRange.X, selectRange.Y))
+            {
+                // 空白の場合は使用状況を修正
+                incrementCellUsedCount(selectRange.X);
+            }
+
+            // アンドゥ情報の記録
+            var operation = new SetValueOperation(selectRange.Y, selectRange.X, valueToApply);
+            gridViewManager.ExecuteOperation(operation);
+        }
+    }
+}

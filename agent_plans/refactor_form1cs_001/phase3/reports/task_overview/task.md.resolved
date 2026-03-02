@@ -1,0 +1,36 @@
+# Phase 3 Implementation Planning
+- [x] Read Phase 3 Overview and Task definitions
+- [x] Analyze Form1.cs to validate the proposed task split (P3-001 to P3-005)
+- [x] Create an [implementation_plan.md](file:///C:/Users/shoic/.gemini/antigravity/brain/f6fd09cd-f53a-4db1-83ee-1ab6f6378c86/implementation_plan.md) summarizing the validated approach
+- [x] Present the plan to the user for approval
+
+# P3-001: Extract Header Painting
+- [x] Create [GridFrameLabelFormatter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridFrameLabelFormatter.cs)
+- [x] Create [GridFrameHeaderPainter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridFrameHeaderPainter.cs)
+- [x] Refactor [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) [drawFrameNumber](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1063-1074) to use these classes
+- [x] Verify drawing functionality (Skipped MSBuild due to environment constraints)
+- [x] Create impl_done report for P3-001
+
+# P3-002: Extract Border State Calculation
+- [x] Create [GridBorderStateCalculator.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridBorderStateCalculator.cs)
+- [x] Refactor [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) [calcBorderState](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1056-1062) to use this class
+- [x] Update AEIOU.csproj
+- [x] Create impl_done report for P3-002
+
+# P3-003: Extract KeyDown Front-end Router
+- [x] Create [GridShortcutRouter.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridShortcutRouter.cs)
+- [x] Refactor [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) [dataGridView1_KeyDown](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs#1702-1725) to use this class
+- [x] Update AEIOU.csproj
+- [x] Create impl_done report for P3-003
+
+# P3-004: Extract Cell Value Operations
+- [x] Create [GridCellValueService.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridCellValueService.cs)
+- [x] Refactor [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) [IGridShortcutHandler](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridShortcutRouter.cs#6-27) implementation to use this service
+- [x] Update AEIOU.csproj
+- [x] Create impl_done report for P3-004
+
+# P3-005: Clean Up Remaining Mouse Handlers
+- [x] Create [GridMouseEventHandler.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/GridMouseEventHandler.cs)
+- [x] Refactor [Form1.cs](file:///c:/Users/shoic/Documents/GitHub/test_AEIOU/AEIOU/WindowsFormsApplication1/Form1.cs) Mouse events to delegate to this handler
+- [x] Update AEIOU.csproj
+- [x] Create impl_done report for P3-005
