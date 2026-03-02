@@ -10,7 +10,7 @@ namespace AEIOU
             if (isFirstEdit || setting.IsAlwaysAppend)
             {
                 // Delete selection
-                deleteRect_with_backspace(isCellEdit);
+                isCellEdit = deleteRect_with_backspace(isCellEdit);
             }
             else
             {
@@ -34,7 +34,12 @@ namespace AEIOU
         public void OnEnter() { gridSelectionService.MoveDown(selectRange); }
         public void OnPageUp(int keyValue) { gridScrollService.ScrollVertical(-dataGridView1.DisplayedRowCount(true)); }
         public void OnPageDown(int keyValue) { gridScrollService.ScrollVertical(dataGridView1.DisplayedRowCount(true)); }
-        public void OnHome() { selectRange = new Rect(0, selectRange.Y, selectRange.Width, selectRange.Height); dataGridView1.ClearSelection(); selectRange = gridSelectionService.MoveSelection(selectRange, 0, selectRange.Y); }
+        public void OnHome() 
+        { 
+            selectRange = new Rect(0, selectRange.Y, selectRange.Width, selectRange.Height);
+            dataGridView1.ClearSelection();
+            selectRange = gridSelectionService.MoveSelection(selectRange, 0, selectRange.Y); 
+        }
         public void OnLeftArrow(int keyValue) { gridSelectionService.MoveLeft(selectRange); }
         public void OnUpArrow(int keyValue) { gridSelectionService.MoveUp(selectRange); }
         public void OnRightArrow(int keyValue) { gridSelectionService.MoveRight(selectRange); }
@@ -42,22 +47,34 @@ namespace AEIOU
         
         public void OnInsert() 
         { 
-            gridViewManager.BeginGroup("セル挿入");
-            for (int i=selectRange.Left; i<=selectRange.Right; i++) {
-                gridCellValueService.InsertEmptyCell(new Rect(i, selectRange.Y, 1, 1), "");
-            }
-            gridViewManager.EndGroup();
+            insertToAllCell(selectRange.Top, selectRange.Height);
+            calcNakanukiRange(true, selectRange.Top, selectRange.Height);
+            calcKiribariRange(true, selectRange.Top, selectRange.Height);
+            flushUndoHistory();
             selectRange = gridSelectionService.MoveDown(selectRange);
         }
 
         public void OnDelete(int keyValue) 
         { 
-            gridViewManager.BeginGroup("セル削除");
-            for (int i=selectRange.Left; i<=selectRange.Right; i++) {
-                gridCellValueService.ApplyValue(new Rect(i, selectRange.Y, 1, 1), "");
+            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
+            {
+                // Shift+Delete: 範囲削除
+                cutToAllCell(selectRange.Top, selectRange.Height);
+                calcNakanukiRange(false, selectRange.Top, selectRange.Height);
+                calcKiribariRange(false, selectRange.Top, selectRange.Height);
+                flushUndoHistory();
+                selectRange = gridSelectionService.MoveUp(selectRange);
             }
-            gridViewManager.EndGroup();
-            selectRange = gridSelectionService.MoveUp(selectRange);
+            else
+            {
+                // Delete: セル消去
+                gridViewManager.BeginGroup("セル削除");
+                for (int i=selectRange.Left; i<=selectRange.Right; i++) {
+                    gridCellValueService.ApplyValue(new Rect(i, selectRange.Y, 1, 1), "");
+                }
+                gridViewManager.EndGroup();
+                selectRange = gridSelectionService.MoveDown(selectRange);
+            }
         }
 
         public void OnNumberKey(int keyValue, int keyCode)
@@ -103,10 +120,33 @@ namespace AEIOU
             }
         }
 
-        public void OnMultiplyKey() { /* Range Multiply handling */ }
+        public void OnMultiplyKey() 
+        { 
+            // 選択範囲の拡大
+            Rect rect = getSelectedRect();
+            int btm = setting.RowLength - rect.Height;
+            if (rect.Y < btm)
+            {
+                for (int j = 0; j < rect.Width; j++)
+                    dataGridView1[rect.X + j, rect.Bottom + 1].Selected = true;
+                rect.Height++;
+                selectRange = rect;
+            }
+        }
         public void OnAddKey() { gridCellValueService.IncrementValue(selectRange, setting.KaraCell); }
         public void OnSubtractKey() { gridCellValueService.DecrementValue(selectRange, setting.KaraCell); }
-        public void OnDivideKey() { /* Range Divide handling */ }
+        public void OnDivideKey() 
+        { 
+            // 選択範囲の縮小
+            Rect rect = getSelectedRect();
+            if (rect.Height > 1)
+            {
+                for (int j = 0; j < rect.Width; j++)
+                    dataGridView1[rect.X + j, rect.Bottom].Selected = false;
+                rect.Height--;
+                selectRange = rect;
+            }
+        }
         
         public void OnDecimalKey() 
         {
