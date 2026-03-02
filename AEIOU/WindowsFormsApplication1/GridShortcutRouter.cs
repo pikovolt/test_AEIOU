@@ -115,10 +115,12 @@ namespace AEIOU
                     return true;
 
                 case 107:   // '+'(10key)
+                case 187:   // '+'(full-key)
                     handler.OnAddKey();
                     return true;
 
                 case 109:   // '-'(10key)
+                case 189:   // '-'(full-key)
                     handler.OnSubtractKey();
                     return true;
 

@@ -49,9 +49,8 @@ namespace AEIOU
         public void OnPageDown(int keyValue) { gridScrollService.ScrollVertical(dataGridView1.DisplayedRowCount(true)); }
         public void OnHome() 
         { 
-            selectRange = new Rect(0, selectRange.Y, selectRange.Width, selectRange.Height);
             dataGridView1.ClearSelection();
-            selectRange = gridSelectionService.MoveSelection(selectRange, 0, selectRange.Y); 
+            selectRange = gridSelectionService.MoveSelection(selectRange, selectRange.X, 0);
         }
         public void OnLeftArrow(int keyValue)
         {
@@ -121,7 +120,7 @@ namespace AEIOU
             calcNakanukiRange(true, selectRange.Top, selectRange.Height);
             calcKiribariRange(true, selectRange.Top, selectRange.Height);
             flushUndoHistory();
-            selectRange = gridSelectionService.MoveDown(selectRange);
+            selectRange = gridSelectionService.MoveSelectionDown(selectRange, selectRange.Height);
         }
 
         public void OnDelete(int keyValue) 
@@ -133,7 +132,12 @@ namespace AEIOU
                 calcNakanukiRange(false, selectRange.Top, selectRange.Height);
                 calcKiribariRange(false, selectRange.Top, selectRange.Height);
                 flushUndoHistory();
-                selectRange = gridSelectionService.MoveUp(selectRange);
+                int top = selectRange.Y - selectRange.Height;
+                if (top < 0)
+                {
+                    top = 0;
+                }
+                selectRange = gridSelectionService.MoveSelection(selectRange, selectRange.X, top);
             }
             else
             {
@@ -143,7 +147,12 @@ namespace AEIOU
                     gridCellValueService.ApplyValue(new Rect(i, selectRange.Y, 1, 1), "");
                 }
                 gridViewManager.EndGroup();
-                selectRange = gridSelectionService.MoveUp(selectRange);
+                int top = selectRange.Y - selectRange.Height;
+                if (top < 0)
+                {
+                    top = 0;
+                }
+                selectRange = gridSelectionService.MoveSelection(selectRange, selectRange.X, top);
             }
         }
 
@@ -165,8 +174,6 @@ namespace AEIOU
 
             gridCellValueService.InsertNumber(selectRange, normalizedKey, isFirstEdit, setting.IsAlwaysAppend);
             isCellEdit = true;
-            this.dataGridView1.ClearSelection();
-            selectRange = gridSelectionService.MoveDown(selectRange);
         }
 
         public void OnJOrKKey(int keyCode)
@@ -216,8 +223,29 @@ namespace AEIOU
                 selectRange = rect;
             }
         }
-        public void OnAddKey() { gridCellValueService.IncrementValue(selectRange, setting.KaraCell); }
-        public void OnSubtractKey() { gridCellValueService.DecrementValue(selectRange, setting.KaraCell); }
+        public void OnAddKey()
+        {
+            gridCellValueService.IncrementValue(selectRange, setting.KaraCell);
+            this.dataGridView1.ClearSelection();
+            int len = cursorMoveWithNakaNuki();
+            if (len > 0)
+            {
+                selectRange = gridSelectionService.MoveSelectionDown(selectRange, len);
+            }
+            scrollingForward();
+        }
+
+        public void OnSubtractKey()
+        {
+            gridCellValueService.DecrementValue(selectRange, setting.KaraCell);
+            this.dataGridView1.ClearSelection();
+            int len = cursorMoveWithNakaNuki();
+            if (len > 0)
+            {
+                selectRange = gridSelectionService.MoveSelectionDown(selectRange, len);
+            }
+            scrollingForward();
+        }
         public void OnDivideKey() 
         { 
             // 選択範囲の縮小
@@ -234,9 +262,15 @@ namespace AEIOU
         public void OnDecimalKey() 
         {
             gridCellValueService.InsertEmptyCell(selectRange, setting.KaraCell);
+            isCellEdit = true;
             this.dataGridView1.ClearSelection();
             if (!setting.IsKaraNoMove) {
-                selectRange = gridSelectionService.MoveDown(selectRange);
+                int len = cursorMoveWithNakaNuki();
+                if (len > 0)
+                {
+                    selectRange = gridSelectionService.MoveSelectionDown(selectRange, len);
+                }
+                scrollingForward();
             }
         }
     }

@@ -295,6 +295,7 @@ namespace AEIOU
 	    Rect copyRect;                              //コピー範囲
 	    Point mouseDownPoint;                       //マウス押下位置
 	    bool isRectDrag;                            //範囲移動状態
+        bool isCtrlDragCopy;                        //Ctrlドラッグでコピー動作を行うか
 	    bool isFirstEdit;                           //初回編集状態（セル入力を中断するような操作の度に trueにされるべき）
         bool isCellEdit;                            //セルが編集されたかどうかのフラグ
 
@@ -552,6 +553,7 @@ namespace AEIOU
             copyRect = new Rect(-1, -1, 0, 0);      //コピー範囲
             mouseDownPoint = new Point(-1, -1);     //マウス押下位置
             isRectDrag = false;                     //範囲移動状態
+            isCtrlDragCopy = false;
             isFirstEdit = true;
             isCellEdit = false;
 
@@ -569,6 +571,7 @@ namespace AEIOU
                 mouseDownPoint = new Point(-1, -1);             //マウス押下位置
                 selectRange = new Rect(0, 0, 1, 1);             //選択範囲
                 isRectDrag = false;                             //範囲移動状態
+                isCtrlDragCopy = false;
                 isFirstEdit = true;
                 isCellEdit = false;
             }
@@ -1532,12 +1535,15 @@ namespace AEIOU
 
             // カレントセルの内容を確認
             bool isNoBlank = false;
-            for (int i = 0; i < rect.Width; i++)
+            for (int row = rect.Top; row <= rect.Bottom && !isNoBlank; row++)
             {
-                if (GetCellValue(rect.X + i, rect.Y) != "")
+                for (int col = rect.Left; col <= rect.Right; col++)
                 {
-                    isNoBlank = true;
-                    break;
+                    if (GetCellValue(col, row) != "")
+                    {
+                        isNoBlank = true;
+                        break;
+                    }
                 }
             }
             if (isNoBlank)
@@ -1592,36 +1598,38 @@ namespace AEIOU
                 // DataGridView 全体に対する「絶対列インデックス」。
                 // そのため SetValueOperation の列引数は col をそのまま渡す（rect.X + col にはしない）。
                 // 複数列選択でも Left～Right の各列を1回ずつ処理するため、列ずれは発生しない。
-                for (int col = rect.Left; col <= rect.Right; col++)
+                for (int row = rect.Top; row <= rect.Bottom; row++)
                 {
-                    // 空白セルは無視する
-                    String new_value = GetCellValue(col, rect.Y);
-                    if (new_value.Length == 0) continue;
-
-                    if (isBackward)
+                    for (int col = rect.Left; col <= rect.Right; col++)
                     {
-                        //セル内容の消去
-                        new_value = "";
-                        //使用状況を修正
-                        aryCellUsedCount[col]--;
-                    }
-                    else
-                    {
-                        //１桁削る
-                        new_value = new_value.Substring(0, new_value.Length - 1);
-                        //dataGridView1[i, rect.Y].Value = str;
-                        isCellEdit = true;
+                        // 空白セルは無視する
+                        String new_value = GetCellValue(col, row);
+                        if (new_value.Length == 0) continue;
 
-                        // セルの中身が空白になった場合は、使用状況を修正
-                        if (new_value.Length == 0)
+                        if (isBackward)
                         {
+                            //セル内容の消去
+                            new_value = "";
+                            //使用状況を修正
                             aryCellUsedCount[col]--;
                         }
-                    }
+                        else
+                        {
+                            //１桁削る
+                            new_value = new_value.Substring(0, new_value.Length - 1);
+                            isCellEdit = true;
 
-                    // アンドゥ情報の記録
-                    var operation = new SetValueOperation(rect.Y, col, new_value);
-                    gridViewManager.ExecuteOperation(operation);
+                            // セルの中身が空白になった場合は、使用状況を修正
+                            if (new_value.Length == 0)
+                            {
+                                aryCellUsedCount[col]--;
+                            }
+                        }
+
+                        // アンドゥ情報の記録
+                        var operation = new SetValueOperation(row, col, new_value);
+                        gridViewManager.ExecuteOperation(operation);
+                    }
 
                 }
 
@@ -1773,7 +1781,7 @@ namespace AEIOU
         // MouseDownイベントハンドラ
         private void dataGridView1_CellMouseDown(object sender, DataGridViewCellMouseEventArgs e)
         {
-            gridMouseEventHandler.HandleMouseDown(e, selectRange, ref mouseDownPoint, ref isRectDrag);
+            gridMouseEventHandler.HandleMouseDown(e, selectRange, ref mouseDownPoint, ref isRectDrag, ref isCtrlDragCopy);
 
             // 描画更新(アクティブセルの色分けの為)
             dataGridView1.Invalidate();
@@ -1785,14 +1793,14 @@ namespace AEIOU
         // MouseMoveイベントハンドラ
         private void dataGridView1_CellMouseMove(object sender, DataGridViewCellMouseEventArgs e)
         {
-            gridMouseEventHandler.HandleMouseMove(e, isRectDrag, dataGridView1);
+            gridMouseEventHandler.HandleMouseMove(e, isRectDrag, dataGridView1, ref isCtrlDragCopy);
         }
 
         //----------------------------------------------------------------------------------------
         // MouseUpイベントハンドラ
         private void dataGridView1_CellMouseUp(object sender, DataGridViewCellMouseEventArgs e)
         {
-            gridMouseEventHandler.HandleMouseUp(e, dataGridView1, ref selectRange, ref mouseDownPoint, ref isRectDrag, ref isFirstEdit);
+            gridMouseEventHandler.HandleMouseUp(e, dataGridView1, ref selectRange, ref mouseDownPoint, ref isRectDrag, ref isCtrlDragCopy, ref isFirstEdit);
             return;
         }
 
