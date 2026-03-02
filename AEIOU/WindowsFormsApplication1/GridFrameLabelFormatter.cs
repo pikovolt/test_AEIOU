@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace AEIOU
 {
-    public class GridFrameLabelFormatter
+    internal class GridFrameLabelFormatter
     {
         private readonly int fps;
         private readonly int sheetSec;
@@ -15,7 +15,7 @@ namespace AEIOU
         }
 
         // フレーム表示文字列の生成
-        public string FrmToSheet(int frm, IReadOnlyList<Range> addRange)
+        public string FrmToSheet(int frm, IList<Range> addRange)
         {
             string Time = "";
             int addFrame = 0;

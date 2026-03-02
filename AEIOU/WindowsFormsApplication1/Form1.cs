@@ -1699,6 +1699,34 @@ namespace AEIOU
             return false;
         }
 
+        private void InvalidateActiveColumnTransition(int previousCol)
+        {
+            if (dataGridView1.CurrentCell == null)
+            {
+                dataGridView1.Invalidate();
+                return;
+            }
+
+            int currentCol = dataGridView1.CurrentCell.ColumnIndex;
+            int maxCol = GetSheetColumnCount() - 1;
+
+            bool previousValid = previousCol >= 0 && previousCol <= maxCol;
+            bool currentValid = currentCol >= 0 && currentCol <= maxCol;
+
+            if (!currentValid)
+            {
+                dataGridView1.Invalidate();
+                return;
+            }
+
+            dataGridView1.InvalidateColumn(currentCol);
+
+            if (previousValid && previousCol != currentCol)
+            {
+                dataGridView1.InvalidateColumn(previousCol);
+            }
+        }
+
         //----------------------------------------------------------------------------------------
         // KeyDownイベントハンドラ
         private void dataGridView1_KeyDown(object sender, KeyEventArgs e)
@@ -1709,12 +1737,14 @@ namespace AEIOU
             }
 
             int keyValue = gridInputInterpreter.ConvertKeyValue(e);
+            int previousCol = (dataGridView1.CurrentCell != null) ? dataGridView1.CurrentCell.ColumnIndex : -1;
 
             isCellEdit = false; // Reset for this key press
 
             if (gridShortcutRouter.Route(keyValue, e.KeyValue))
             {
                 e.Handled = true;
+                InvalidateActiveColumnTransition(previousCol);
             }
 
             //初期編集状態の設定/解除

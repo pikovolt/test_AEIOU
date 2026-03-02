@@ -90,6 +90,10 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
+    <Compile Include="Form1.Shortcut.cs">
+      <DependentUpon>Form1.cs</DependentUpon>
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="GridRect.cs" />
     <Compile Include="GridCellRenderer.cs" />
     <Compile Include="GridCellStyleResolver.cs" />

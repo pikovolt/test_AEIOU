@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace AEIOU
 {
-    public class GridBorderStateCalculator
+    internal class GridBorderStateCalculator
     {
         private readonly int fps;
         private readonly int sheetSec;
@@ -19,7 +19,7 @@ namespace AEIOU
 
         public SheetBorder CalcBorderState(
             DataGridViewCellPaintingEventArgs e,
-            IReadOnlyList<Range> addRange)
+            IList<Range> addRange)
         {
             SheetBorder retValue = SheetBorder.None;
             bool bHariFirst = false;

@@ -77,5 +77,44 @@ namespace AEIOU
             rect.Y = y;
             return rect;
         }
+
+        public Rect MoveDown(Rect rect)
+        {
+            return MoveSelectionDown(rect, 1);
+        }
+
+        public Rect MoveUp(Rect rect)
+        {
+            int top = rect.Y - 1;
+            if (top < 0)
+            {
+                top = 0;
+            }
+
+            return MoveSelection(rect, rect.X, top);
+        }
+
+        public Rect MoveLeft(Rect rect)
+        {
+            int left = rect.X - 1;
+            if (left < 0)
+            {
+                left = 0;
+            }
+
+            return MoveSelection(rect, left, rect.Y);
+        }
+
+        public Rect MoveRight(Rect rect)
+        {
+            int left = rect.X + 1;
+            int maxLeft = _setting.ColLength - rect.Width;
+            if (left > maxLeft)
+            {
+                left = maxLeft;
+            }
+
+            return MoveSelection(rect, left, rect.Y);
+        }
     }
 }

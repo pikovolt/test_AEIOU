@@ -87,5 +87,41 @@ namespace AEIOU
                 _view.CurrentCell = _view[_view.CurrentCell.ColumnIndex, newRow];
             }
         }
+
+        public void ScrollVertical(int offsetRows)
+        {
+            if (offsetRows == 0)
+            {
+                return;
+            }
+
+            int currentTop = _view.FirstDisplayedScrollingRowIndex;
+            int maxTop = _setting.RowLength - 1;
+            int newTop = currentTop + offsetRows;
+
+            if (newTop < 0)
+            {
+                newTop = 0;
+            }
+            if (newTop > maxTop)
+            {
+                newTop = maxTop;
+            }
+
+            _view.FirstDisplayedScrollingRowIndex = newTop;
+
+            int currentCol = _view.CurrentCell.ColumnIndex;
+            int currentRow = _view.CurrentCell.RowIndex + offsetRows;
+            if (currentRow < 0)
+            {
+                currentRow = 0;
+            }
+            if (currentRow >= _setting.RowLength)
+            {
+                currentRow = _setting.RowLength - 1;
+            }
+
+            _view.CurrentCell = _view[currentCol, currentRow];
+        }
     }
 }
