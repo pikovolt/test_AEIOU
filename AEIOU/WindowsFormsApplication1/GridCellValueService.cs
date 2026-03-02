@@ -6,8 +6,8 @@ namespace AEIOU
     public interface IGridCellValueService
     {
         void InsertNumber(Rect selectRange, int key, bool isFirstEdit, bool alwaysAppend);
-        void IncrementValue(Rect selectRange);
-        void DecrementValue(Rect selectRange);
+        void IncrementValue(Rect selectRange, string karaCellSymbol);
+        void DecrementValue(Rect selectRange, string karaCellSymbol);
         void InsertEmptyCell(Rect selectRange, string karaCellSymbol);
     }
 
@@ -70,7 +70,7 @@ namespace AEIOU
             gridViewManager.EndGroup();
         }
 
-        public void IncrementValue(Rect selectRange)
+        public void IncrementValue(Rect selectRange, string karaCellSymbol)
         {
              // 入力前に情報が入っているか確認
             if (!checkCellValue(selectRange.X, selectRange.Y))
@@ -86,16 +86,47 @@ namespace AEIOU
                 // 空白と空セルは無視
                 string str = getCellValue(selectRange.X, i);
                 if (string.IsNullOrEmpty(str)) continue;
+                if (str == karaCellSymbol) return; // カラセルが入力されていたら、処理を中断
                 
-                // TODO: 呼び出し元でKaraCellチェックか、KaraCellの文字列を注入する必要がある。
-                //       現状は Form1 側で取得後、+1して SetValue を呼ぶ形で切り出すのが最適か。
-                //       一旦、純粋に操作記録だけを行うように設計変更する。
+                if (int.TryParse(str, out int val))
+                {
+                    key = val + 1;
+                    break;
+                }
             }
+            
+            var operation = new SetValueOperation(selectRange.Y, selectRange.X, key.ToString());
+            gridViewManager.ExecuteOperation(operation);
         }
         
-        public void DecrementValue(Rect selectRange)
+        public void DecrementValue(Rect selectRange, string karaCellSymbol)
         {
-             // TODO: 上記と同様
+             // 入力前に情報が入っているか確認
+            if (!checkCellValue(selectRange.X, selectRange.Y))
+            {
+                // 空白の場合は使用状況を修正
+                incrementCellUsedCount(selectRange.X);
+            }
+
+            // 手前の入力を検索
+            int key = 1;
+            for (int i = selectRange.Y - 1; i >= 0; i--)
+            {
+                // 空白と空セルは無視
+                string str = getCellValue(selectRange.X, i);
+                if (string.IsNullOrEmpty(str)) continue;
+                if (str == karaCellSymbol) return; // カラセルが入力されていたら、処理を中断
+                
+                if (int.TryParse(str, out int val))
+                {
+                    key = val - 1;
+                    if (key < 1) key = 1; // 1未満にはならない前提
+                    break;
+                }
+            }
+            
+            var operation = new SetValueOperation(selectRange.Y, selectRange.X, key.ToString());
+            gridViewManager.ExecuteOperation(operation);
         }
         
         public void InsertEmptyCell(Rect selectRange, string karaCellSymbol)

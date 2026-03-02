@@ -308,7 +308,7 @@ namespace AEIOU
 	    List<Range> addRange;                       // 切り貼り範囲
 
         // アンドゥ処理
-        private UndoManager undoMgr = new UndoManager();
+        private GridViewManager gridViewManager = new GridViewManager();
         private GridFrameLabelFormatter gridFrameLabelFormatter;
         private GridFrameHeaderPainter gridFrameHeaderPainter;
         private GridBorderStateCalculator gridBorderStateCalculator;
@@ -334,7 +334,7 @@ namespace AEIOU
         public Form1()
         {
             InitializeComponent();
-            //gridViewManager.View = dataGridView1; // This line is removed as gridViewManager is replaced
+            gridViewManager.View = dataGridView1;
 
             // 自分のウィンドウハンドルを取得しておく
             this.owner = Control.FromHandle(this.Handle);
