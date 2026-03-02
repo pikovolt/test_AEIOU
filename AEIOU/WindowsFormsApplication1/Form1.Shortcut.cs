@@ -33,85 +33,34 @@ namespace AEIOU
 
         public void OnEnter()
         {
-            Rect rect = getSelectedRect();
-            dataGridView1.ClearSelection();
-
-            int len = cursorMoveWithNakaNuki();
-            if (len > 0)
-            {
-                selectRange = gridSelectionService.MoveSelectionDown(rect, len);
-            }
-
+            selectRange = gridMoveSelectionCommand.HandleEnter(selectRange, cursorMoveWithNakaNuki);
             isFirstEdit = true;
-            scrollingForward();
         }
-        public void OnPageUp(int keyValue) { gridScrollService.ScrollVertical(-dataGridView1.DisplayedRowCount(true)); }
-        public void OnPageDown(int keyValue) { gridScrollService.ScrollVertical(dataGridView1.DisplayedRowCount(true)); }
-        public void OnHome() 
-        { 
-            dataGridView1.ClearSelection();
-            selectRange = gridSelectionService.MoveSelection(selectRange, selectRange.X, 0);
-        }
+        public void OnPageUp(int keyValue) { gridMoveSelectionCommand.HandlePageUp(); }
+        public void OnPageDown(int keyValue) { gridMoveSelectionCommand.HandlePageDown(); }
+        public void OnHome() { selectRange = gridMoveSelectionCommand.HandleHome(selectRange); }
         public void OnLeftArrow(int keyValue)
         {
-            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
-            {
-                Rect rect = getSelectedRect();
-                if (rect.Width > 1)
-                {
-                    for (int i = 0; i < rect.Height; i++)
-                    {
-                        dataGridView1[rect.Right, rect.Y + i].Selected = false;
-                    }
-                    rect.Width--;
-                    selectRange = rect;
-                }
-                return;
-            }
-
-            selectRange = gridSelectionService.MoveLeft(selectRange);
+            bool isShiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
+            selectRange = gridMoveSelectionCommand.HandleLeftArrow(selectRange, isShiftPressed);
         }
 
         public void OnUpArrow(int keyValue)
         {
-            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
-            {
-                OnDivideKey();
-                return;
-            }
-
-            selectRange = gridSelectionService.MoveUp(selectRange);
+            bool isShiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
+            selectRange = gridMoveSelectionCommand.HandleUpArrow(selectRange, isShiftPressed);
         }
 
         public void OnRightArrow(int keyValue)
         {
-            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
-            {
-                Rect rect = getSelectedRect();
-                if (rect.Right + 1 < setting.ColLength)
-                {
-                    for (int i = 0; i < rect.Height; i++)
-                    {
-                        dataGridView1[rect.Right + 1, rect.Y + i].Selected = true;
-                    }
-                    rect.Width++;
-                    selectRange = rect;
-                }
-                return;
-            }
-
-            selectRange = gridSelectionService.MoveRight(selectRange);
+            bool isShiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
+            selectRange = gridMoveSelectionCommand.HandleRightArrow(selectRange, isShiftPressed);
         }
 
         public void OnDownArrow(int keyValue)
         {
-            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
-            {
-                OnMultiplyKey();
-                return;
-            }
-
-            selectRange = gridSelectionService.MoveDown(selectRange);
+            bool isShiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
+            selectRange = gridMoveSelectionCommand.HandleDownArrow(selectRange, isShiftPressed);
         }
         
         public void OnInsert() 
@@ -125,7 +74,7 @@ namespace AEIOU
 
         public void OnDelete(int keyValue) 
         { 
-            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
+            if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.SHIFTKey))
             {
                 // Shift+Delete: 範囲削除
                 cutToAllCell(selectRange.Top, selectRange.Height);
@@ -139,7 +88,7 @@ namespace AEIOU
                 }
                 selectRange = gridSelectionService.MoveSelection(selectRange, selectRange.X, top);
             }
-            else
+            else if (setting.keys.checkShiftBeforeConvertion(keyValue, CombinationKeyState.None))
             {
                 // Delete: 選択範囲の内容削除（移動なし）
                 deleteRect(selectRange);
@@ -203,15 +152,7 @@ namespace AEIOU
 
         public void OnMultiplyKey() 
         { 
-            // 選択範囲の拡大
-            Rect rect = getSelectedRect();
-            if (rect.Bottom + 1 < setting.RowLength)
-            {
-                for (int j = 0; j < rect.Width; j++)
-                    dataGridView1[rect.X + j, rect.Bottom + 1].Selected = true;
-                rect.Height++;
-                selectRange = rect;
-            }
+            selectRange = gridMoveSelectionCommand.HandleMultiply(selectRange);
         }
         public void OnAddKey()
         {
@@ -238,15 +179,7 @@ namespace AEIOU
         }
         public void OnDivideKey() 
         { 
-            // 選択範囲の縮小
-            Rect rect = getSelectedRect();
-            if (rect.Height > 1)
-            {
-                for (int j = 0; j < rect.Width; j++)
-                    dataGridView1[rect.X + j, rect.Bottom].Selected = false;
-                rect.Height--;
-                selectRange = rect;
-            }
+            selectRange = gridMoveSelectionCommand.HandleDivide(selectRange);
         }
         
         public void OnDecimalKey() 

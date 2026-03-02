@@ -313,6 +313,8 @@ namespace AEIOU
         private GridFrameHeaderPainter gridFrameHeaderPainter;
         private GridBorderStateCalculator gridBorderStateCalculator;
         private GridShortcutRouter gridShortcutRouter;
+        private GridKeyCommandDispatcher gridKeyCommandDispatcher;
+        private GridMoveSelectionCommand gridMoveSelectionCommand;
         private GridCellValueService gridCellValueService;
         private GridMouseEventHandler gridMouseEventHandler;
 
@@ -446,6 +448,8 @@ namespace AEIOU
             gridBorderStateCalculator = new GridBorderStateCalculator(setting.Fps, setting.SheetSec, setting.SheetDivide);
             gridInputInterpreter = new GridInputInterpreter(setting.keys);
             gridShortcutRouter = new GridShortcutRouter(this); // Initialize GridShortcutRouter here
+            gridKeyCommandDispatcher = new GridKeyCommandDispatcher(gridInputInterpreter, gridShortcutRouter, tryExecuteShortcut);
+            gridMoveSelectionCommand = new GridMoveSelectionCommand(dataGridView1, setting, gridSelectionService, gridScrollService);
             gridCellValueService = new GridCellValueService(gridViewManager, GetCellValue, checkCellValue, (col) => aryCellUsedCount[col]++);
             gridMouseEventHandler = new GridMouseEventHandler(gridViewManager, copyToBuf, cutToBuf, copyToCell, getSelectedRect);
             continuityStateService = new ContinuityStateService(setting, GetCellValue);
@@ -1761,17 +1765,18 @@ namespace AEIOU
         // KeyDownイベントハンドラ
         private void dataGridView1_KeyDown(object sender, KeyEventArgs e)
         {
-            if (gridInputInterpreter.TryHandleShortcut(e, contextMenuStrip1.Items, tryExecuteShortcut))
-            {
-                return;
-            }
-
-            int keyValue = gridInputInterpreter.ConvertKeyValue(e);
             int previousCol = (dataGridView1.CurrentCell != null) ? dataGridView1.CurrentCell.ColumnIndex : -1;
 
             isCellEdit = false; // Reset for this key press
 
-            if (gridShortcutRouter.Route(keyValue, e.KeyValue))
+            int keyValue;
+            GridDispatchResult dispatchResult = gridKeyCommandDispatcher.Dispatch(e, contextMenuStrip1.Items, out keyValue);
+            if (dispatchResult == GridDispatchResult.MenuShortcut)
+            {
+                return;
+            }
+
+            if (dispatchResult == GridDispatchResult.GridCommand)
             {
                 e.Handled = true;
                 InvalidateActiveColumnTransition(previousCol);
