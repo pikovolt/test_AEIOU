@@ -31,7 +31,20 @@ namespace AEIOU
             }
         }
 
-        public void OnEnter() { gridSelectionService.MoveDown(selectRange); }
+        public void OnEnter()
+        {
+            Rect rect = getSelectedRect();
+            dataGridView1.ClearSelection();
+
+            int len = cursorMoveWithNakaNuki();
+            if (len > 0)
+            {
+                selectRange = gridSelectionService.MoveSelectionDown(rect, len);
+            }
+
+            isFirstEdit = true;
+            scrollingForward();
+        }
         public void OnPageUp(int keyValue) { gridScrollService.ScrollVertical(-dataGridView1.DisplayedRowCount(true)); }
         public void OnPageDown(int keyValue) { gridScrollService.ScrollVertical(dataGridView1.DisplayedRowCount(true)); }
         public void OnHome() 
@@ -40,10 +53,67 @@ namespace AEIOU
             dataGridView1.ClearSelection();
             selectRange = gridSelectionService.MoveSelection(selectRange, 0, selectRange.Y); 
         }
-        public void OnLeftArrow(int keyValue) { gridSelectionService.MoveLeft(selectRange); }
-        public void OnUpArrow(int keyValue) { gridSelectionService.MoveUp(selectRange); }
-        public void OnRightArrow(int keyValue) { gridSelectionService.MoveRight(selectRange); }
-        public void OnDownArrow(int keyValue) { gridSelectionService.MoveDown(selectRange); }
+        public void OnLeftArrow(int keyValue)
+        {
+            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
+            {
+                Rect rect = getSelectedRect();
+                if (rect.Width > 1)
+                {
+                    for (int i = 0; i < rect.Height; i++)
+                    {
+                        dataGridView1[rect.Right, rect.Y + i].Selected = false;
+                    }
+                    rect.Width--;
+                    selectRange = rect;
+                }
+                return;
+            }
+
+            selectRange = gridSelectionService.MoveLeft(selectRange);
+        }
+
+        public void OnUpArrow(int keyValue)
+        {
+            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
+            {
+                OnDivideKey();
+                return;
+            }
+
+            selectRange = gridSelectionService.MoveUp(selectRange);
+        }
+
+        public void OnRightArrow(int keyValue)
+        {
+            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
+            {
+                Rect rect = getSelectedRect();
+                if (rect.Right + 1 < setting.ColLength)
+                {
+                    for (int i = 0; i < rect.Height; i++)
+                    {
+                        dataGridView1[rect.Right + 1, rect.Y + i].Selected = true;
+                    }
+                    rect.Width++;
+                    selectRange = rect;
+                }
+                return;
+            }
+
+            selectRange = gridSelectionService.MoveRight(selectRange);
+        }
+
+        public void OnDownArrow(int keyValue)
+        {
+            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
+            {
+                OnMultiplyKey();
+                return;
+            }
+
+            selectRange = gridSelectionService.MoveDown(selectRange);
+        }
         
         public void OnInsert() 
         { 
@@ -79,7 +149,21 @@ namespace AEIOU
 
         public void OnNumberKey(int keyValue, int keyCode)
         {
-            gridCellValueService.InsertNumber(selectRange, keyCode, isFirstEdit, setting.IsAlwaysAppend);
+            int normalizedKey = keyValue & 0x0ff;
+            if (normalizedKey >= 96 && normalizedKey <= 105)
+            {
+                normalizedKey -= 96;
+            }
+            else if (normalizedKey >= 48 && normalizedKey <= 57)
+            {
+                normalizedKey -= 48;
+            }
+            else
+            {
+                return;
+            }
+
+            gridCellValueService.InsertNumber(selectRange, normalizedKey, isFirstEdit, setting.IsAlwaysAppend);
             isCellEdit = true;
             this.dataGridView1.ClearSelection();
             selectRange = gridSelectionService.MoveDown(selectRange);

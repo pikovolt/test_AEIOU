@@ -1,5 +1,4 @@
 using System;
-using System.Text;
 
 namespace AEIOU
 {
@@ -32,10 +31,12 @@ namespace AEIOU
 
         public void InsertNumber(Rect selectRange, int key, bool isFirstEdit, bool alwaysAppend)
         {
-            // 入力値を計算
-            byte[] ch = { (byte)key };
-            ch[0] += (byte)'0';
-            ch[0] -= 96;
+            if (key < 0 || key > 9)
+            {
+                return;
+            }
+
+            string digitText = ((char)('0' + key)).ToString();
 
             gridViewManager.BeginGroup("入力");
 
@@ -54,12 +55,12 @@ namespace AEIOU
                 if (isFirstEdit && !alwaysAppend)
                 {
                     // セルに値を設定(初回編集)
-                    newValue = Encoding.GetEncoding(932).GetString(ch);
+                    newValue = digitText;
                 }
                 else
                 {
                     // セルに値を設定(継続編集)
-                    newValue += Encoding.GetEncoding(932).GetString(ch);
+                    newValue += digitText;
                 }
 
                 // アンドゥ情報の記録

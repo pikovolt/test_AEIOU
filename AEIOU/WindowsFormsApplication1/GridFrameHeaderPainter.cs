@@ -1,10 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
 namespace AEIOU
 {
-    public class GridFrameHeaderPainter
+    internal class GridFrameHeaderPainter
     {
         private readonly GridFrameLabelFormatter formatter;
 
@@ -18,7 +19,7 @@ namespace AEIOU
             Color headerColor,
             bool isDisplayFrameNumber,
             int firstFrame,
-            System.Collections.Generic.IReadOnlyList<Range> addRange)
+            IList<Range> addRange)
         {
             // 背景塗り
             using (Brush backColorBrush = new SolidBrush(headerColor))
