@@ -301,7 +301,6 @@ namespace AEIOU
 
 	    // 配列
 	    int[] aryCellUsedCount;                     //セル使用状況
-	    String[,] aryCopyBuf;                       //コピーバッファ
 	                                                //int[, ,] gAryBuff;                          //バッファ
 
 	    // リスト
@@ -525,14 +524,7 @@ namespace AEIOU
 
             // 配列作成
             aryCellUsedCount = new int[setting.ColLength];
-            aryCopyBuf = new String[setting.ColLength, setting.RowLength];
             //gAryBuff = new int[setting.ColLength, setting.RowLength, gEtcLength];
-
-            for (int i = 0; i < setting.RowLength; i++)
-                for (int j = 0; j < setting.ColLength; j++)
-                {
-                    aryCopyBuf[j, i] = "";
-                }
 
             // リスト作成
             delRange = new List<Range>();
@@ -605,12 +597,6 @@ namespace AEIOU
             {
                 // コピーバッファの初期化
                 copyRect = new Rect(-1, -1, 0, 0);     //コピー範囲
-                aryCopyBuf = new String[setting.ColLength, setting.RowLength];
-                for (int i = 0; i < setting.RowLength; i++)
-                    for (int j = 0; j < setting.ColLength; j++)
-                    {
-                        aryCopyBuf[j, i] = "";
-                    }
             }
             if ((target & InitializeTarget.UndoHistory) != 0)
             {
@@ -627,6 +613,8 @@ namespace AEIOU
 
         }
 
+        //----------------------------------------------------------------------------------------
+        // CellValuePushedイベントのバインド設定
         private void SetCellValuePushedBinding(bool enabled)
         {
             if (enabled)
@@ -691,6 +679,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // dataGridView1のグリッドサイズを変更する
         private void resizeDataGridView1(int newCol, int newRow)
         {
             // dataGridView1のグリッドサイズを変更する
@@ -730,6 +719,7 @@ namespace AEIOU
         }
 
         //---------------------------------------------------------------------------
+        // ウィンドウサイズ・位置の調整
         void adjustWindowSize()
         {
             //ウィンドウサイズ・位置を調整
@@ -765,6 +755,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // リドゥ処理
         private void redoFunction()
         {
             gridViewManager.Redo();
@@ -774,6 +765,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // アンドゥ処理
         private void undoFunction()
         {
             gridViewManager.Undo();
@@ -784,12 +776,14 @@ namespace AEIOU
         }
 
         //---------------------------------------------------------------------------
+        // コピー先セルへのペースト処理
         private void copyToCell(int col, int row)
         {
             copyToCell(col, row, true);
         }
 
         //---------------------------------------------------------------------------
+        // コピー先セルへのペースト処理
         private void copyToCell(int col, int row, bool shouldInvalidate)
         {
             // PasteOperationのインスタンスを作成
@@ -806,6 +800,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // コピー範囲をコピーバッファにコピーする
         private void copyToBuf(Rect rect)
         {
             // CopyOperationのインスタンスを作成
@@ -817,12 +812,14 @@ namespace AEIOU
         }
 
         //---------------------------------------------------------------------------
+        // 切り取り範囲をコピーバッファにコピーし、シートからは削除する
         private void cutToBuf(Rect rect)
         {
             cutToBuf(rect, true);
         }
 
         //---------------------------------------------------------------------------
+        // 切り取り範囲をコピーバッファにコピーし、シートからは削除する
         private void cutToBuf(Rect rect, bool shouldInvalidate)
         {
             // CutOperationのインスタンスを作成
@@ -840,12 +837,14 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 指定範囲をシートから削除する
         private void deleteRect(Rect rect)
         {
             deleteRect(rect, true);
         }
 
         //----------------------------------------------------------------------------------------
+        // 指定範囲をシートから削除する
         private void deleteRect(Rect rect, bool shouldInvalidate)
         {
             // DeleteOperationのインスタンスを作成
@@ -864,42 +863,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
-        void insertCell(int Col, int Row, int Row_count)
-        {
-            ExecuteWriteGroup("行の挿入", delegate
-            {
-                int rowCount = GetSheetRowCount();
-                int movableLength = rowCount - (Row + Row_count);
-                QueueShiftWrites(Col, Col + 1, Row, movableLength, Row + Row_count);
-
-                // 指定範囲に被る領域を削除（空白にする）
-                Rect r = new Rect(Col, Row, 1, Row_count);
-                deleteRect(r, false);
-            });
-
-            dataGridView1.Invalidate();
-
-        }
-
-        //----------------------------------------------------------------------------------------
-        void deleteCell(int Col, int Row, int Row_count)
-        {
-            ExecuteWriteGroup("行の削除", delegate
-            {
-                int rowCount = GetSheetRowCount();
-                int sourceStartRow = Row + Row_count;
-                int movableLength = rowCount - sourceStartRow;
-                QueueShiftWrites(Col, Col + 1, sourceStartRow, movableLength, Row);
-
-                // 末端の領域を削除（空白にする）
-                Rect r = new Rect(Col, (GetSheetRowCount() - Row_count), 1, Row_count);
-                deleteRect(r, false);
-            });
-
-            dataGridView1.Invalidate();
-        }
-
-        //----------------------------------------------------------------------------------------
+        // 指定セルに列を挿入する
         void insertToAllCell(int Row, int Count)
         {
             ExecuteWriteGroup("行の挿入", delegate
@@ -918,6 +882,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 指定セルから列を削除する
         void cutToAllCell(int Row, int Count)
         {
             ExecuteWriteGroup("行の削除", delegate
@@ -936,6 +901,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 中抜き・切り貼り領域の再計算
         // @param isInsert = true  : 挿入計算
         // @param isInsert = false : 削除計算
         // @param top              : 対象範囲の先頭
@@ -974,6 +940,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 切り貼り領域の再計算
         // @param isInsert = true  : 挿入計算
         // @param isInsert = false : 削除計算
         // @param top              : 対象範囲の先頭
@@ -1013,6 +980,7 @@ namespace AEIOU
         }
 
         //---------------------------------------------------------------------------
+        // カーソル移動量の計算 (中抜き範囲補正付き)
         private int cursorMoveWithNakaNuki()
         {
             int  cur;           // カーソル位置
@@ -1083,6 +1051,8 @@ namespace AEIOU
                    continuityStateService.GetContinuityFlag(X, Y);
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルの値が変化した際の処理
         private void OnGridViewManagerCellValueChanged(int col, int row, string value)
         {
             if (continuityStateService == null)
@@ -1102,12 +1072,11 @@ namespace AEIOU
         // 各セルの描画
         private void dataGridView1_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
         {
-            // (仮)フレーム数の表示 [ここから]------------------------------------------------------------
+            // フレーム数の表示 ------------------------------------------------------------
             if (gridCellRenderer.TryPaintRowHeader(e, drawFrameNumber))
             {
                 return;
             }
-            // (仮)フレーム数の表示 [ここまで]------------------------------------------------------------
 
             // 継続記号 評価
             bool bLine = checkContinuty(e.ColumnIndex, e.RowIndex);
@@ -1144,6 +1113,8 @@ namespace AEIOU
 
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルの値の取得
         private void dataGridView1_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
         {
             if (!IsValidCellIndex(e.ColumnIndex, e.RowIndex))
@@ -1158,6 +1129,8 @@ namespace AEIOU
                 : string.Empty;
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルの値の設定
         private void dataGridView1_CellValuePushed(object sender, DataGridViewCellValueEventArgs e)
         {
             if (!IsValidCellIndex(e.ColumnIndex, e.RowIndex))
@@ -1191,6 +1164,8 @@ namespace AEIOU
             return value ?? string.Empty;
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルの値の取得 (失敗理由も返す版)
         private bool TryGetCellValue(int col, int row, out string value, out string failureReason)
         {
             if (IsGridViewManagerBoundToCurrentModel())
@@ -1208,12 +1183,16 @@ namespace AEIOU
             return timingSheetModel.TryGetCell(col, row, out value, out failureReason);
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルの値の取得 (失敗理由は不要な簡易版)
         private bool TryGetCellValue(int col, int row, out string value)
         {
             string failureReason;
             return TryGetCellValue(col, row, out value, out failureReason);
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルが空かどうか
         private bool IsCellEmpty(int col, int row)
         {
             string value;
@@ -1221,6 +1200,8 @@ namespace AEIOU
             return !TryGetCellValue(col, row, out value, out failureReason) || value == "";
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルの値の設定
         private bool IsValidCellIndex(int col, int row)
         {
             return col >= 0 &&
@@ -1229,6 +1210,8 @@ namespace AEIOU
                    row < GetSheetRowCount();
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルの値の設定
         private void SetCellValue(int col, int row, string value)
         {
             if (!IsValidCellIndex(col, row))
@@ -1256,6 +1239,8 @@ namespace AEIOU
             }
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルの値の設定（セル値が変化した場合のみ）
         private bool IsGridViewManagerBoundToCurrentModel()
         {
             return gridViewManager != null &&
@@ -1263,6 +1248,8 @@ namespace AEIOU
                    gridViewManager.Model == timingSheetModel;
         }
 
+        //----------------------------------------------------------------------------------------
+        // シートの列数の取得
         private int GetSheetColumnCount()
         {
             if (IsGridViewManagerBoundToCurrentModel())
@@ -1273,6 +1260,8 @@ namespace AEIOU
             return setting.ColLength;
         }
 
+        //----------------------------------------------------------------------------------------
+        // シートの行数の取得
         private int GetSheetRowCount()
         {
             if (IsGridViewManagerBoundToCurrentModel())
@@ -1283,6 +1272,8 @@ namespace AEIOU
             return setting.RowLength;
         }
 
+        //----------------------------------------------------------------------------------------
+        // ヘッダの値の取得・設定
         private string GetHeaderValue(int col)
         {
             if (IsGridViewManagerBoundToCurrentModel())
@@ -1293,6 +1284,8 @@ namespace AEIOU
             return timingSheetModel.GetHeader(col);
         }
 
+        //----------------------------------------------------------------------------------------
+        // ヘッダの値の設定
         private void SetHeaderValue(int col, string value)
         {
             if (IsGridViewManagerBoundToCurrentModel())
@@ -1310,6 +1303,8 @@ namespace AEIOU
             }
         }
 
+        //----------------------------------------------------------------------------------------
+        // 列全体のコピー
         private void CopyColumn(int sourceCol, int destinationCol, int rowCount)
         {
             aryCellUsedCount[destinationCol] = aryCellUsedCount[sourceCol];
@@ -1321,6 +1316,8 @@ namespace AEIOU
             }
         }
 
+        //----------------------------------------------------------------------------------------
+        // 列全体のクリア
         private void ClearColumn(int col, int rowCount)
         {
             aryCellUsedCount[col] = 0;
@@ -1331,6 +1328,8 @@ namespace AEIOU
             }
         }
 
+        //----------------------------------------------------------------------------------------
+        // 複数セルへの書き込みをグループ化して実行する
         private void ExecuteWriteGroup(string groupName, Action action)
         {
             gridViewManager.BeginGroup(groupName);
@@ -1344,6 +1343,7 @@ namespace AEIOU
             }
         }
 
+        //----------------------------------------------------------------------------------------
         // SetValueOperation の引数順（row, col, value）を明示して、
         // 既存コードの Col/Row 変数名との取り違えを防ぐ。
         private void QueueCellWrite(int row, int col, string value)
@@ -1352,6 +1352,8 @@ namespace AEIOU
             gridViewManager.ExecuteOperation(operation);
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルの値が変化した場合のみ、書き込みをキューに追加する
         private bool QueueCellWriteIfChanged(int row, int col, string value)
         {
             string normalizedValue = value ?? "";
@@ -1365,6 +1367,8 @@ namespace AEIOU
             return true;
         }
 
+        //----------------------------------------------------------------------------------------
+        // セルの値が変化した場合のみ、値を設定する
         private bool SetCellValueIfChanged(int col, int row, string value)
         {
             string normalizedValue = value ?? "";
@@ -1377,6 +1381,8 @@ namespace AEIOU
             return true;
         }
 
+        //----------------------------------------------------------------------------------------
+        // 列単位でセルの値をシフトする書き込みをキューに追加する
         private void QueueShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
         {
             if (length <= 0 || endColExclusive <= startCol)
@@ -1414,6 +1420,8 @@ namespace AEIOU
             }
         }
 
+        //----------------------------------------------------------------------------------------
+        // 複数セルへの書き込みをグループ化して実行する
         private struct CellWriteEntry
         {
             public readonly int Row;
@@ -1428,6 +1436,8 @@ namespace AEIOU
             }
         }
 
+        //----------------------------------------------------------------------------------------
+        // 複数セルへの書き込みをグループ化して実行する
         private void ApplyCellWrites(string groupName, IList<CellWriteEntry> writes)
         {
             if (writes == null || writes.Count == 0)
@@ -1441,6 +1451,8 @@ namespace AEIOU
             });
         }
 
+        //----------------------------------------------------------------------------------------
+        // 複数セルへの書き込みをキューに追加する
         private void QueueCellWrites(IList<CellWriteEntry> writes)
         {
             if (writes == null || writes.Count == 0)
@@ -1454,6 +1466,8 @@ namespace AEIOU
             }
         }
 
+        //----------------------------------------------------------------------------------------
+        // 書き込み操作の終了処理
         private void FinishWriteOperation(bool shouldInvalidate)
         {
             isFirstEdit = true;
@@ -1465,6 +1479,8 @@ namespace AEIOU
             }
         }
 
+        //----------------------------------------------------------------------------------------
+        // 指定セルの値に対して、四則演算を行う（演算に成功した場合は計算結果を返す）
         private bool TryGetArithmeticValue(CalcMode mode, int cellValue, int operand, out string calculatedValue)
         {
             calculatedValue = null;
@@ -1499,7 +1515,6 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
-        //----------------------------------------------------------------------------------------
         // 指定セルの入力有無をチェック
         private bool checkCellValue(int X, int Y)
         {
@@ -1527,6 +1542,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // バックスペースキーによる削除処理
         private bool deleteRect_with_backspace(bool isCellEdit)
         {
             // 選択範囲を取得
@@ -1645,6 +1661,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // エンターキーによる削除処理
         private void calcRect_with_enter()
         {
             // 選択範囲を取得
@@ -1668,18 +1685,21 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 上方向のスクロール
         private void scrollingRowBackward(int keyValue)
         {
             gridScrollService.ScrollRowBackward(keyValue);
         }
 
         //----------------------------------------------------------------------------------------
+        // 下方向のスクロール
         private void scrollingRowForward(int keyValue)
         {
             gridScrollService.ScrollRowForward(keyValue);
         }
 
         //----------------------------------------------------------------------------------------
+        // ショートカットキーの実行
         private bool tryExecuteShortcut(ToolStripItemCollection items, Keys keyData)
         {
             foreach (ToolStripItem item in items)
@@ -1707,6 +1727,8 @@ namespace AEIOU
             return false;
         }
 
+        //----------------------------------------------------------------------------------------
+        // アクティブ列の遷移を無効化
         private void InvalidateActiveColumnTransition(int previousCol)
         {
             if (dataGridView1.CurrentCell == null)
@@ -1805,6 +1827,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // ヘッダ編集用テキストボックスの表示と操作
         int textBoxColumn = 0;
         private void TextBox_Terminate()
         {
@@ -1813,6 +1836,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // ヘッダ編集用テキストボックスのKeyDownイベントハンドラ
         private void TextBox_KeyDown(object sender, KeyEventArgs e)
         {
             //キー入力があったら、内容をチェック
@@ -1833,6 +1857,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // ヘッダ編集用テキストボックスのLeaveイベントハンドラ
         private void TextBox_Leave(object sender, EventArgs e)
         {
             // テキストボックスからフォーカスが外れた場合、自分自身をdataGridViewから外す
@@ -1841,6 +1866,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // セルのMouseDoubleClickイベントハンドラ
         private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
 
@@ -1863,6 +1889,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // クリップボードへのテキスト設定をリトライ付きで行う
         private void SetClipboardTextWithRetry(string text, int maxRetries = 5, int delayMs = 100)
         {
             for (int i = 0; i < maxRetries; i++)
@@ -1882,6 +1909,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // クリップボードの利用可能状態の確認
         private bool IsClipboardAvailable()
         {
             try
@@ -1896,6 +1924,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // AEへコピー
         private void AECopy(bool isDirect)
         {
             // AEへコピー
@@ -1975,6 +2004,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // AEへコピー
         private void AECopyToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // AEへコピー
@@ -1983,6 +2013,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // AEへコピー(TimeRemap以外)
         private void directRemapToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // AEへコピー(TimeRemap以外)
@@ -1991,6 +2022,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // AEへコピー(Script仲介)
         private void AECopyWithScript(bool isDirect)
         {
             // AEへコピー(Script仲介)
@@ -2063,6 +2095,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // AEへコピー(Script仲介)
         private void jSRemapToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // AEへコピー(Script仲介)
@@ -2071,6 +2104,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // AEへコピー(TimeRemap以外)(Script仲介)
         private void pasteFromAEToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // AEからペースト
@@ -2180,6 +2214,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 中抜き範囲の設定
         private void setNakanukiToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //中抜き範囲を設定
@@ -2196,6 +2231,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 切り貼り範囲の設定
         private void setKiribariToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //切り貼り範囲を設定
@@ -2248,6 +2284,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 中抜き範囲の解除
         private void cancelNakanukiToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //中抜き範囲の解除
@@ -2270,6 +2307,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 切り貼り範囲の解除
         private void cancelKiribariToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //切り貼り範囲の解除
@@ -2300,6 +2338,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 操作のやり直し
         private void redoToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 操作をやり直す
@@ -2310,6 +2349,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 操作の元に戻す
         private void undoToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 操作を元に戻す
@@ -2319,6 +2359,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // アンドゥ履歴のフラッシュ
         private void flushUndoHistory()
         {
             // アンドゥ非対応機能を使用した場合などに アンドゥ履歴をフラッシュする
@@ -2326,6 +2367,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // コピー
         private void copyToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // コピー
@@ -2335,6 +2377,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 切り取り
         private void cutToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 切り取り
@@ -2347,6 +2390,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 貼り付け
         private void pasteToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 貼り付け
@@ -2360,6 +2404,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // フレームレート 30FPS
         private void fPS30ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 30FPSに変更
@@ -2372,6 +2417,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // フレームレート 24FPS
         private void fPS24ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 24FPSに変更
@@ -2384,6 +2430,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 常に手前に表示
         private void stayOnTopToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // TopMost設定の切り替え
@@ -2393,6 +2440,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // カラセル入力時の移動抑止
         private void karacellNoMoveToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // カラセル入力時の移動抑止設定の切り替え
@@ -2401,6 +2449,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // フレーム数表示⇔シート/コマ数表示 切り替え
         private void displayFrameNumberToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // フレーム数表示⇔シート/コマ数表示 切り替え
@@ -2412,6 +2461,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 開始フレーム数の設定
         private void firstFrameToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 開始フレーム設定
@@ -2430,6 +2480,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // カラセル文字列の設定
         private void karacellValueToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // カラセル文字列の設定
@@ -2443,6 +2494,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // シートの秒数の設定
         private void secondsPerSheetToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // シートの秒数
@@ -2461,6 +2513,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // シートの基準線指定: 4コマ毎
         private void div4ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // シートの基準線指定: 4コマ毎
@@ -2472,6 +2525,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // シートの基準線指定: 6コマ毎
         private void div6ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // シートの基準線指定: 6コマ毎
@@ -2483,6 +2537,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // シートの基準線指定: 12コマ毎
         private void div12ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // シートの基準線指定: 12コマ毎
@@ -2494,6 +2549,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // AfterFX.exe パス設定
         private void afterFXPathToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // AfterFX.exe パス設定
@@ -2518,6 +2574,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // リマップ用 jsx パス設定
         private void afterFXOptionToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // リマップ用 jsx パス設定
@@ -2541,6 +2598,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // セル変更時にウィンドウ位置調整する 設定
         private void autoAdjustToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // セル変更時にウィンドウ位置調整する 設定
@@ -2549,6 +2607,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 作業情報の全初期化
         private void allInitializeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 作業情報の全初期化
@@ -2556,6 +2615,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // セル枚数の指定
         private void inputCellCountToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // セル枚数の指定
@@ -2592,6 +2652,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // セルの挿入
         private void insertCellToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // セルの挿入
@@ -2626,6 +2687,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // セルの削除
         private void deleteCellToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // セルの削除
@@ -2656,6 +2718,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 連番作成
         private void sequentialNumberToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 連番作成
@@ -2711,6 +2774,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 連番作成(複数列、挿入番号、スキップ、ループ対応)
         private void HandleRepeatInput(object sender, EventArgs e)
         {
             // 入力値を処理する
@@ -2799,6 +2863,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 連番作成(複数列、挿入番号、スキップ、ループ対応)
         private void repeatNumberToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 操作を１つ入れる (カレントセルの値を同じ場所に上書き)
@@ -2814,6 +2879,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 置換
         private void replaceToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //置換
@@ -2863,6 +2929,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 反転
         private void reverseToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //反転
@@ -2914,6 +2981,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 四則演算
         private void fourArithmeticOperationToolStripMenuItem_Click(object sender, EventArgs e)
         {
             //四則演算
@@ -3001,6 +3069,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // 複製
         private void duplicateToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // 複製
@@ -3046,6 +3115,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // STS 保存
         private void saveSTSToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // STS 保存
@@ -3145,6 +3215,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // STS 読み込み
         private void loadSTS(String path)
         {
             FileStream inpfs;
@@ -3224,6 +3295,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // STS 読み込み(メニューから)
         private void loadSTSToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // STS 読み込み
@@ -3251,6 +3323,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // セル列のヘッダがクリックされた場合に、１列選択する（ダブルクリックが名称編集なので、クリックで全選択に）
         private void dataGridView1_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
             // セル列のヘッダがクリックされた場合に、１列選択する（ダブルクリックが名称編集なので、クリックで全選択に）
@@ -3269,6 +3342,7 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
+        // フォーム表示後の処理
         private void Form1_Shown(object sender, EventArgs e)
         {
             // コントロールにフォーカスを設定
