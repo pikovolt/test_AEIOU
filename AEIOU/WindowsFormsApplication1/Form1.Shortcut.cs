@@ -73,7 +73,7 @@ namespace AEIOU
                     gridCellValueService.ApplyValue(new Rect(i, selectRange.Y, 1, 1), "");
                 }
                 gridViewManager.EndGroup();
-                selectRange = gridSelectionService.MoveDown(selectRange);
+                selectRange = gridSelectionService.MoveUp(selectRange);
             }
         }
 
@@ -124,8 +124,7 @@ namespace AEIOU
         { 
             // 選択範囲の拡大
             Rect rect = getSelectedRect();
-            int btm = setting.RowLength - rect.Height;
-            if (rect.Y < btm)
+            if (rect.Bottom + 1 < setting.RowLength)
             {
                 for (int j = 0; j < rect.Width; j++)
                     dataGridView1[rect.X + j, rect.Bottom + 1].Selected = true;
