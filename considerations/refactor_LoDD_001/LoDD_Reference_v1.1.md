@@ -692,6 +692,14 @@ Phase構造では `work_log.md` に返済の実施記録を残す。
 | **Shared Constants** (`constants/`) | 座標系・単位系等の共有定数を物理的に分離し、全AgentのReadに含める |
 | **Merge Gate** | 並列タスクの統合ポイントを明示的なタスクとして定義。人間がゲートキーパーを担当 |
 
+**Contract Test のテスト種別と実行タイミング:**
+
+| テスト種別 | 検証対象 | 実行タイミング |
+|-----------|---------|--------------|
+| Contract Test | interfaces/ の契約を満たしているか | 各Agentの成果物の統合前 |
+| Unit Test | 各モジュールの個別機能 | 各Agent内のDone条件 |
+| Integration Test | 統合後の結合動作 | 全Agent完了後 |
+
 ### 並列化が正当化される条件
 
 - モジュール間の依存がinterfaces/で完全に分断できる
@@ -730,4 +738,3 @@ Phase仕様           (なし)            plans/<ws>/<phase>/specification.md
 テスト              tests/            tests/
 
 * Flat構造では必要に応じて architecture.md に直接追記する。
-```
