@@ -4,9 +4,17 @@
 
 | ファイル | 位置付け |
 |---|---|
-| `LoDD_Reference_v1.1.md` | **正本**。LoDD フレームワークのリファレンス仕様書。 |
-| `Semantic Drift Issues in Agent Parallelization.md` | **統合元の議論文書（v1.1の議題・その１）**。エージェント並列化におけるセマンティックドリフト問題の分析。 |
-| `AI Debt and LoDD Schedule Design.md` | **統合元の議論文書（v1.1の議題・その２）**。AI負債の定義と返済スケジュール設計の分析。 |
+| `LoDD_Reference_v1.1.md` | **正本**。LoDD フレームワークのリファレンス仕様書。通常作業はこのファイルのみを参照する。 |
+| `Semantic Drift Issues in Agent Parallelization.md` | **補足資料（議題・その１）**。主要論点は v1.1 に統合済み。拡張パス着手時（Contract Test・Merge Gate の実装詳細が必要な場合）のみ参照する。 |
+| `AI Debt and LoDD Schedule Design.md` | **補足資料（議題・その２）**。主要論点は v1.1 に統合済み。通常作業では v1.1 のみを参照すれば足りる。 |
+
+### SSOT の例外箇所
+
+以下の情報は v1.1 に含まれておらず、元文書にのみ存在する。該当作業時のみ元文書を参照すること。
+
+| 情報 | 参照先 |
+|---|---|
+| Contract Test のコード例・配置構造・テスト種別テーブル | `Semantic Drift Issues in Agent Parallelization.md` |
 
 ## 2. 再検討の趣旨
 
@@ -27,10 +35,10 @@
 **✅ S-2: 「5つの防壁」から「6つの防壁」への拡張の妥当性**
 詳細は [task-S-2.md](task-S-2.md) を参照
 
-**S-3: 元文書の位置付け**
+**✅ S-3: 元文書の位置付け**
 詳細は [task-S-3.md](task-S-3.md) を参照
 
-**S-4: Contract Test の位置付けの曖昧さ**
+**✅ S-4: Contract Test の位置付けの曖昧さ**
 詳細は [task-S-4.md](task-S-4.md) を参照
 
 **S-5: 「AI負債の可視化」フロー内の構成要素の関係整理**
