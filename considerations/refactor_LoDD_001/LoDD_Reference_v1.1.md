@@ -44,7 +44,7 @@ LoDDは、AIを特定の「局所（Locality）」に閉じ込め、関係ない
 | **コンテキスト汚染の防止** | 過去の失敗ログが現在の実装を汚染する | `iterations/` の隔離とパージ + New Chat再投入 |
 | **過剰修正の防止** | エラー修正時に無関係なコードまで変更する | Iteration Controlの差分指示 |
 | **境界突破の検知** | AIがスコープ外に手を伸ばす | Lock-down Rules + Boundary Breach Request |
-| **AI負債の可視化** | 負債が潜伏したまま蓄積する | Debt Markers + 返済スプリント |
+| **AI負債の可視化** | 負債が潜伏したまま蓄積する | Debt Markers + 返済スプリント（直列）/ Contract Test + Merge Gate（並列時） |
 
 ### 損益分岐点
 
