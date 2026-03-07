@@ -1,7 +1,7 @@
 # task-D-2: 「返済しない」という判断の扱い
 
 ## ステータス
-- **状態**: 未了
+- **状態**: 完了
 - **更新日**: 2026-03-07
 
 ## タスク概要
@@ -34,9 +34,9 @@
 - 損益分岐点テーブルと `debt_policy` の関係を明示する注記または参照
 
 ### 完了条件
-- [ ] 損益分岐点テーブルと `debt_policy` の関係が v1.1 に明示された
-- [ ] `single-shot` の場合に `debt_policy` が参照されない理由が明確に記述された
-- [ ] LoDD 採用判断フローにおける `debt_policy` の位置付けが整理された
+- [x] 損益分岐点テーブルと `debt_policy` の関係が v1.1 に明示された
+- [x] `single-shot` の場合に `debt_policy` が参照されない理由が明確に記述された
+- [x] LoDD 採用判断フローにおける `debt_policy` の位置付けが整理された
 
 ## 関連文書
 - 統合元: `considerations/refactor_LoDD_001/AI Debt and LoDD Schedule Design.md`
@@ -46,3 +46,23 @@
 
 ## 備考
 「循環」自体は論理的に正しい（single-shot なら LoDD を使わないので debt_policy は関係ない）が、その前提が v1.1 に明示されていないことが問題。短い注記を損益分岐点テーブルに追加するだけで解消できる可能性が高い。
+
+## 対応記録
+
+### 分析結果
+損益分岐点テーブルと Tool Lifecycle / `debt_policy` の関係を v1.1 内で追跡した結果、以下の流れが暗黙的であることを確認した:
+
+1. 損益分岐点テーブルで LoDD 採用を判断（`single-shot` → LoDD 過剰 → 不採用）
+2. LoDD を採用した場合のみ `architecture.md` に Tool Lifecycle を明記
+3. Tool Lifecycle の `debt_policy` に従って返済ポリシーが決まる
+
+この「LoDD 不採用の場合は `debt_policy` が参照されない」という前提が明示されていなかった。
+
+### 修正内容
+`LoDD_Reference_v1.1.md` の損益分岐点テーブル直下に注記（blockquote）を追加し、以下を明示した:
+- 「LoDDが過剰」と判断された場合、LoDD 自体を採用しないため `debt_policy` は参照されない
+- `debt_policy` は **LoDD 採用後** に機能する仕組みである
+- 損益分岐点テーブル → Tool Lifecycle 明記 → `debt_policy` 適用という順序関係
+
+### 判断
+備考の想定どおり、短い注記の追加で循環の暗黙性を解消できた。v1.1 の読みやすさへの影響は最小限。
