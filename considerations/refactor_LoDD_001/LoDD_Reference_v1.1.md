@@ -738,3 +738,4 @@ Phase仕様           (なし)            plans/<ws>/<phase>/specification.md
 テスト              tests/            tests/
 
 * Flat構造では必要に応じて architecture.md に直接追記する。
+```
