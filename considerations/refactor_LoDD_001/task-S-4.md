@@ -38,7 +38,6 @@ v1.1 の拡張パスでは `tests/contracts/` を新設するとあるが、元�
 - [ ] 元文書の Contract Test 詳細情報（テストコード例・配置構造・テスト種別テーブル）を確認した
 - [ ] v1.1 単体で拡張パスを実装着手できる水準の情報が記載された
 - [ ] 元文書を参照しなければならない箇所が解消された（またはやむを得ない場合は明示された）
-- [ ] 修正内容が decision_log.md に記録された
 
 ## 関連文書
 - 統合元: `considerations/refactor_LoDD_001/Semantic Drift Issues in Agent Parallelization.md`

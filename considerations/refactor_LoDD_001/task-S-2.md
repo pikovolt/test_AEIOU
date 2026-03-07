@@ -37,7 +37,6 @@
 - [ ] 元文書の「5つの防壁」と v1.1 の「6つの防壁」の差分を明確化した
 - [ ] 6番目の防壁を拡張パスへ移動するか本文に残すかの判断が下された
 - [ ] 判断に基づき v1.1 が修正された（または現状維持の根拠が記録された）
-- [ ] 修正内容が decision_log.md に記録された
 
 ## 関連文書
 - 統合元: `considerations/refactor_LoDD_001/Semantic Drift Issues in Agent Parallelization.md`

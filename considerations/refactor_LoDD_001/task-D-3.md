@@ -41,7 +41,6 @@
 - [ ] 元文書の「5分チェック」の定義と根拠を確認した
 - [ ] 現実的な運用が可能な記述に修正された（または根拠付きで「5分」が妥当と確認された）
 - [ ] チェックのスコープ（何を確認するか）が明確になった
-- [ ] 修正内容が decision_log.md に記録された
 
 ## 関連文書
 - 統合元: `considerations/refactor_LoDD_001/AI Debt and LoDD Schedule Design.md`

@@ -37,7 +37,6 @@
 - [ ] 元文書の選択肢A・B・Cの比較評価内容を確認した
 - [ ] 「Cの変形」が採用された根拠が v1.1 または decision_log.md から追跡できる状態になった
 - [ ] 将来の改訂時に意思決定の根拠を参照できる体制が整った
-- [ ] 修正内容が decision_log.md に記録された
 
 ## 関連文書
 - 統合元: `considerations/refactor_LoDD_001/AI Debt and LoDD Schedule Design.md`

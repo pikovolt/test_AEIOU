@@ -40,7 +40,6 @@
 - [ ] 元文書と v1.1 のサイクル図の差分を整理した
 - [ ] `iterations/ → knowledge/ 転記` の位置付け（サイクル図 vs タスク完了チェック）が統一された
 - [ ] サイクル全体を1か所（v1.1）で理解できる状態になった
-- [ ] 修正内容が decision_log.md に記録された
 
 ## 関連文書
 - 統合元: `considerations/refactor_LoDD_001/AI Debt and LoDD Schedule Design.md`

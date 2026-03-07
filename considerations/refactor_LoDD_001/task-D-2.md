@@ -37,7 +37,6 @@
 - [ ] 損益分岐点テーブルと `debt_policy` の関係が v1.1 に明示された
 - [ ] `single-shot` の場合に `debt_policy` が参照されない理由が明確に記述された
 - [ ] LoDD 採用判断フローにおける `debt_policy` の位置付けが整理された
-- [ ] 修正内容が decision_log.md に記録された
 
 ## 関連文書
 - 統合元: `considerations/refactor_LoDD_001/AI Debt and LoDD Schedule Design.md`

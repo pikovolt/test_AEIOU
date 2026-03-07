@@ -34,7 +34,6 @@ v1.1 に統合済みの場合、元文書は「議論経緯のアーカイブ」
 - [ ] 元文書2点の位置付け（アーカイブ vs 補足資料）が判断された
 - [ ] 判断内容が `overview.md` に明示された
 - [ ] SSOT として v1.1 のみを参照すれば作業可能な状態か、または例外箇所が明記された
-- [ ] 修正内容が decision_log.md に記録された
 
 ## 関連文書
 - 統合元: `considerations/refactor_LoDD_001/Semantic Drift Issues in Agent Parallelization.md`

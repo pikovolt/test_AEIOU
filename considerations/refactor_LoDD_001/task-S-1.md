@@ -39,7 +39,6 @@ v1.1 の6つの防壁テーブルで、6番目「AI負債の可視化」の実�
 - [x] v1.1 の防壁テーブルが正確に修正された
 - [x] 6番目の防壁の実現手段（Contract Test + Merge Gate）が v1.1 に正確に記載された
 - [x] セマンティックドリフト検知と AI負債管理の責務分離が明確になった
-- [ ] 修正内容が decision_log.md に記録された
 
 ## 関連文書
 - 統合元: `considerations/refactor_LoDD_001/Semantic Drift Issues in Agent Parallelization.md`
