@@ -58,6 +58,11 @@ LoDDは、AIを特定の「局所（Locality）」に閉じ込め、関係ない
 
 最初のサイクルが一番重く、回すほど軽くなる。初回の重さで諦めるのが最大のリスクである。
 
+> **損益分岐点と Tool Lifecycle の関係**
+>
+> 上記テーブルで「LoDDが過剰」と判断された場合（例: single-shot）、LoDD 自体を採用しないため、後述の Tool Lifecycle の `debt_policy` は参照されない。
+> `debt_policy` は **LoDD 採用後** に返済の粒度を決定するための仕組みであり、LoDD 採用判断（本テーブル）→ Tool Lifecycle 明記（`architecture.md`）→ `debt_policy` 適用という順序で機能する。
+
 ---
 
 ## 構造選択
@@ -502,12 +507,15 @@ architecture.md に記載する。ツールの想定寿命が返済ポリシー�
   - long-term: 全負債を返済。knowledge/ への転記を必須化
 ```
 
-### タスク完了時の軽量返済（5分以内）
+### タスク完了時の軽量返済（5分目安）
+
+> **スコープ**: 以下のチェックは **当該タスクで変更・生成した関数のみ** を対象とする。コードベース全体の通読ではない。
+> 「5分」は「この作業が軽量であるべき」という設計意図を示す目安であり、厳密な制限時間ではない。変更ファイル数が多い場合は超過してよいが、チェックが日常的に長時間化する場合はタスクの粒度が粗すぎる兆候として Retrospective で記録する。
 
 - Retrospective の3値を記入する
 - Debt Markers を記入する
 - iterations/ に knowledge/ に転記すべき内容がないか確認する
-- AI生成コードの各関数の意図を1行で説明できるか確認する
+- AI生成コードの各関数の意図を1行で説明できるか確認する（**当該タスクで変更した関数のみ**）
   → 説明できない関数があれば、Debt Markers の unreviewed_functions に追記する
 
 ### 返済スプリント
@@ -573,7 +581,7 @@ Phase構造では `work_log.md` に返済の実施記録を残す。
 4. AIが src/ と tests/ を生成・編集
 5. Done条件で検証
 
-   ├─ Pass → 軽量返済（5分）
+   ├─ Pass → 軽量返済（5分目安）
    │         Retrospective 記入
    │         Debt Markers 記入
    │         iterations/ パージ
@@ -621,10 +629,11 @@ Phase構造では `work_log.md` に返済の実施記録を残す。
   │
   ├─ 実装フェーズ（Day 2〜N-2）
   │    各タスク完了時:
-  │    ├─ 軽量返済（5分）
+  │    ├─ 軽量返済（5分目安）
   │    ├─ Retrospective 記入
   │    ├─ Debt Markers 記入
-  │    └─ iterations/ パージ + knowledge/ 転記検討
+  │    ├─ iterations/ → knowledge/ 転記検討
+  │    └─ iterations/ パージ
   │
   ├─ 返済スプリント（Day N-1）
   │    ├─ Debt Markers から返済対象を抽出
