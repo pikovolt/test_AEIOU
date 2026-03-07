@@ -30,8 +30,11 @@
 **S-3: 元文書の位置付け**
 詳細は [task-S-3.md](task-S-3.md) を参照
 
-**S-4: Contract Test の位置付けの曖昧さ**
+**✅ S-4: Contract Test の位置付けの曖昧さ**
 詳細は [task-S-4.md](task-S-4.md) を参照
+
+**S-6: テスト種別テーブルの v1.1 への追記検討**
+詳細は [task-S-6.md](task-S-6.md) を参照
 
 **S-5: 「AI負債の可視化」フロー内の構成要素の関係整理**
 詳細は [task-S-5.md](task-S-5.md) を参照
