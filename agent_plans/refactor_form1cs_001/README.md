@@ -1,7 +1,7 @@
-# refactor_form1cs_001 運用規約（Phase4）
+# refactor_form1cs_001 運用規約（Phase5 計画）
 
 ## 目的
-このディレクトリは `Form1.cs` リファクタリング計画の公式ソースとし、Phase4（入力分離仕上げ）の作業計画・タスク・チェックリスト・意思決定履歴を一元管理する。
+このディレクトリは `Form1.cs` リファクタリング計画の公式ソースとする。Phase4 までの成果を履歴として保持し、現在は Phase5（自動処理の外部拡張基盤）の計画を正本とする。
 
 ## 運用原則
 - **1タスク = 1PR** を厳守する。
@@ -9,7 +9,13 @@
 - 実装前に対象タスクの完了条件・回帰観点を確認する。
 - PR では対象タスクIDを明記し、スコープ外変更を含めない。
 
-## ドキュメント構成（Phase4 正本）
+## ドキュメント構成（Phase5 正本）
+- `phase5/overview.md`: Phase5 の目的、段階導入方針、依存関係。
+- `phase5/extension_contract.md`: 拡張契約、ホスト境界、互換性・障害分離方針。
+- `phase5/tasks/README.md`: 実装前調査を含むタスク分割と Gate。
+- `phase5/checklists/smoke_phase5.md`: 自動処理および拡張読み込みの回帰観点。
+
+## Phase4 完了資産
 - `phase4/overview.md`: Phase4 の目的・依存関係・優先順位。
 - `phase4/tasks/README.md`: タスク分割方針と運用概要。
 - `phase4/tasks/impl/`: IMPLレーンの最小実行単位タスク。
@@ -18,8 +24,8 @@
 - `phase4/decision_log.md`: Phase4 の方針変更記録。
 
 ## 履歴資産（参照のみ）
-- `phase2/`, `phase3/` は履歴資産として保持する。
-- Phase2, Phase3 への追記は、証跡整合に必要な修正（誤記修正・判定整合）に限定する。
+- `phase2/`, `phase3/`, `phase4/` は履歴資産として保持する。
+- Phase2〜Phase4 への追記は、証跡整合に必要な修正（誤記修正・判定整合）に限定する。
 
 ## `plans/` 側の取り扱い
 `plans/` 以下には重複記述を置かず、`agent_plans/` 側への参照リンクのみを配置する。
