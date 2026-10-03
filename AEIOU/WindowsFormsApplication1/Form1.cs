@@ -318,6 +318,8 @@ namespace AEIOU
         private GridValueInputCommand gridValueInputCommand;
         private GridCellValueService gridCellValueService;
         private GridMouseEventHandler gridMouseEventHandler;
+        private readonly StsFileService stsFileService = new StsFileService();
+        private readonly AfterEffectsDataService afterEffectsDataService = new AfterEffectsDataService();
 
         // 先行分離したサービス
         GridSelectionService gridSelectionService;
@@ -1861,76 +1863,13 @@ namespace AEIOU
         // AEへコピー
         private void AECopy(bool isDirect)
         {
-            // AEへコピー
-            String Copytext = "";
-            int rlen = 0;
-
-            // カレントの列を取得
             int col = dataGridView1.CurrentCell.ColumnIndex;
-
-            //ヘッダ書き出し(定型文字列)
-            Copytext = "Adobe After Effects " + setting.AfterRemapVersion + " Keyframe Data\r\n";
-            Copytext += "\r\n";
-            Copytext += "\tUnits Per Second\t" + setting.Fps.ToString() + "\r\n";
-            Copytext += "\tSource Width\t640\r\n";
-            Copytext += "\tSource Height\t480\r\n";
-            Copytext += "\tSource Pixel Aspect Ratio\t1\r\n";
-            Copytext += "\tComp Pixel Aspect Ratio\t1\r\n";
-            Copytext += "\r\n";
-            Copytext += "Time Remap\r\n";
-            Copytext += "\tFrame\tseconds\r\n";
-
-            // タイミングの書き出し
-            for (int i = 0; i < GetSheetRowCount(); i++)
-            {
-                // 中抜き範囲は無視
-                bool bNuki = false;
-                foreach (Range r in delRange)
-                {
-                    if ((r.Top <= i) && (r.Bottom >= i))
-                    {
-                        //中抜き範囲時は、範囲長に積算する
-                        rlen++;
-                        bNuki = true;
-                        break;
-                    }
-                }
-                //中抜き範囲内は無視
-                if (bNuki) continue;
-
-                // カラセルは無視
-                String str = GetCellValue(col, i);
-                if (str == "") continue;
-
-                // 中ヌキ範囲長でフレーム値を補正
-                int fcnt = i - rlen;
-
-                // 秒数計算
-                double t = 0;
-                if (!isDirect)
-                {
-                    // 通常のリマップ計算
-                    t = (double)int.Parse(str) - setting.FirstFrame;
-                    t /= (double)setting.Fps;
-                }
-                else
-                {
-                    // 入力値のまま渡す
-                    t = (double)int.Parse(str);
-                }
-
-                // 計算結果を文字列に収める(タイミングの秒数は、有効桁数を６桁に丸める)
-                Copytext += "\t" + fcnt.ToString() + "\t" + t.ToString("g6") + "\r\n";
-
-            }
-
-            //フッタ書き出し(定型文字列)
-            Copytext += "\r\n";
-            Copytext += "\r\n";
-            Copytext += "End of Keyframe Data\r\n";
+            string copyText = afterEffectsDataService.CreateKeyframeData(
+                setting.AfterRemapVersion, setting.Fps, setting.FirstFrame, isDirect,
+                GetSheetRowCount(), delegate(int row) { return GetCellValue(col, row); }, IsExcludedRow);
 
             //クリップボードに反映
-            SetClipboardTextWithRetry(Copytext);
+            SetClipboardTextWithRetry(copyText);
             if (!IsClipboardAvailable())
             {
                 MessageBox.Show("クリップボードにアクセスできません。");
@@ -1959,66 +1898,13 @@ namespace AEIOU
         // AEへコピー(Script仲介)
         private void AECopyWithScript(bool isDirect)
         {
-            // AEへコピー(Script仲介)
-            // ※処理的には、AEへコピーと同じ。
-            // ※違うのは４点 : 書式, fcntを 0から数える、タイミングの秒数計算時のfpsで割る処理の省略, AfterEffects呼び出し
-            String Copytext = "";
-            int rlen = 0;
-
-            // カレントの列を取得
             int col = dataGridView1.CurrentCell.ColumnIndex;
-
-            //ヘッダ書き出し(定型文字列)
-            Copytext = "{property:'Time Remap',scale:" + setting.Fps.ToString("f") + ",keys:[";
-
-            //タイミングの書き出し
-            for (int i = 0; i < GetSheetRowCount(); i++)
-            {
-                // 中抜き範囲は無視
-                bool bNuki = false;
-                foreach (Range r in delRange)
-                {
-                    if ((r.Top <= i) && (r.Bottom >= i))
-                    {
-                        //中抜き範囲時は、範囲長に積算する
-                        rlen++;
-                        bNuki = true;
-                        break;
-                    }
-                }
-                //中抜き範囲内は無視
-                if (bNuki) continue;
-
-                // カラセルは無視
-                String str = GetCellValue(col, i);
-                if (str == "") continue;
-
-                // 中ヌキ範囲長でフレーム値を補正
-                int fcnt = i - rlen;
-
-                // 秒数計算
-                double t = 0;
-                if (!isDirect)
-                {
-                    // 通常のリマップ計算(※スクリプトに渡す場合は fps計算せず スクリプト側に一任)
-                    t = (double)int.Parse(str) - setting.FirstFrame;
-                }
-                else
-                {
-                    // 入力値のまま渡す
-                    t = (double)int.Parse(str);
-                }
-
-                // 計算結果を文字列に収める
-                Copytext += "{'t':"+fcnt.ToString()+",'v':["+t.ToString()+"]},";
-
-            }
-
-            //フッタ書き出し(定型文字列)
-            Copytext += "]}";
+            string copyText = afterEffectsDataService.CreateScriptData(
+                setting.Fps, setting.FirstFrame, isDirect, GetSheetRowCount(),
+                delegate(int row) { return GetCellValue(col, row); }, IsExcludedRow);
 
             //クリップボードに反映
-            SetClipboardTextWithRetry(Copytext);
+            SetClipboardTextWithRetry(copyText);
             if (!IsClipboardAvailable())
             {
                 MessageBox.Show("クリップボードにアクセスできません。");
@@ -2026,6 +1912,18 @@ namespace AEIOU
 
             //AfterEffects側の呼び出し
             Process.Start(setting.AfterPath, "-r " + setting.AfterOption);
+        }
+
+        private bool IsExcludedRow(int row)
+        {
+            foreach (Range range in delRange)
+            {
+                if (range.Top <= row && range.Bottom >= row)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         //----------------------------------------------------------------------------------------
@@ -2041,82 +1939,41 @@ namespace AEIOU
         // AEへコピー(TimeRemap以外)(Script仲介)
         private void pasteFromAEToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // AEからペースト
-            String[] clip = System.Text.RegularExpressions.Regex.Split(Clipboard.GetText(), "\r\n");
-            int i = 0;
-
-            // カレントの列を取得
-            int col = dataGridView1.CurrentCell.ColumnIndex;
-
-            // ヘッダチェック
-            if (clip[i].IndexOf("Adobe After Effects ") < 0 ||
-                clip[i].IndexOf("Keyframe Data") < 0)
+            AfterEffectsPasteData pasteData;
+            string errorMessage;
+            if (!afterEffectsDataService.TryParseKeyframeData(Clipboard.GetText(), out pasteData, out errorMessage))
             {
-                MessageBox.Show("ヘッダ : 未対応のヘッダ.");
+                MessageBox.Show(errorMessage);
                 return;
             }
 
-            // fpsのチェック
-            i += 2;
+            int col = dataGridView1.CurrentCell.ColumnIndex;
+            setting.Fps = pasteData.Fps;
+            switch (setting.Fps)
             {
-                String[] buf = clip[i].Split('\t');
-                if (clip[i].IndexOf("\tUnits Per Second") < 0 ||
-                    buf.Length < 3)
-                {
-                    MessageBox.Show("Units Per Second : 目的の情報が見つからない.");
-                    return;
-                }
-                setting.Fps = int.Parse(buf[2]);
-
-                // fps変更をメニューに反映
-                switch (setting.Fps)
-                {
-                    case 24:
-                        this.fPS30ToolStripMenuItem.Checked = false;
-                        this.fPS24ToolStripMenuItem.Checked = true;
-                        break;
-                    case 30:
-                        this.fPS30ToolStripMenuItem.Checked = true;
-                        this.fPS24ToolStripMenuItem.Checked = false;
-                        break;
-                    default:
-                        this.fPS30ToolStripMenuItem.Checked = false;
-                        this.fPS24ToolStripMenuItem.Checked = false;
-                        break;
-                }
-
-            }
-
-            // "TimeRemap"で始まる行を探す
-            for (; i < clip.Length; i++)
-            {
-                if (clip[i].IndexOf("Time Remap") != -1) break;
+                case 24:
+                    this.fPS30ToolStripMenuItem.Checked = false;
+                    this.fPS24ToolStripMenuItem.Checked = true;
+                    break;
+                case 30:
+                    this.fPS30ToolStripMenuItem.Checked = true;
+                    this.fPS24ToolStripMenuItem.Checked = false;
+                    break;
+                default:
+                    this.fPS30ToolStripMenuItem.Checked = false;
+                    this.fPS24ToolStripMenuItem.Checked = false;
+                    break;
             }
 
             List<CellWriteEntry> writes = new List<CellWriteEntry>();
-
-            // リマップ情報を読む
-            i += 2;
-            for (; i < clip.Length; i++)
+            foreach (AfterEffectsKeyframe keyframe in pasteData.Keyframes)
             {
-                String[] buf = clip[i].Split('\t');
-                if (buf.Length <= 1) break;
-
-                int frm = int.Parse(buf[1]);
-                double val = double.Parse(buf[2]);
-                //int t = (int)((double)setting.Fps * val);
-                //if ((((double)setting.Fps * val) - ((double)t)) >= 0.5) t += 1; // コマ数の四捨五入
-                int t = (int)Math.Round(setting.Fps * val);
-
+                int t = (int)Math.Round(setting.Fps * keyframe.Value);
                 string writeValue = (t + setting.FirstFrame).ToString();
-
-                // タイミング情報をセルに書き込む
-                // ※書き込むセルが空欄の場合は、使用カウントを＋１
                 string currentValue;
                 string failureReason;
-                if (!TryGetCellValue(col, frm, out currentValue, out failureReason))
+                if (!TryGetCellValue(col, keyframe.Frame, out currentValue, out failureReason))
                 {
-                    currentValue = string.Empty;
                     continue;
                 }
 
@@ -2130,7 +1987,7 @@ namespace AEIOU
                     aryCellUsedCount[col]++;
                 }
 
-                writes.Add(new CellWriteEntry(frm, col, writeValue));
+                writes.Add(new CellWriteEntry(keyframe.Frame, col, writeValue));
             }
 
             ApplyCellWrites("AEペースト", writes);
@@ -3066,84 +2923,15 @@ namespace AEIOU
             //ダイアログを表示する
             if (dialog.ShowDialog(this.owner) == DialogResult.OK)
             {
-                //OKボタンがクリックされた場合は、保存実行
-
-                //------------------------
-                // 各セルのキーをなめて、コマ数とセルの値を書き出す
-                // ※fpsなどの設定は無視
-                FileStream outfs;
-                char[] header = { (char)0x11, 'S', 'h', 'i', 'r', 'a', 'h', 'e', 'i', 'T', 'i', 'm', 'e', 'S', 'h', 'e', 'e', 't' };
-                int col = GetSheetColumnCount();
-                long row = GetSheetRowCount();
                 try
                 {
-                    outfs = new FileStream(dialog.FileName, FileMode.Create);
+                    stsFileService.Save(dialog.FileName, GetSheetColumnCount(), GetSheetRowCount(),
+                        GetCellValue, GetHeaderValue);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     MessageBox.Show("指定ファイルを開けませんでした.");
-                    return;
                 }
-
-                {
-                    // ヘッダ
-                    byte[] temp = new byte[header.Length];
-                    for (int i = 0; i < header.Length; i++)
-                        temp[i] = (byte)header[i];
-                    outfs.Write(temp,0,temp.Length);
-                }
-
-                {
-                    // 列数
-                    byte colCount = (Byte)col;
-                    outfs.WriteByte(colCount);
-
-                    // 行数
-                    UInt32 rowCount = (UInt32)row;
-                    byte[] temp = BitConverter.GetBytes(rowCount);
-                    outfs.Write(temp, 0, temp.Length);
-                }
-
-                // セル
-                for (int i = 0; i < col; i++)
-                {
-                    UInt16 current = 0;    // 初期状態は空セル( = 0)
-                    for (int j = 0; j < row; j++)
-                    {
-                        if (GetCellValue(i, j) == "")
-                        {
-                            //(特に何もしない)
-                        }
-                        else
-                        {
-                            //セルの値を変換してカレント値を更新
-                            UInt16 val = 0;
-                            try
-                            {
-                                val = UInt16.Parse(GetCellValue(i, j));
-                            }
-                            catch (Exception ex)
-                            {
-                            }
-                            current = val;
-                        }
-                        // カレントの値を書き出す
-                        byte[] temp = BitConverter.GetBytes(current);
-                        outfs.Write(temp, 0, temp.Length);
-                    }
-                }
-
-                // 各セルの名称を出力
-                for (int i = 0; i < col; i++)
-                {
-                    byte[] name = Encoding.GetEncoding("Shift_JIS").GetBytes(GetHeaderValue(i));
-                    outfs.WriteByte((byte)name.Length);
-                    outfs.Write(name, 0, name.Length);
-                }
-
-                // ストリームを閉じる
-                outfs.Close();
-
             }
 
         }
@@ -3152,77 +2940,36 @@ namespace AEIOU
         // STS 読み込み
         private void loadSTS(String path)
         {
-            FileStream inpfs;
-            char[] header = { (char)0x11, 'S', 'h', 'i', 'r', 'a', 'h', 'e', 'i', 'T', 'i', 'm', 'e', 'S', 'h', 'e', 'e', 't' };
-            int col = GetSheetColumnCount();
-            int row = GetSheetRowCount();
+            StsDocument document;
             try
             {
-                inpfs = new FileStream(path, FileMode.Open);
+                document = stsFileService.Load(path);
             }
-            catch (Exception ex)
+            catch (InvalidDataException)
+            {
+                MessageBox.Show("未対応のファイルの為、開けませんでした.");
+                return;
+            }
+            catch (Exception)
             {
                 MessageBox.Show("指定ファイルを開けませんでした.");
                 return;
             }
 
-            {
-                //ヘッダ
-                byte[] temp = new byte[header.Length];
-                inpfs.Read(temp, 0, header.Length);
-                for (int i = 0; i < header.Length; i++)
-                {
-                    if ((byte)header[i] != temp[i])
-                    {
-                        MessageBox.Show("未対応のファイルの為、開けませんでした.");
-                        return;
-                    }
-                }
-            }
-
-            {
-                // 列・行
-                byte[] rowLen = new byte[sizeof(UInt32)];
-                col = inpfs.ReadByte();
-                inpfs.Read(rowLen, 0, rowLen.Length);
-                row = (int)BitConverter.ToUInt32(rowLen, 0);
-            }
-
             // グリッドサイズをデータに合わせる
-            setting.ColLength = col;
-            setting.RowLength = row;
+            setting.ColLength = document.ColumnCount;
+            setting.RowLength = document.RowCount;
             InitializeWork(false);
 
-            // セル
-            byte[] cell = new byte[sizeof(UInt16)];
-            for (int i = 0; i < col; i++)
+            foreach (StsCellChange change in document.CellChanges)
             {
-                UInt16 current = 0;
-                for (int j = 0; j < row; j++)
-                {
-                    inpfs.Read(cell, 0, cell.Length);
-                    UInt16 val = BitConverter.ToUInt16(cell, 0);
-
-                    // 読み込む際は値の変更部分だけをセルに反映
-                    if (current != val)
-                    {
-                        current = val;
-                        SetCellValueIfChanged(col: i, row: j, value: val.ToString());
-                    }
-                }
+                SetCellValueIfChanged(change.Column, change.Row, change.Value);
             }
 
-            // 各セルの名称を入力
-            for (int i = 0; i < col; i++)
+            for (int i = 0; i < document.Headers.Count; i++)
             {
-                int nameLen = inpfs.ReadByte();
-                byte[] temp = new byte[nameLen];
-                inpfs.Read(temp, 0, nameLen);
-                SetHeaderValue(i, Encoding.GetEncoding("Shift_JIS").GetString(temp));
+                SetHeaderValue(i, document.Headers[i]);
             }
-
-            // ストリームを閉じる
-            inpfs.Close();
 
             // 読み込み結果は確定状態とし、Undo履歴をクリアする（旧実装互換）。
             flushUndoHistory();

@@ -82,6 +82,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ColorDefinitions.cs" />
+    <Compile Include="AfterEffectsDataService.cs" />
     <Compile Include="ContinuityStateService.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Form1.cs">
@@ -129,6 +130,7 @@
       <DependentUpon>RepeatInputBox.cs</DependentUpon>
     </Compile>
     <Compile Include="Settings.cs" />
+    <Compile Include="StsFileService.cs" />
     <Compile Include="TimingCell.cs" />
     <Compile Include="TimingColumn.cs" />
     <Compile Include="TimingSheetModel.cs" />
