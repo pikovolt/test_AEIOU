@@ -783,13 +783,6 @@ namespace AEIOU
 
         //---------------------------------------------------------------------------
         // コピー先セルへのペースト処理
-        private void copyToCell(int col, int row)
-        {
-            copyToCell(col, row, true);
-        }
-
-        //---------------------------------------------------------------------------
-        // コピー先セルへのペースト処理
         private void copyToCell(int col, int row, bool shouldInvalidate)
         {
             // PasteOperationのインスタンスを作成
@@ -815,13 +808,6 @@ namespace AEIOU
             // GridViewManagerを使用して操作を実行
             gridViewManager.ExecuteOperation(copyOperation);
 
-        }
-
-        //---------------------------------------------------------------------------
-        // 切り取り範囲をコピーバッファにコピーし、シートからは削除する
-        private void cutToBuf(Rect rect)
-        {
-            cutToBuf(rect, true);
         }
 
         //---------------------------------------------------------------------------
@@ -1524,13 +1510,6 @@ namespace AEIOU
                     val = true;
             }
             return val;
-        }
-
-        //----------------------------------------------------------------------------------------
-        // 画面2/3より下に移動した場合の画面送り
-        private void scrollingForward()
-        {
-            gridScrollService.ScrollForward(selectRange);
         }
 
         //----------------------------------------------------------------------------------------
