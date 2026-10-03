@@ -89,6 +89,7 @@
   <ItemGroup>
     <Compile Include="ColorDefinitions.cs" />
     <Compile Include="AutomationHost.cs" />
+    <Compile Include="AutomationRegistry.cs" />
     <Compile Include="BuiltInAutomationCommands.cs" />
     <Compile Include="AfterEffectsDataService.cs" />
     <Compile Include="ContinuityStateService.cs" />
