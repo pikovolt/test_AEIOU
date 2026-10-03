@@ -9,6 +9,8 @@
 ## P6-001: 行・列編集 characterization
 **目的:** 抽出前の暗黙仕様を、計算結果と UI 後処理に分けて固定する。
 
+**成果物:** [`../characterization_p6_001.md`](../characterization_p6_001.md)
+
 **作業:**
 - 行挿入・削除について、先頭/中間/末尾、件数1/複数、移動長0の変更座標・値・順序を記録する。
 - 列挿入・削除について、値、ヘッダー、使用数、列数変更、current cell、履歴 flush、copy buffer の期待値を記録する。
