@@ -38,7 +38,15 @@
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <ItemGroup><Reference Include="System" /></ItemGroup>
-  <ItemGroup><Compile Include="Program.cs" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\WindowsFormsApplication1\SheetEditContracts.cs">
+      <Link>SheetEditContracts.cs</Link>
+    </Compile>
+    <Compile Include="..\WindowsFormsApplication1\SheetRowEditCalculator.cs">
+      <Link>SheetRowEditCalculator.cs</Link>
+    </Compile>
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AEIOU.Automation.Abstractions\AEIOU.Automation.Abstractions.csproj">
       <Project>{B275B027-369A-45F7-AF62-B1A492F96E91}</Project>

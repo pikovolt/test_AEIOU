@@ -1,12 +1,12 @@
 # Smoke Checklist: Phase6（シート編集計算の分離）
 
 ## 自動検証 — 変更一覧
-- [ ] 行挿入: 先頭/中間/末尾、1行/複数行で期待する座標・値・順序になる
-- [ ] 行削除: 先頭/中間/末尾、1行/複数行で期待する座標・値・順序になる
-- [ ] 移動長0では不要なシフトを書き出さず、必要なクリアだけを生成する
-- [ ] null は境界仕様どおり正規化または拒否される
+- [x] 行挿入: 先頭/中間/末尾、1行/複数行で期待する座標・値・順序になる（calculator fixture）
+- [x] 行削除: 先頭/中間/末尾、1行/複数行で期待する座標・値・順序になる（calculator fixture）
+- [x] 移動長0では不要なシフトを書き出さず、必要なクリアだけを生成する（calculator fixture）
+- [x] null は境界仕様どおり正規化または拒否される（calculator fixture）
 - [ ] 重複座標・範囲外座標を適用前に拒否し、部分更新しない
-- [ ] calculator は WinForms、`Form1`、`DataGridView`、Undo 実装を参照しない
+- [x] calculator は WinForms、`Form1`、`DataGridView`、Undo 実装を参照しない（project/source dependency check）
 
 ## 行編集 — UI/Undo
 - [ ] 行挿入を Undo/Redo して値、空白領域、表示が往復する

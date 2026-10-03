@@ -874,18 +874,11 @@ namespace AEIOU
         // 指定セルに列を挿入する
         void insertToAllCell(int Row, int Count)
         {
-            ExecuteWriteGroup("行の挿入", delegate
-            {
-                int rowCount = GetSheetRowCount();
-                int movableLength = rowCount - (Row + Count);
-                QueueShiftWrites(0, GetSheetColumnCount(), Row, movableLength, Row + Count);
-
-                // 指定範囲に被る領域を削除（空白にする）
-                Rect r = new Rect(0, Row, GetSheetColumnCount(), Count);
-                deleteRect(r, false);
-            });
-
-            dataGridView1.Invalidate();
+            IList<CellWriteEntry> writes = SheetRowEditCalculator.CreateInsertRows(
+                GetSheetRowCount(), GetSheetColumnCount(), Row, Count,
+                delegate(int row, int column) { return GetCellValue(column, row); });
+            ApplyCellWrites("行の挿入", writes);
+            FinishWriteOperation(true);
 
         }
 
@@ -893,17 +886,10 @@ namespace AEIOU
         // 指定セルから列を削除する
         void cutToAllCell(int Row, int Count)
         {
-            ExecuteWriteGroup("行の削除", delegate
-            {
-                int sourceStartRow = Row + Count;
-                int movableLength = GetSheetRowCount() - sourceStartRow;
-                QueueShiftWrites(0, GetSheetColumnCount(), sourceStartRow, movableLength, Row);
-
-                // 範囲末尾の不要領域を削除（空白にする）
-                Rect r = new Rect(0, GetSheetRowCount() - Count, GetSheetColumnCount(), Count);
-                deleteRect(r, false);
-            });
-
+            IList<CellWriteEntry> writes = SheetRowEditCalculator.CreateDeleteRows(
+                GetSheetRowCount(), GetSheetColumnCount(), Row, Count,
+                delegate(int row, int column) { return GetCellValue(column, row); });
+            ApplyCellWrites("行の削除", writes);
             FinishWriteOperation(true);
 
         }
@@ -1373,45 +1359,6 @@ namespace AEIOU
 
             SetCellValue(col, row, normalizedValue);
             return true;
-        }
-
-        //----------------------------------------------------------------------------------------
-        // 列単位でセルの値をシフトする書き込みをキューに追加する
-        private void QueueShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
-        {
-            if (length <= 0 || endColExclusive <= startCol)
-            {
-                return;
-            }
-
-            // 旧実装互換: 下方向シフトは末尾側から、上方向シフトは先頭側から処理する。
-            // （同一列内で source/destination が重なるケースの移行ミスを防ぐため）
-            // 呼び出し側は source/destination がシート範囲内となるように引数を構築する。
-            bool isShiftUpwardOrSame = destinationStartRow <= sourceStartRow;
-
-            for (int col = startCol; col < endColExclusive; col++)
-            {
-                if (isShiftUpwardOrSame)
-                {
-                    for (int offset = 0; offset < length; offset++)
-                    {
-                        int sourceRow = sourceStartRow + offset;
-                        int destinationRow = destinationStartRow + offset;
-                        string value = GetCellValue(col, sourceRow);
-                        QueueCellWrite(destinationRow, col, value);
-                    }
-                }
-                else
-                {
-                    for (int offset = length - 1; offset >= 0; offset--)
-                    {
-                        int sourceRow = sourceStartRow + offset;
-                        int destinationRow = destinationStartRow + offset;
-                        string value = GetCellValue(col, sourceRow);
-                        QueueCellWrite(destinationRow, col, value);
-                    }
-                }
-            }
         }
 
         //----------------------------------------------------------------------------------------
