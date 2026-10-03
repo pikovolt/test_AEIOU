@@ -13,6 +13,16 @@ namespace AEIOU.Automation.Tests
 
         private static int Main()
         {
+            Run("row insert calculations preserve values and write order", RowInsertCalculationsPreserveBehavior);
+            Run("row delete calculations preserve values and write order", RowDeleteCalculationsPreserveBehavior);
+            Run("row calculations clear without shifts at the sheet end", RowCalculationsHandleZeroMoveLength);
+            Run("row calculations validate all inputs before reading", RowCalculationsValidateBeforeReading);
+            Run("column insert calculations preserve values metadata and order", ColumnInsertCalculationsPreserveBehavior);
+            Run("column delete calculations preserve values metadata and order", ColumnDeleteCalculationsPreserveBehavior);
+            Run("column calculations handle sheet edges", ColumnCalculationsHandleEdges);
+            Run("column calculations validate before reading", ColumnCalculationsValidateBeforeReading);
+            Run("cell write batches reject out-of-range coordinates", CellWriteBatchRejectsOutOfRangeCoordinates);
+            Run("cell write batches reject duplicate coordinates", CellWriteBatchRejectsDuplicateCoordinates);
             Run("valid changes are applied once", ValidChangesAreAppliedOnce);
             Run("empty changes do not open a write group", EmptyChangesDoNotApply);
             Run("out-of-range result is rejected atomically", OutOfRangeIsRejected);
@@ -44,6 +54,230 @@ namespace AEIOU.Automation.Tests
             Run("AE clipboard sample writes without cell changes", AeClipboardSampleWritesWithoutCellChanges);
             Console.WriteLine(failures == 0 ? "All automation host tests passed." : failures + " test(s) failed.");
             return failures == 0 ? 0 : 1;
+        }
+
+        private static void RowInsertCalculationsPreserveBehavior()
+        {
+            AssertRowEditResult(true, 0, 1, new[] { "", "0", "1", "2", "3" });
+            AssertRowEditResult(true, 2, 1, new[] { "0", "1", "", "2", "3" });
+            AssertRowEditResult(true, 4, 1, new[] { "0", "1", "2", "3", "" });
+            AssertRowEditResult(true, 1, 2, new[] { "0", "", "", "1", "2" });
+
+            IList<CellWriteEntry> writes = CalculateRows(true, 1, 2, ValueAt);
+            AssertWrites(writes, new[]
+            {
+                "4:0=2", "3:0=1", "4:1=12", "3:1=11",
+                "1:0=", "1:1=", "2:0=", "2:1="
+            });
+        }
+
+        private static void RowDeleteCalculationsPreserveBehavior()
+        {
+            AssertRowEditResult(false, 0, 1, new[] { "1", "2", "3", "4", "" });
+            AssertRowEditResult(false, 2, 1, new[] { "0", "1", "3", "4", "" });
+            AssertRowEditResult(false, 4, 1, new[] { "0", "1", "2", "3", "" });
+            AssertRowEditResult(false, 1, 2, new[] { "0", "3", "4", "", "" });
+            AssertRowEditResult(false, 0, 5, new[] { "", "", "", "", "" });
+
+            IList<CellWriteEntry> writes = CalculateRows(false, 1, 2, ValueAt);
+            AssertWrites(writes, new[]
+            {
+                "1:0=3", "2:0=4", "1:1=13", "2:1=14",
+                "3:0=", "3:1=", "4:0=", "4:1="
+            });
+        }
+
+        private static void RowCalculationsHandleZeroMoveLength()
+        {
+            int reads = 0;
+            CellValueReader reader = delegate(int row, int column) { reads++; return null; };
+            IList<CellWriteEntry> inserted = CalculateRows(true, 3, 2, reader);
+            IList<CellWriteEntry> deleted = CalculateRows(false, 3, 2, reader);
+            Assert(reads == 0, "an end edit must not read cells when there is nothing to shift");
+            Assert(inserted.Count == 4 && deleted.Count == 4,
+                "an end edit must still emit every required clear");
+            Assert(inserted[0].Value == String.Empty && deleted[0].Value == String.Empty,
+                "clear values must be normalized to empty strings");
+
+            IList<CellWriteEntry> normalized = SheetRowEditCalculator.CreateInsertRows(
+                2, 1, 0, 1, delegate { return null; });
+            Assert(normalized[0].Value == String.Empty, "reader null values must be normalized");
+        }
+
+        private static void RowCalculationsValidateBeforeReading()
+        {
+            int reads = 0;
+            CellValueReader reader = delegate(int row, int column) { reads++; return "value"; };
+            AssertThrows(delegate { SheetRowEditCalculator.CreateInsertRows(0, 1, 0, 1, reader); });
+            AssertThrows(delegate { SheetRowEditCalculator.CreateInsertRows(5, 0, 0, 1, reader); });
+            AssertThrows(delegate { SheetRowEditCalculator.CreateDeleteRows(5, 1, -1, 1, reader); });
+            AssertThrows(delegate { SheetRowEditCalculator.CreateDeleteRows(5, 1, 5, 1, reader); });
+            AssertThrows(delegate { SheetRowEditCalculator.CreateInsertRows(5, 1, 0, 0, reader); });
+            AssertThrows(delegate { SheetRowEditCalculator.CreateDeleteRows(5, 1, 4, 2, reader); });
+            AssertThrows(delegate { SheetRowEditCalculator.CreateInsertRows(5, 1, 0, 1, null); });
+            Assert(reads == 0, "invalid input must be rejected before the snapshot is read");
+        }
+
+        private static void ColumnInsertCalculationsPreserveBehavior()
+        {
+            IList<ColumnWriteEntry> writes = SheetColumnEditCalculator.CreateInsertColumn(
+                2, 3, 1, ColumnValueAt, ColumnHeaderAt, ColumnUsedCountAt);
+            AssertColumnWrites(writes, new[]
+            {
+                "3=H2;102;2:0,2:1", "2=H1;101;1:0,1:1", "1=;0;,"
+            });
+        }
+
+        private static void ColumnDeleteCalculationsPreserveBehavior()
+        {
+            IList<ColumnWriteEntry> writes = SheetColumnEditCalculator.CreateDeleteColumn(
+                2, 4, 1, ColumnValueAt, ColumnHeaderAt, ColumnUsedCountAt);
+            AssertColumnWrites(writes, new[]
+            {
+                "1=H2;102;2:0,2:1", "2=H3;103;3:0,3:1"
+            });
+        }
+
+        private static void ColumnCalculationsHandleEdges()
+        {
+            IList<ColumnWriteEntry> insertedFirst = SheetColumnEditCalculator.CreateInsertColumn(
+                1, 2, 0, ColumnValueAt, ColumnHeaderAt, ColumnUsedCountAt);
+            Assert(insertedFirst.Count == 3 && insertedFirst[0].Column == 2 &&
+                insertedFirst[2].Column == 0, "first-column insertion must shift every column from the end");
+
+            IList<ColumnWriteEntry> insertedLast = SheetColumnEditCalculator.CreateInsertColumn(
+                1, 2, 1, ColumnValueAt, ColumnHeaderAt, ColumnUsedCountAt);
+            Assert(insertedLast.Count == 2 && insertedLast[0].Column == 2 &&
+                insertedLast[1].Column == 1, "last-column insertion must shift and clear the selected column");
+
+            IList<ColumnWriteEntry> deletedLast = SheetColumnEditCalculator.CreateDeleteColumn(
+                1, 2, 1, ColumnValueAt, ColumnHeaderAt, ColumnUsedCountAt);
+            Assert(deletedLast.Count == 0, "last-column deletion needs no writes before resize");
+
+            IList<ColumnWriteEntry> normalized = SheetColumnEditCalculator.CreateInsertColumn(
+                1, 1, 0, delegate { return null; }, delegate { return null; }, delegate { return 0; });
+            Assert(normalized[0].Header == String.Empty && normalized[0].GetValue(0) == String.Empty,
+                "column snapshots must normalize null strings");
+        }
+
+        private static void ColumnCalculationsValidateBeforeReading()
+        {
+            int reads = 0;
+            CellValueReader values = delegate { reads++; return "value"; };
+            ColumnHeaderReader headers = delegate { reads++; return "header"; };
+            ColumnUsedCountReader used = delegate { reads++; return 1; };
+            AssertThrows(delegate { SheetColumnEditCalculator.CreateInsertColumn(0, 1, 0, values, headers, used); });
+            AssertThrows(delegate { SheetColumnEditCalculator.CreateDeleteColumn(1, 0, 0, values, headers, used); });
+            AssertThrows(delegate { SheetColumnEditCalculator.CreateInsertColumn(1, 1, 1, values, headers, used); });
+            AssertThrows(delegate { SheetColumnEditCalculator.CreateDeleteColumn(1, 1, 0, null, headers, used); });
+            AssertThrows(delegate { SheetColumnEditCalculator.CreateInsertColumn(1, 1, 0, values, null, used); });
+            AssertThrows(delegate { SheetColumnEditCalculator.CreateDeleteColumn(1, 1, 0, values, headers, null); });
+            Assert(reads == 0, "invalid column input must be rejected before the snapshot is read");
+        }
+
+        private static string ColumnValueAt(int row, int column)
+        {
+            return column + ":" + row;
+        }
+
+        private static string ColumnHeaderAt(int column)
+        {
+            return "H" + column;
+        }
+
+        private static int ColumnUsedCountAt(int column)
+        {
+            return 100 + column;
+        }
+
+        private static void AssertColumnWrites(IList<ColumnWriteEntry> writes, string[] expected)
+        {
+            Assert(writes.Count == expected.Length, "unexpected column write count");
+            for (int index = 0; index < expected.Length; index++)
+            {
+                ColumnWriteEntry write = writes[index];
+                string actual = write.Column + "=" + write.Header + ";" + write.UsedCount + ";";
+                for (int row = 0; row < write.ValueCount; row++)
+                {
+                    if (row > 0) actual += ",";
+                    actual += write.GetValue(row);
+                }
+                Assert(actual == expected[index], "unexpected column write at index " + index + ": " + actual);
+            }
+        }
+
+        private static void CellWriteBatchRejectsOutOfRangeCoordinates()
+        {
+            IList<CellWriteEntry> writes = new List<CellWriteEntry>
+            {
+                new CellWriteEntry(0, 0, "valid"),
+                new CellWriteEntry(5, 0, "invalid")
+            };
+            AssertThrows(delegate { CellWriteBatch.Validate(writes, 5, 2); });
+        }
+
+        private static void CellWriteBatchRejectsDuplicateCoordinates()
+        {
+            IList<CellWriteEntry> writes = new List<CellWriteEntry>
+            {
+                new CellWriteEntry(1, 1, "first"),
+                new CellWriteEntry(1, 1, "second")
+            };
+            AssertThrows(delegate { CellWriteBatch.Validate(writes, 5, 2); });
+        }
+
+        private static IList<CellWriteEntry> CalculateRows(
+            bool insert, int row, int count, CellValueReader reader)
+        {
+            return insert
+                ? SheetRowEditCalculator.CreateInsertRows(5, 2, row, count, reader)
+                : SheetRowEditCalculator.CreateDeleteRows(5, 2, row, count, reader);
+        }
+
+        private static string ValueAt(int row, int column)
+        {
+            return (column * 10 + row).ToString();
+        }
+
+        private static void AssertRowEditResult(bool insert, int row, int count, string[] expectedFirstColumn)
+        {
+            string[,] values = new string[5, 2];
+            for (int currentRow = 0; currentRow < 5; currentRow++)
+            {
+                values[currentRow, 0] = ValueAt(currentRow, 0);
+                values[currentRow, 1] = ValueAt(currentRow, 1);
+            }
+            IList<CellWriteEntry> writes = CalculateRows(insert, row, count,
+                delegate(int sourceRow, int column) { return values[sourceRow, column]; });
+            CellWriteBatch.Validate(writes, 5, 2);
+            foreach (CellWriteEntry write in writes)
+            {
+                values[write.Row, write.Col] = write.Value;
+            }
+            for (int currentRow = 0; currentRow < 5; currentRow++)
+            {
+                Assert(values[currentRow, 0] == expectedFirstColumn[currentRow],
+                    "unexpected row-edit result at row " + currentRow);
+            }
+        }
+
+        private static void AssertWrites(IList<CellWriteEntry> writes, string[] expected)
+        {
+            Assert(writes.Count == expected.Length, "unexpected write count");
+            for (int index = 0; index < expected.Length; index++)
+            {
+                CellWriteEntry write = writes[index];
+                string actual = write.Row + ":" + write.Col + "=" + write.Value;
+                Assert(actual == expected[index], "unexpected write at index " + index + ": " + actual);
+            }
+        }
+
+        private static void AssertThrows(Action action)
+        {
+            bool threw = false;
+            try { action(); }
+            catch (ArgumentException) { threw = true; }
+            Assert(threw, "invalid row calculation input must throw an argument exception");
         }
 
         private static void RandomSampleRespectsFrameStep()

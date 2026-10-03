@@ -874,18 +874,10 @@ namespace AEIOU
         // 指定セルに列を挿入する
         void insertToAllCell(int Row, int Count)
         {
-            ExecuteWriteGroup("行の挿入", delegate
-            {
-                int rowCount = GetSheetRowCount();
-                int movableLength = rowCount - (Row + Count);
-                QueueShiftWrites(0, GetSheetColumnCount(), Row, movableLength, Row + Count);
-
-                // 指定範囲に被る領域を削除（空白にする）
-                Rect r = new Rect(0, Row, GetSheetColumnCount(), Count);
-                deleteRect(r, false);
-            });
-
-            dataGridView1.Invalidate();
+            IList<CellWriteEntry> writes = SheetRowEditCalculator.CreateInsertRows(
+                GetSheetRowCount(), GetSheetColumnCount(), Row, Count,
+                delegate(int row, int column) { return GetCellValue(column, row); });
+            ApplyRowEdit("行の挿入", writes);
 
         }
 
@@ -893,18 +885,10 @@ namespace AEIOU
         // 指定セルから列を削除する
         void cutToAllCell(int Row, int Count)
         {
-            ExecuteWriteGroup("行の削除", delegate
-            {
-                int sourceStartRow = Row + Count;
-                int movableLength = GetSheetRowCount() - sourceStartRow;
-                QueueShiftWrites(0, GetSheetColumnCount(), sourceStartRow, movableLength, Row);
-
-                // 範囲末尾の不要領域を削除（空白にする）
-                Rect r = new Rect(0, GetSheetRowCount() - Count, GetSheetColumnCount(), Count);
-                deleteRect(r, false);
-            });
-
-            FinishWriteOperation(true);
+            IList<CellWriteEntry> writes = SheetRowEditCalculator.CreateDeleteRows(
+                GetSheetRowCount(), GetSheetColumnCount(), Row, Count,
+                delegate(int row, int column) { return GetCellValue(column, row); });
+            ApplyRowEdit("行の削除", writes);
 
         }
 
@@ -1305,27 +1289,17 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
-        // 列全体のコピー
-        private void CopyColumn(int sourceCol, int destinationCol, int rowCount)
+        // 列編集 calculator が作成した snapshot を順番どおり反映する
+        private void ApplyColumnWrites(IList<ColumnWriteEntry> writes, int rowCount)
         {
-            aryCellUsedCount[destinationCol] = aryCellUsedCount[sourceCol];
-            SetHeaderValue(destinationCol, GetHeaderValue(sourceCol));
-
-            for (int row = 0; row < rowCount; row++)
+            foreach (ColumnWriteEntry write in writes)
             {
-                SetCellValue(destinationCol, row, GetCellValue(sourceCol, row));
-            }
-        }
-
-        //----------------------------------------------------------------------------------------
-        // 列全体のクリア
-        private void ClearColumn(int col, int rowCount)
-        {
-            aryCellUsedCount[col] = 0;
-            SetHeaderValue(col, "");
-            for (int row = 0; row < rowCount; row++)
-            {
-                SetCellValue(col, row, "");
+                aryCellUsedCount[write.Column] = write.UsedCount;
+                SetHeaderValue(write.Column, write.Header);
+                for (int row = 0; row < rowCount; row++)
+                {
+                    SetCellValue(write.Column, row, write.GetValue(row));
+                }
             }
         }
 
@@ -1376,73 +1350,34 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
-        // 列単位でセルの値をシフトする書き込みをキューに追加する
-        private void QueueShiftWrites(int startCol, int endColExclusive, int sourceStartRow, int length, int destinationStartRow)
-        {
-            if (length <= 0 || endColExclusive <= startCol)
-            {
-                return;
-            }
-
-            // 旧実装互換: 下方向シフトは末尾側から、上方向シフトは先頭側から処理する。
-            // （同一列内で source/destination が重なるケースの移行ミスを防ぐため）
-            // 呼び出し側は source/destination がシート範囲内となるように引数を構築する。
-            bool isShiftUpwardOrSame = destinationStartRow <= sourceStartRow;
-
-            for (int col = startCol; col < endColExclusive; col++)
-            {
-                if (isShiftUpwardOrSame)
-                {
-                    for (int offset = 0; offset < length; offset++)
-                    {
-                        int sourceRow = sourceStartRow + offset;
-                        int destinationRow = destinationStartRow + offset;
-                        string value = GetCellValue(col, sourceRow);
-                        QueueCellWrite(destinationRow, col, value);
-                    }
-                }
-                else
-                {
-                    for (int offset = length - 1; offset >= 0; offset--)
-                    {
-                        int sourceRow = sourceStartRow + offset;
-                        int destinationRow = destinationStartRow + offset;
-                        string value = GetCellValue(col, sourceRow);
-                        QueueCellWrite(destinationRow, col, value);
-                    }
-                }
-            }
-        }
-
-        //----------------------------------------------------------------------------------------
-        // 複数セルへの書き込みをグループ化して実行する
-        private struct CellWriteEntry
-        {
-            public readonly int Row;
-            public readonly int Col;
-            public readonly string Value;
-
-            public CellWriteEntry(int row, int col, string value)
-            {
-                Row = row;
-                Col = col;
-                Value = value;
-            }
-        }
-
-        //----------------------------------------------------------------------------------------
         // 複数セルへの書き込みをグループ化して実行する
         private void ApplyCellWrites(string groupName, IList<CellWriteEntry> writes)
         {
-            if (writes == null || writes.Count == 0)
+            if (writes == null)
+            {
+                throw new ArgumentNullException("writes");
+            }
+            if (writes.Count == 0)
             {
                 return;
             }
+
+            // Undo group を開く前に全件を検証し、不正な一覧の部分適用を防ぐ。
+            CellWriteBatch.Validate(writes, GetSheetRowCount(), GetSheetColumnCount());
 
             ExecuteWriteGroup(groupName, delegate
             {
                 QueueCellWrites(writes);
             });
+        }
+
+        //----------------------------------------------------------------------------------------
+        // 行編集の計算後は、検証済みの一覧を1 Undo group で適用してから
+        // isFirstEdit と継続記号の表示をまとめて更新する。
+        private void ApplyRowEdit(string groupName, IList<CellWriteEntry> writes)
+        {
+            ApplyCellWrites(groupName, writes);
+            FinishWriteOperation(true);
         }
 
         //----------------------------------------------------------------------------------------
@@ -2615,6 +2550,7 @@ namespace AEIOU
 
             // カレントセルの位置を保存
             int col = dataGridView1.CurrentCell.ColumnIndex;
+            int originalColumnCount = GetSheetColumnCount();
 
             // グリッドサイズを変更
             resizeDataGridView1(setting.ColLength + 1, setting.RowLength);
@@ -2622,18 +2558,14 @@ namespace AEIOU
             // ウィンドウ位置調整
             adjustWindowSize();
 
-            // カレントセルの位置を空ける
-            {
-                // カレントセル位置を空けるように位置をずらす
-                int firstColIndex = GetSheetColumnCount() - 2;
-                int rowCount = GetSheetRowCount();
-                for (int i = firstColIndex; i >= col; i--)
-                {
-                    CopyColumn(i, i + 1, rowCount);
-                }
-                // 開いた場所を空欄にする
-                ClearColumn(col, rowCount);
-            }
+            // resize が旧列を同じ index に復元した後で snapshot を作り、反映する。
+            int rowCount = GetSheetRowCount();
+            IList<ColumnWriteEntry> writes = SheetColumnEditCalculator.CreateInsertColumn(
+                rowCount, originalColumnCount, col,
+                delegate(int row, int column) { return GetCellValue(column, row); },
+                delegate(int column) { return GetHeaderValue(column); },
+                delegate(int column) { return aryCellUsedCount[column]; });
+            ApplyColumnWrites(writes, rowCount);
 
             // アンドゥ履歴をフラッシュ
             flushUndoHistory();
@@ -2650,15 +2582,16 @@ namespace AEIOU
 
             // カレントセルの位置を詰める
             int col = dataGridView1.CurrentCell.ColumnIndex;
-            {
-                // カレントセル位置を埋めるように位置をずらす
-                int rowCount = GetSheetRowCount();
-                int lastShiftTarget = GetSheetColumnCount() - 1;
-                for (int i = col; i < lastShiftTarget; i++)
-                {
-                    CopyColumn(i + 1, i, rowCount);
-                }
-            }
+            int rowCount = GetSheetRowCount();
+            int columnCount = GetSheetColumnCount();
+
+            // 削除対象を resize で失う前に snapshot を作り、左詰めを反映する。
+            IList<ColumnWriteEntry> writes = SheetColumnEditCalculator.CreateDeleteColumn(
+                rowCount, columnCount, col,
+                delegate(int row, int column) { return GetCellValue(column, row); },
+                delegate(int column) { return GetHeaderValue(column); },
+                delegate(int column) { return aryCellUsedCount[column]; });
+            ApplyColumnWrites(writes, rowCount);
 
             // グリッドサイズを変更
             resizeDataGridView1(setting.ColLength - 1, setting.RowLength);
