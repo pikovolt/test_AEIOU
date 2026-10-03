@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using AEIOU.Automation;
+using AEIOU.Automation.Sample.Random;
 
 namespace AEIOU.Automation.Tests
 {
@@ -39,8 +40,56 @@ namespace AEIOU.Automation.Tests
             Run("automation session replaces only its last result", AutomationSessionReplacesOnlyItsLastResult);
             Run("extension discovery isolates failures and registers valid commands", ExtensionDiscoveryIsolatesFailures);
             Run("extension discovery rejects duplicate IDs", ExtensionDiscoveryRejectsDuplicates);
+            Run("random sample respects the frame step", RandomSampleRespectsFrameStep);
             Console.WriteLine(failures == 0 ? "All automation host tests passed." : failures + " test(s) failed.");
             return failures == 0 ? 0 : 1;
+        }
+
+        private static void RandomSampleRespectsFrameStep()
+        {
+            AutomationRequest request = new AutomationRequest(4, 5, 1,
+                new AutomationSelection(1, 2, 3, 3), new AutomationCell[0],
+                new Dictionary<string, string>
+                {
+                    { RandomNumberCommand.MinimumParameter, "-7" },
+                    { RandomNumberCommand.MaximumParameter, "-7" },
+                    { RandomNumberCommand.StepParameter, "2" }
+                }, String.Empty);
+            RandomNumberCommand command = new RandomNumberCommand();
+            AutomationResult result = command.Execute(request);
+
+            Assert(result.Succeeded && result.Changes.Count == 6,
+                "step two must produce changes for every other frame in each selected column");
+            HashSet<string> coordinates = new HashSet<string>();
+            foreach (AutomationChange change in result.Changes)
+            {
+                Assert(change.Value == "-7", "inclusive equal bounds must produce that value");
+                coordinates.Add(change.Row + ":" + change.Column);
+            }
+            Assert(coordinates.Count == 6 && coordinates.Contains("1:2") && coordinates.Contains("1:3") &&
+                coordinates.Contains("1:4") && coordinates.Contains("3:2") && coordinates.Contains("3:3") &&
+                coordinates.Contains("3:4") && !coordinates.Contains("2:2"),
+                "the changes must cover stepped frames in every column without duplicates");
+
+            AutomationRequest invalid = new AutomationRequest(1, 1, 1,
+                new AutomationSelection(0, 0, 1, 1), new AutomationCell[0],
+                new Dictionary<string, string>
+                {
+                    { RandomNumberCommand.MinimumParameter, "2" },
+                    { RandomNumberCommand.MaximumParameter, "1" },
+                    { RandomNumberCommand.StepParameter, "1" }
+                }, String.Empty);
+            Assert(!command.Execute(invalid).Succeeded, "minimum greater than maximum must be rejected");
+
+            AutomationRequest zeroStep = new AutomationRequest(1, 1, 1,
+                new AutomationSelection(0, 0, 1, 1), new AutomationCell[0],
+                new Dictionary<string, string>
+                {
+                    { RandomNumberCommand.MinimumParameter, "1" },
+                    { RandomNumberCommand.MaximumParameter, "2" },
+                    { RandomNumberCommand.StepParameter, "0" }
+                }, String.Empty);
+            Assert(!command.Execute(zeroStep).Succeeded, "zero step must be rejected");
         }
 
         private static void ValidChangesAreAppliedOnce()
