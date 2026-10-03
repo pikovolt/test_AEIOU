@@ -7,6 +7,9 @@
 - [x] null は境界仕様どおり正規化または拒否される（calculator fixture）
 - [x] 重複座標・範囲外座標を適用前に拒否し、部分更新しない（batch validation fixture）
 - [x] calculator は WinForms、`Form1`、`DataGridView`、Undo 実装を参照しない（project/source dependency check）
+- [x] 列挿入: 先頭/中間/末尾で値、ヘッダー、使用数、適用順、挿入列のクリアが一致する（calculator fixture）
+- [x] 列削除: 先頭/中間/末尾で値、ヘッダー、使用数、適用順が一致する（calculator fixture）
+- [x] 列 calculator は不正入力を snapshot 読み取り前に拒否し、null 文字列を空文字へ正規化する（calculator fixture）
 
 ## 行編集 — UI/Undo
 - [ ] 行挿入を Undo/Redo して値、空白領域、表示が往復する
