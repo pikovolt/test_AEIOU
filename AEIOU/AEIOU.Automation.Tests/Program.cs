@@ -25,6 +25,11 @@ namespace AEIOU.Automation.Tests
             Run("arithmetic rejects invalid cells atomically", ArithmeticRejectsInvalidCellsAtomically);
             Run("arithmetic rejects division by zero", ArithmeticRejectsDivisionByZero);
             Run("arithmetic ignores division by zero for ignored cells", ArithmeticIgnoresDivisionByZeroForIgnoredCells);
+            Run("sequential number preserves step and skip behavior", SequentialNumberPreservesBehavior);
+            Run("sequential number rejects zero step", SequentialNumberRejectsZeroStep);
+            Run("repeat number handles insert skip loop and columns", RepeatNumberHandlesParameters);
+            Run("repeat number clears selection and rejects invalid ranges", RepeatNumberClearsAndValidates);
+            Run("automation session replaces only its last result", AutomationSessionReplacesOnlyItsLastResult);
             Console.WriteLine(failures == 0 ? "All automation host tests passed." : failures + " test(s) failed.");
             return failures == 0 ? 0 : 1;
         }
@@ -149,6 +154,90 @@ namespace AEIOU.Automation.Tests
             Assert(result.Succeeded && result.Changes.Count == 0, "zero, empty and KARA cells should be ignored before division");
         }
 
+        private static void SequentialNumberPreservesBehavior()
+        {
+            AutomationResult compact = Sequential("10", "2", "false", 4);
+            AutomationResult skipped = Sequential("10", "2", "true", 4);
+            AutomationResult negative = Sequential("5", "-2", "true", 4);
+            Assert(Values(compact) == "10,11", "step controls row interval when skip is off");
+            Assert(Values(skipped) == "10,12", "skip should also apply step to the number");
+            Assert(Values(negative) == "5,3", "negative steps should preserve legacy numbering");
+        }
+
+        private static void SequentialNumberRejectsZeroStep()
+        {
+            AutomationResult result = Sequential("1", "0", "false", 4);
+            Assert(!result.Succeeded && result.Changes.Count == 0, "S-08 must be an input error");
+        }
+
+        private static AutomationResult Sequential(string start, string step, string skip, int rows)
+        {
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add(SequentialNumberCommand.StartParameter, start);
+            parameters.Add(SequentialNumberCommand.StepParameter, step);
+            parameters.Add(SequentialNumberCommand.SkipParameter, skip);
+            string[] values = new string[rows];
+            for (int index = 0; index < values.Length; index++) values[index] = String.Empty;
+            return new SequentialNumberCommand().Execute(CommandRequest(values, parameters, rows, 1));
+        }
+
+        private static void RepeatNumberHandlesParameters()
+        {
+            AutomationResult inserted = Repeat("1", "2", "1", "1", "0", "X", 4, 1);
+            AutomationResult skipped = Repeat("1", "4", "1", "1", "1", "", 3, 1);
+            AutomationResult columns = Repeat("1", "3", "1", "1", "0", "", 3, 2);
+            Assert(Values(inserted) == "1,X,2,X", "insert values should alternate with numbers");
+            Assert(Values(skipped) == "1,3,1", "skip behavior should match P-03");
+            Assert(Values(columns) == "1,2,3,1,2,3", "numbering should continue and wrap across columns");
+        }
+
+        private static void RepeatNumberClearsAndValidates()
+        {
+            AutomationResult cleared = Repeat("3", "3", "1", "1", "0", "", 3, 1);
+            Assert(cleared.Succeeded && Values(cleared) == "3,,", "unused selected cells should be cleared in the same result");
+            Assert(!Repeat("1", "3", "0", "1", "0", "", 3, 1).Succeeded, "P-08 must reject zero interval");
+            Assert(!Repeat("3", "1", "1", "1", "0", "", 3, 1).Succeeded, "P-09 must reject descending ranges");
+            Assert(!Repeat("1", "3", "2", "1", "0", "", 3, 1).Succeeded, "P-10 must reject out-of-range writes atomically");
+        }
+
+        private static AutomationResult Repeat(string start, string end, string interval,
+            string loop, string skip, string insert, int rows, int columns)
+        {
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add(RepeatNumberCommand.StartParameter, start);
+            parameters.Add(RepeatNumberCommand.EndParameter, end);
+            parameters.Add(RepeatNumberCommand.RowIntervalParameter, interval);
+            parameters.Add(RepeatNumberCommand.LoopParameter, loop);
+            parameters.Add(RepeatNumberCommand.SkipParameter, skip);
+            parameters.Add(RepeatNumberCommand.InsertParameter, insert);
+            string[] values = new string[rows * columns];
+            for (int index = 0; index < values.Length; index++) values[index] = "old";
+            return new RepeatNumberCommand().Execute(CommandRequest(values, parameters, rows, columns));
+        }
+
+        private static void AutomationSessionReplacesOnlyItsLastResult()
+        {
+            SessionTarget target = new SessionTarget(7);
+            AutomationSession session = new AutomationSession(Host());
+            AutomationHostResult first = session.Execute(Command(delegate
+            {
+                return AutomationResult.Success(new[] { new AutomationChange(0, 0, "first") }, null);
+            }), Request(), target);
+            AutomationHostResult second = session.Execute(Command(delegate
+            {
+                return AutomationResult.Success(new[] { new AutomationChange(0, 0, "second") }, null);
+            }), Request(), target);
+            Assert(first.Succeeded && second.Succeeded && target.ReplaceCount == 2,
+                "a session should replace its own first application");
+            target.AllowPrevious = false;
+            AutomationHostResult blocked = session.Execute(Command(delegate
+            {
+                return AutomationResult.Success(new[] { new AutomationChange(0, 0, "third") }, null);
+            }), Request(), target);
+            Assert(!blocked.Succeeded && target.ReplaceCount == 2,
+                "an intervening operation must prevent a session from undoing arbitrary history");
+        }
+
         private static AutomationResult Arithmetic(string operation, string operand, string[] values)
         {
             return new ArithmeticCommand().Execute(CommandRequest(values,
@@ -239,6 +328,28 @@ namespace AEIOU.Automation.Tests
                 if (expectedGeneration != generation) return false;
                 ApplyCount++;
                 foreach (AutomationChange change in changes) Values[change.Row + ":" + change.Column] = change.Value;
+                return true;
+            }
+        }
+
+        private sealed class SessionTarget : IAutomationSessionTarget
+        {
+            private readonly long generation;
+            private object lastApplication;
+            public bool AllowPrevious = true;
+            public int ReplaceCount;
+
+            public SessionTarget(long generation) { this.generation = generation; }
+
+            public bool TryReplace(long expectedGeneration, object previousApplication,
+                IList<AutomationChange> changes, string operationName, out object application)
+            {
+                application = null;
+                if (expectedGeneration != generation || previousApplication != null &&
+                    (!AllowPrevious || !Object.ReferenceEquals(previousApplication, lastApplication))) return false;
+                application = new object();
+                lastApplication = application;
+                ReplaceCount++;
                 return true;
             }
         }

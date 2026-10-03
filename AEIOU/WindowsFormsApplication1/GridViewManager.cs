@@ -143,6 +143,19 @@ namespace AEIOU
             }
         }
 
+        public bool TryUndo(GridViewOperation expectedOperation)
+        {
+            BeginBatchUpdate();
+            try
+            {
+                return _undoManager.TryUndo(this, expectedOperation);
+            }
+            finally
+            {
+                EndBatchUpdate();
+            }
+        }
+
         public void Redo()
         {
             BeginBatchUpdate();

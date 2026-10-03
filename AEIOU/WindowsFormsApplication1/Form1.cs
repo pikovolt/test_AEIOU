@@ -281,7 +281,7 @@ using AEIOU.Automation;
 
 namespace AEIOU
 {
-    public partial class Form1 : Form, IGridShortcutHandler, IAutomationChangeTarget
+    public partial class Form1 : Form, IGridShortcutHandler, IAutomationChangeTarget, IAutomationSessionTarget
     {
 	    //----------------------------------------------------------------------------------------
 	    // 配色
@@ -336,6 +336,7 @@ namespace AEIOU
 
         // 繰り返しダイアログ
         private RepeatInputBox _repeatInputDialog;
+        private AutomationSession _repeatAutomationSession;
 
         //----------------------------------------------------------------------------------------
         // コンストラクタ
@@ -1501,6 +1502,34 @@ namespace AEIOU
             return true;
         }
 
+        public bool TryReplace(long expectedGeneration, object previousApplication,
+            IList<AutomationChange> changes, string operationName, out object application)
+        {
+            application = null;
+            if (expectedGeneration != automationGeneration) return false;
+            if (previousApplication != null)
+            {
+                GridViewOperation previousOperation = previousApplication as GridViewOperation;
+                if (previousOperation == null || !gridViewManager.TryUndo(previousOperation)) return false;
+            }
+
+            OperationGroup group = new OperationGroup(operationName);
+            foreach (AutomationChange change in changes)
+                group.AddOperation(new SetValueOperation(change.Row, change.Column, change.Value));
+            gridViewManager.BeginBatchUpdate();
+            try
+            {
+                gridViewManager.ExecuteOperation(group);
+            }
+            finally
+            {
+                gridViewManager.EndBatchUpdate();
+            }
+            application = group;
+            automationGeneration++;
+            return true;
+        }
+
         //----------------------------------------------------------------------------------------
         // 指定セルの入力有無をチェック
         private bool checkCellValue(int X, int Y)
@@ -2528,151 +2557,59 @@ namespace AEIOU
             dialog.Value2 = "1";
             if (dialog.ShowDialog(this.owner) == System.Windows.Forms.DialogResult.OK)
             {
-                int start = 1;
-                int step = 1;
-                bool skip = false;
-                try
-                {
-                    start = int.Parse(dialog.Value1);
-                    step = int.Parse(dialog.Value2);
-                    skip = dialog.CheckValue1;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("入力された値を数値に変換できませんでした.");
-                    return;
-                }
-
-                int col = selectRange.Left;
-                int row = selectRange.Top;
-                int frm = start;
-                int frmStep = (skip == true) ? step : step / Math.Abs(step);
-                int cnt = selectRange.Height;
-                List<CellWriteEntry> writes = new List<CellWriteEntry>();
-
-                // 入力
-                for (int i = 0; i < cnt; i += Math.Abs(step))
-                {
-                    if (IsCellEmpty(col, row + i))
-                    {
-                        aryCellUsedCount[col]++;
-                    }
-
-                    writes.Add(new CellWriteEntry(row + i, col, frm.ToString()));
-
-                    //(*pColorBuf)[Col][Row + 1] = versionNumber;
-                    frm += frmStep;
-                }
-
-                ApplyCellWrites("連番作成", writes);
-
-                FinishWriteOperation(true);
-
+                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                parameters.Add(SequentialNumberCommand.StartParameter, dialog.Value1);
+                parameters.Add(SequentialNumberCommand.StepParameter, dialog.Value2);
+                parameters.Add(SequentialNumberCommand.SkipParameter, dialog.CheckValue1.ToString());
+                ExecuteAutomationCommand(new SequentialNumberCommand(), parameters);
             }
         }
 
         //----------------------------------------------------------------------------------------
         // 連番作成(複数列、挿入番号、スキップ、ループ対応)
-        private void HandleRepeatInput(object sender, EventArgs e)
+        private void HandleRepeatInput(RepeatInputValues values)
         {
-            // 入力値を処理する
-            int start = int.Parse(((RepeatInputBox)sender).Value1);
-            int end = int.Parse(((RepeatInputBox)sender).Value2);
-            int step = int.Parse(((RepeatInputBox)sender).Value3);
-            int loop = int.Parse(((RepeatInputBox)sender).Value4);
-            int skip = int.Parse(((RepeatInputBox)sender).Value5) + 1;
-            string insert_str = ((RepeatInputBox)sender).Value6;
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add(RepeatNumberCommand.StartParameter, values.Start);
+            parameters.Add(RepeatNumberCommand.EndParameter, values.End);
+            parameters.Add(RepeatNumberCommand.RowIntervalParameter, values.RowInterval);
+            parameters.Add(RepeatNumberCommand.LoopParameter, values.Loop);
+            parameters.Add(RepeatNumberCommand.SkipParameter, values.Skip);
+            parameters.Add(RepeatNumberCommand.InsertParameter, values.Insert);
+            AutomationHostResult result = _repeatAutomationSession.Execute(new RepeatNumberCommand(),
+                CreateAutomationRequest(parameters), this);
+            if (!result.Succeeded) MessageBox.Show(result.Error);
+            else FinishWriteOperation(true);
+        }
 
-            // 操作前に Undo（繰り返し実行を前提に、１つ前の操作を取り消す）
-            gridViewManager.Undo();
-
-            // 入力値を使用して処理を行う
+        private void HandleRepeatInputClosed(object sender, FormClosedEventArgs e)
+        {
+            RepeatInputBox dialog = sender as RepeatInputBox;
+            if (dialog != null)
             {
-                int count;
-
-                // 入力数: 開始#～終了#
-                // ※挿入番号がある場合、開始～終了番号と交互に入るので更に２倍
-                // ※スキップ数が有る場合、１／スキップ数に回数を減らす
-                // ※ループ回数は１回分の長さが決定したところで計算
-                count = end - start + 1;
-                if (insert_str != "")
-                {
-                    count *= 2;
-                }
-                if (skip > 1)
-                {
-                    count /= skip;
-                    count++;
-                    //挿入番号があり、カウントが奇数の場合は偶数に補正
-                    if (insert_str != "" && (count % 2) == 1)
-                    {
-                        count++;
-                    }
-                }
-                count *= loop;
-
-                List<CellWriteEntry> writes = new List<CellWriteEntry>();
-
-                //番号入力
-                int row = selectRange.Top;
-                for (int num = start, col = selectRange.Left; col <= selectRange.Right; col++)
-                {
-                    for (int i = 0; i < count; i++)
-                    {
-                        int targetRow = row + (i * step);
-                        string valueToWrite;
-
-                        if (insert_str == "")
-                        {
-                            //挿入番号なし
-                            valueToWrite = num.ToString();
-                            num += skip;
-                            if (num > end) num = start;
-                        }
-                        else if ((i % 2) == 0)
-                        {
-                            //挿入番号あり（開始＃～終了＃）
-                            //※連番と挿入番号が交互なのでカウンタを1/2にして番号計算
-                            valueToWrite = num.ToString();
-                            num += skip;
-                            if (num > end) num = start;
-                        }
-                        else
-                        {
-                            //挿入番号あり（挿入＃）
-                            valueToWrite = insert_str;
-                        }
-
-                        writes.Add(new CellWriteEntry(targetRow, col, valueToWrite));
-                        aryCellUsedCount[col]++;
-                        //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
-                    }
-                }
-
-                // 範囲クリアと反映を同一groupにまとめ、Undo境界を1操作に維持する
-                ExecuteWriteGroup("繰り返し", delegate
-                {
-                    deleteRect(selectRange, false);
-                    QueueCellWrites(writes);
-                });
-
-                FinishWriteOperation(true);
+                dialog.OnRepeatInput -= HandleRepeatInput;
+                dialog.FormClosed -= HandleRepeatInputClosed;
             }
+            if (Object.ReferenceEquals(_repeatInputDialog, dialog)) _repeatInputDialog = null;
+            if (_repeatAutomationSession != null) _repeatAutomationSession.Close();
+            _repeatAutomationSession = null;
         }
 
         //----------------------------------------------------------------------------------------
         // 連番作成(複数列、挿入番号、スキップ、ループ対応)
         private void repeatNumberToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // 操作を１つ入れる (カレントセルの値を同じ場所に上書き)
-            var col = selectRange.Left;
-            var row = selectRange.Top;
-            var operation = new SetValueOperation(row, col, GetCellValue(col, row));
-            gridViewManager.ExecuteOperation(operation);
+            if (_repeatInputDialog != null && !_repeatInputDialog.IsDisposed)
+            {
+                _repeatInputDialog.Activate();
+                return;
+            }
 
             // 繰り返しダイアログの表示
+            _repeatAutomationSession = new AutomationSession(automationHost);
             _repeatInputDialog = new RepeatInputBox();
             _repeatInputDialog.OnRepeatInput += HandleRepeatInput;
+            _repeatInputDialog.FormClosed += HandleRepeatInputClosed;
             _repeatInputDialog.Show();
         }
 
