@@ -1,5 +1,9 @@
 # Phase5 Smoke Checklist
 
+外部拡張の配置、ログ確認、障害時の切り戻しは
+[`../extension_operations.md`](../extension_operations.md) に従う。2026-10-03 の実施環境と
+未実施理由は [`../p5_007_completion.md`](../p5_007_completion.md) に記録した。
+
 ## A. 分離前 characterization（P5-001）
 - [x] 連番: 正/負 step、skip on/off、空セル上書き、選択末尾。
 - [x] 置換: 一致/不一致/空セル、空の置換前・置換後。
