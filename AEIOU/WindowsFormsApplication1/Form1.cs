@@ -1416,28 +1416,15 @@ namespace AEIOU
 
         //----------------------------------------------------------------------------------------
         // 複数セルへの書き込みをグループ化して実行する
-        private struct CellWriteEntry
-        {
-            public readonly int Row;
-            public readonly int Col;
-            public readonly string Value;
-
-            public CellWriteEntry(int row, int col, string value)
-            {
-                Row = row;
-                Col = col;
-                Value = value;
-            }
-        }
-
-        //----------------------------------------------------------------------------------------
-        // 複数セルへの書き込みをグループ化して実行する
         private void ApplyCellWrites(string groupName, IList<CellWriteEntry> writes)
         {
             if (writes == null || writes.Count == 0)
             {
                 return;
             }
+
+            // Undo group を開く前に全件を検証し、不正な一覧の部分適用を防ぐ。
+            CellWriteBatch.Validate(writes, GetSheetRowCount(), GetSheetColumnCount());
 
             ExecuteWriteGroup(groupName, delegate
             {
