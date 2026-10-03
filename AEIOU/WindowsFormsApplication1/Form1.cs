@@ -277,7 +277,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
-using AEIOU.Automation;
+using global::AEIOU.Automation;
 
 namespace AEIOU
 {
@@ -321,7 +321,8 @@ namespace AEIOU
         private GridMouseEventHandler gridMouseEventHandler;
         private readonly StsFileService stsFileService = new StsFileService();
         private readonly AfterEffectsDataService afterEffectsDataService = new AfterEffectsDataService();
-        private readonly AutomationHost automationHost = new AutomationHost(1000000);
+        private readonly AutomationRegistry automationRegistry;
+        private readonly AutomationHost automationHost;
         private long automationGeneration;
 
         // 先行分離したサービス
@@ -342,6 +343,8 @@ namespace AEIOU
         // コンストラクタ
         public Form1()
         {
+            automationRegistry = BuiltInAutomationRegistry.Create();
+            automationHost = new AutomationHost(1000000, automationRegistry);
             InitializeComponent();
             gridViewManager.View = dataGridView1;
 
@@ -1480,9 +1483,9 @@ namespace AEIOU
                 cells, parameters, setting.KaraCell);
         }
 
-        private void ExecuteAutomationCommand(IAutomationCommand command, IDictionary<string, string> parameters)
+        private void ExecuteAutomationCommand(string commandId, IDictionary<string, string> parameters)
         {
-            AutomationHostResult result = automationHost.Execute(command, CreateAutomationRequest(parameters), this);
+            AutomationHostResult result = automationHost.Execute(commandId, CreateAutomationRequest(parameters), this);
             if (!result.Succeeded)
             {
                 MessageBox.Show(result.Error);
@@ -2561,7 +2564,7 @@ namespace AEIOU
                 parameters.Add(SequentialNumberCommand.StartParameter, dialog.Value1);
                 parameters.Add(SequentialNumberCommand.StepParameter, dialog.Value2);
                 parameters.Add(SequentialNumberCommand.SkipParameter, dialog.CheckValue1.ToString());
-                ExecuteAutomationCommand(new SequentialNumberCommand(), parameters);
+                ExecuteAutomationCommand(SequentialNumberCommand.CommandId, parameters);
             }
         }
 
@@ -2576,7 +2579,7 @@ namespace AEIOU
             parameters.Add(RepeatNumberCommand.LoopParameter, values.Loop);
             parameters.Add(RepeatNumberCommand.SkipParameter, values.Skip);
             parameters.Add(RepeatNumberCommand.InsertParameter, values.Insert);
-            AutomationHostResult result = _repeatAutomationSession.Execute(new RepeatNumberCommand(),
+            AutomationHostResult result = _repeatAutomationSession.Execute(RepeatNumberCommand.CommandId,
                 CreateAutomationRequest(parameters), this);
             if (!result.Succeeded) MessageBox.Show(result.Error);
             else FinishWriteOperation(true);
@@ -2626,7 +2629,7 @@ namespace AEIOU
                 Dictionary<string, string> parameters = new Dictionary<string, string>();
                 parameters.Add(ReplaceCommand.BeforeParameter, dialog.Value1);
                 parameters.Add(ReplaceCommand.AfterParameter, dialog.Value2);
-                ExecuteAutomationCommand(new ReplaceCommand(), parameters);
+                ExecuteAutomationCommand(ReplaceCommand.CommandId, parameters);
             }
         }
 
@@ -2634,7 +2637,7 @@ namespace AEIOU
         // 反転
         private void reverseToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            ExecuteAutomationCommand(new ReverseCommand(), new Dictionary<string, string>());
+            ExecuteAutomationCommand(ReverseCommand.CommandId, new Dictionary<string, string>());
         }
 
         //----------------------------------------------------------------------------------------
@@ -2653,7 +2656,7 @@ namespace AEIOU
                 Dictionary<string, string> parameters = new Dictionary<string, string>();
                 parameters.Add(ArithmeticCommand.OperatorParameter, operation);
                 parameters.Add(ArithmeticCommand.OperandParameter, operand);
-                ExecuteAutomationCommand(new ArithmeticCommand(), parameters);
+                ExecuteAutomationCommand(ArithmeticCommand.CommandId, parameters);
             }
         }
 

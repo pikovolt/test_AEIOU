@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using AEIOU.Automation;
+using global::AEIOU.Automation;
 
 namespace AEIOU.Automation.Tests
 {
@@ -18,6 +18,10 @@ namespace AEIOU.Automation.Tests
             Run("change limit is rejected atomically", ChangeLimitIsRejected);
             Run("generation mismatch is rejected atomically", GenerationMismatchIsRejected);
             Run("command exception is isolated", CommandExceptionIsIsolated);
+            Run("built-in commands resolve through registry", BuiltInsResolveThroughRegistry);
+            Run("registry rejects duplicate IDs", RegistryRejectsDuplicateIds);
+            Run("host rejects unknown IDs", HostRejectsUnknownIds);
+            Run("host validates descriptor parameters", HostValidatesDescriptorParameters);
             Run("replace matches only the left column exactly", ReplaceMatchesLeftColumnExactly);
             Run("replace rejects empty values", ReplaceRejectsEmptyValues);
             Run("reverse preserves empty positions", ReversePreservesEmptyPositions);
@@ -92,6 +96,59 @@ namespace AEIOU.Automation.Tests
             FakeTarget target = new FakeTarget(7);
             AutomationHostResult result = Host().Execute(Command(delegate { throw new InvalidOperationException("boom"); }), Request(), target);
             Assert(!result.Succeeded && result.Exception is InvalidOperationException && target.ApplyCount == 0, "exception must not escape or write");
+        }
+
+        private static void BuiltInsResolveThroughRegistry()
+        {
+            AutomationRegistry registry = BuiltInAutomationRegistry.Create();
+            IAutomationCommand command;
+            Assert(registry.TryGet(ReplaceCommand.CommandId, out command) && command is ReplaceCommand,
+                "replace command should be registered by stable ID");
+            Assert(registry.TryGet(ReverseCommand.CommandId, out command) && command is ReverseCommand,
+                "reverse command should be registered by stable ID");
+            Assert(registry.TryGet(ArithmeticCommand.CommandId, out command) && command is ArithmeticCommand,
+                "arithmetic command should be registered by stable ID");
+            Assert(registry.TryGet(SequentialNumberCommand.CommandId, out command) && command is SequentialNumberCommand,
+                "sequential command should be registered by stable ID");
+            Assert(registry.TryGet(RepeatNumberCommand.CommandId, out command) && command is RepeatNumberCommand,
+                "repeat command should be registered by stable ID");
+        }
+
+        private static void RegistryRejectsDuplicateIds()
+        {
+            AutomationRegistry registry = new AutomationRegistry();
+            string error;
+            Assert(registry.TryRegister(Command(delegate { return AutomationResult.Success(new AutomationChange[0], null); }), out error),
+                "first registration should succeed");
+            Assert(!registry.TryRegister(Command(delegate { return AutomationResult.Success(new AutomationChange[0], null); }), out error) &&
+                error.IndexOf("already registered") >= 0, "duplicate ID should be rejected without replacement");
+        }
+
+        private static void HostRejectsUnknownIds()
+        {
+            FakeTarget target = new FakeTarget(7);
+            AutomationHostResult result = new AutomationHost(10, new AutomationRegistry()).Execute(
+                "missing.command", Request(), target);
+            Assert(!result.Succeeded && target.ApplyCount == 0, "unknown IDs must not execute or write");
+        }
+
+        private static void HostValidatesDescriptorParameters()
+        {
+            AutomationRegistry registry = new AutomationRegistry();
+            ParameterCommand command = new ParameterCommand();
+            string error;
+            Assert(registry.TryRegister(command, out error), "parameter command registration should succeed");
+            AutomationHost host = new AutomationHost(10, registry);
+            FakeTarget target = new FakeTarget(7);
+            AutomationHostResult missing = host.Execute(ParameterCommand.CommandId, Request(), target);
+            AutomationHostResult invalid = host.Execute(ParameterCommand.CommandId,
+                Request(Parameters("count", "not-an-int", "enabled", "true")), target);
+            AutomationHostResult unknown = host.Execute(ParameterCommand.CommandId,
+                Request(Parameters("count", "1", "extra", "value")), target);
+            Assert(!missing.Succeeded && !invalid.Succeeded && !unknown.Succeeded,
+                "missing, malformed, and unknown parameters should be rejected");
+            Assert(command.ExecuteCount == 0 && target.ApplyCount == 0,
+                "invalid parameters must be rejected before command execution");
         }
 
         private static void ReplaceMatchesLeftColumnExactly()
@@ -289,8 +346,13 @@ namespace AEIOU.Automation.Tests
 
         private static AutomationRequest Request()
         {
+            return Request(new Dictionary<string, string>());
+        }
+
+        private static AutomationRequest Request(IDictionary<string, string> parameters)
+        {
             return new AutomationRequest(2, 2, 7, new AutomationSelection(0, 0, 2, 2),
-                new[] { new AutomationCell(0, 0, "") }, new Dictionary<string, string>(), "KARA");
+                new[] { new AutomationCell(0, 0, "") }, parameters, "KARA");
         }
 
         private static IAutomationCommand Command(Func<AutomationResult> execute) { return new FakeCommand(execute); }
@@ -315,6 +377,30 @@ namespace AEIOU.Automation.Tests
                 get { return new AutomationCommandDescriptor("test.command", "Test", 1, 0, new AutomationParameterDefinition[0]); }
             }
             public AutomationResult Execute(AutomationRequest request) { return execute(); }
+        }
+
+        private sealed class ParameterCommand : IAutomationCommand
+        {
+            public const string CommandId = "test.parameters";
+            public int ExecuteCount;
+            public AutomationCommandDescriptor Descriptor
+            {
+                get
+                {
+                    return new AutomationCommandDescriptor(CommandId, "Parameters", 1, 0, new[]
+                    {
+                        new AutomationParameterDefinition("count", "Count", AutomationParameterType.Int32,
+                            "1", true, 0, 10, null),
+                        new AutomationParameterDefinition("enabled", "Enabled", AutomationParameterType.Boolean,
+                            "false", true, null, null, null)
+                    });
+                }
+            }
+            public AutomationResult Execute(AutomationRequest request)
+            {
+                ExecuteCount++;
+                return AutomationResult.Success(new AutomationChange[0], null);
+            }
         }
 
         private sealed class FakeTarget : IAutomationChangeTarget
