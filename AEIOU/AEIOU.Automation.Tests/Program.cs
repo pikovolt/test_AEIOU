@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using AEIOU.Automation;
+using AEIOU.Automation.Sample.Random;
 
 namespace AEIOU.Automation.Tests
 {
@@ -39,8 +40,82 @@ namespace AEIOU.Automation.Tests
             Run("automation session replaces only its last result", AutomationSessionReplacesOnlyItsLastResult);
             Run("extension discovery isolates failures and registers valid commands", ExtensionDiscoveryIsolatesFailures);
             Run("extension discovery rejects duplicate IDs", ExtensionDiscoveryRejectsDuplicates);
+            Run("random sample respects the frame step", RandomSampleRespectsFrameStep);
+            Run("AE clipboard sample writes without cell changes", AeClipboardSampleWritesWithoutCellChanges);
             Console.WriteLine(failures == 0 ? "All automation host tests passed." : failures + " test(s) failed.");
             return failures == 0 ? 0 : 1;
+        }
+
+        private static void RandomSampleRespectsFrameStep()
+        {
+            AutomationRequest request = new AutomationRequest(4, 5, 1,
+                new AutomationSelection(1, 2, 3, 3), new AutomationCell[0],
+                new Dictionary<string, string>
+                {
+                    { RandomNumberCommand.MinimumParameter, "-7" },
+                    { RandomNumberCommand.MaximumParameter, "-7" },
+                    { RandomNumberCommand.StepParameter, "2" }
+                }, String.Empty);
+            RandomNumberCommand command = new RandomNumberCommand();
+            AutomationResult result = command.Execute(request);
+
+            Assert(result.Succeeded && result.Changes.Count == 6,
+                "step two must produce changes for every other frame in each selected column");
+            HashSet<string> coordinates = new HashSet<string>();
+            foreach (AutomationChange change in result.Changes)
+            {
+                Assert(change.Value == "-7", "inclusive equal bounds must produce that value");
+                coordinates.Add(change.Row + ":" + change.Column);
+            }
+            Assert(coordinates.Count == 6 && coordinates.Contains("1:2") && coordinates.Contains("1:3") &&
+                coordinates.Contains("1:4") && coordinates.Contains("3:2") && coordinates.Contains("3:3") &&
+                coordinates.Contains("3:4") && !coordinates.Contains("2:2"),
+                "the changes must cover stepped frames in every column without duplicates");
+
+            AutomationRequest invalid = new AutomationRequest(1, 1, 1,
+                new AutomationSelection(0, 0, 1, 1), new AutomationCell[0],
+                new Dictionary<string, string>
+                {
+                    { RandomNumberCommand.MinimumParameter, "2" },
+                    { RandomNumberCommand.MaximumParameter, "1" },
+                    { RandomNumberCommand.StepParameter, "1" }
+                }, String.Empty);
+            Assert(!command.Execute(invalid).Succeeded, "minimum greater than maximum must be rejected");
+
+            AutomationRequest zeroStep = new AutomationRequest(1, 1, 1,
+                new AutomationSelection(0, 0, 1, 1), new AutomationCell[0],
+                new Dictionary<string, string>
+                {
+                    { RandomNumberCommand.MinimumParameter, "1" },
+                    { RandomNumberCommand.MaximumParameter, "2" },
+                    { RandomNumberCommand.StepParameter, "0" }
+                }, String.Empty);
+            Assert(!command.Execute(zeroStep).Succeeded, "zero step must be rejected");
+        }
+
+        private static void AeClipboardSampleWritesWithoutCellChanges()
+        {
+            FakeClipboardWriter clipboard = new FakeClipboardWriter();
+            AeClipboardCommand command = new AeClipboardCommand(clipboard);
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add(AeClipboardCommand.VersionParameter, "9.0");
+            parameters.Add(AeClipboardCommand.FpsParameter, "24");
+            parameters.Add(AeClipboardCommand.FirstFrameParameter, "1");
+            parameters.Add(AeClipboardCommand.DirectParameter, "false");
+            AutomationResult result = command.Execute(CommandRequest(
+                new[] { "1", "", "25" }, parameters, 3, 1));
+
+            Assert(result.Succeeded && result.Changes.Count == 0,
+                "clipboard-only commands must not return cell changes");
+            Assert(clipboard.WriteCount == 1 && clipboard.Text.IndexOf("Adobe After Effects 9.0 Keyframe Data") >= 0,
+                "the sample must write AE keyframe data once");
+            Assert(clipboard.Text.IndexOf("\t0\t0\r\n") >= 0 && clipboard.Text.IndexOf("\t2\t1\r\n") >= 0,
+                "the sample must convert selected frame values to seconds and preserve row offsets");
+
+            AutomationResult invalid = command.Execute(CommandRequest(
+                new[] { "not-a-number" }, parameters, 1, 1));
+            Assert(!invalid.Succeeded && clipboard.WriteCount == 1,
+                "invalid cells must be rejected before touching the clipboard");
         }
 
         private static void ValidChangesAreAppliedOnce()
@@ -465,6 +540,18 @@ namespace AEIOU.Automation.Tests
                 get { return new AutomationCommandDescriptor("test.command", "Test", 1, 0, new AutomationParameterDefinition[0]); }
             }
             public AutomationResult Execute(AutomationRequest request) { return execute(); }
+        }
+
+        private sealed class FakeClipboardWriter : IAeClipboardWriter
+        {
+            public int WriteCount { get; private set; }
+            public string Text { get; private set; }
+
+            public void SetText(string text)
+            {
+                WriteCount++;
+                Text = text;
+            }
         }
 
         private sealed class ParameterCommand : IAutomationCommand
