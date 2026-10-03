@@ -66,6 +66,8 @@
 ## P6-006: 回帰確定と次段階判断
 **目的:** 分離の成果を測定し、適用処理まで外へ出す価値があるかを決定する。
 
+**進行中の記録:** [`../p6_006_regression_and_next_phase.md`](../p6_006_regression_and_next_phase.md)
+
 **作業:**
 - Phase6 smoke、Debug/Release x86 build、利用可能な自動テスト結果を記録する。
 - `Form1` から消えた計算依存と、意図して残した UI/orchestration 依存を一覧化する。
