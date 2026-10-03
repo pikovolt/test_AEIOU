@@ -29,6 +29,9 @@
 - 特に `BackSpace` / `Delete` / `Undo` / `Redo` 往復で表示とデータが一致すること。
 
 ## 実施TODO（本タスク内）
-- TODO-PERF-01: バッチ書き込み中の `CellValueChanged` 起因 `RecalculateColumn` を抑止し、終了時に変更列のみ再計算する。
-- TODO-PERF-02: バッチ書き込み中の `InvalidateCell` 連発を抑止し、終了時に集約再描画へ切替える。
-- TODO-PERF-03: `Shift+Delete` の前後で処理時間計測（1回平均 / 10回平均）を取得し、`reports/` に記録する。
+- [x] TODO-PERF-01: バッチ書き込み中の `CellValueChanged` 起因 `RecalculateColumn` を抑止し、終了時に変更列のみ再計算する。
+- [x] TODO-PERF-02: バッチ書き込み中の `InvalidateCell` 連発を抑止し、終了時に集約再描画へ切替える。
+- [x] TODO-PERF-03: `Shift+Delete` の前後で処理時間計測（1回平均 / 10回平均）を取得し、`reports/` に記録する。
+
+## 完了証跡
+- `../../reports/impl_done/P4_007.md`

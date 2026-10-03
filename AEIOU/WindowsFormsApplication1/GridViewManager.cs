@@ -16,6 +16,20 @@ namespace AEIOU
         private Rect _copyRect;                     // コピー範囲を保持
         private Stack<OperationGroup> _groupStack;  // OperationGroupの入れ子対応
         private TimingSheetModel _model;
+        private int _batchUpdateDepth;
+        private Dictionary<int, CellChange> _pendingCellChanges;
+
+        private struct CellChange
+        {
+            public readonly int Row;
+            public readonly string Value;
+
+            public CellChange(int row, string value)
+            {
+                Row = row;
+                Value = value;
+            }
+        }
 
         public event CellValueChangedHandler CellValueChanged;
 
@@ -75,6 +89,8 @@ namespace AEIOU
             _copyBuffer = null;
             _undoManager = new UndoManager();
             _groupStack = new Stack<OperationGroup>();
+            _batchUpdateDepth = 0;
+            _pendingCellChanges = new Dictionary<int, CellChange>();
         }
 
         public OperationGroup BeginGroup(String name)
@@ -116,12 +132,56 @@ namespace AEIOU
 
         public void Undo()
         {
-            _undoManager.Undo(this);
+            BeginBatchUpdate();
+            try
+            {
+                _undoManager.Undo(this);
+            }
+            finally
+            {
+                EndBatchUpdate();
+            }
         }
 
         public void Redo()
         {
-            _undoManager.Redo(this);
+            BeginBatchUpdate();
+            try
+            {
+                _undoManager.Redo(this);
+            }
+            finally
+            {
+                EndBatchUpdate();
+            }
+        }
+
+        public void BeginBatchUpdate()
+        {
+            _batchUpdateDepth++;
+        }
+
+        public void EndBatchUpdate()
+        {
+            if (_batchUpdateDepth <= 0)
+            {
+                throw new InvalidOperationException("EndBatchUpdate requires a matching BeginBatchUpdate.");
+            }
+
+            _batchUpdateDepth--;
+            if (_batchUpdateDepth != 0 || _pendingCellChanges.Count == 0)
+            {
+                return;
+            }
+
+            // A row shift changes many cells in the same column. Notify once per changed
+            // column so continuity state is recalculated only once for that column.
+            var pendingChanges = new Dictionary<int, CellChange>(_pendingCellChanges);
+            _pendingCellChanges.Clear();
+            foreach (KeyValuePair<int, CellChange> entry in pendingChanges)
+            {
+                NotifyCellValueChanged(entry.Key, entry.Value.Row, entry.Value.Value);
+            }
         }
 
         public string GetCellValue(int col, int row)
@@ -226,6 +286,11 @@ namespace AEIOU
 
             if (_view.VirtualMode)
             {
+                if (_batchUpdateDepth > 0)
+                {
+                    return;
+                }
+
                 if (col >= 0 && row >= 0 && col < _view.ColumnCount && row < _view.RowCount)
                 {
                     _view.InvalidateCell(col, row);
@@ -333,6 +398,12 @@ namespace AEIOU
 
         private void NotifyCellValueChanged(int col, int row, string value)
         {
+            if (_batchUpdateDepth > 0)
+            {
+                _pendingCellChanges[col] = new CellChange(row, value);
+                return;
+            }
+
             CellValueChangedHandler handler = CellValueChanged;
             if (handler != null)
             {
