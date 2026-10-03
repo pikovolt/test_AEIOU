@@ -41,6 +41,7 @@ namespace AEIOU.Automation.Tests
             Run("extension discovery isolates failures and registers valid commands", ExtensionDiscoveryIsolatesFailures);
             Run("extension discovery rejects duplicate IDs", ExtensionDiscoveryRejectsDuplicates);
             Run("random sample respects the frame step", RandomSampleRespectsFrameStep);
+            Run("AE clipboard sample writes without cell changes", AeClipboardSampleWritesWithoutCellChanges);
             Console.WriteLine(failures == 0 ? "All automation host tests passed." : failures + " test(s) failed.");
             return failures == 0 ? 0 : 1;
         }
@@ -90,6 +91,31 @@ namespace AEIOU.Automation.Tests
                     { RandomNumberCommand.StepParameter, "0" }
                 }, String.Empty);
             Assert(!command.Execute(zeroStep).Succeeded, "zero step must be rejected");
+        }
+
+        private static void AeClipboardSampleWritesWithoutCellChanges()
+        {
+            FakeClipboardWriter clipboard = new FakeClipboardWriter();
+            AeClipboardCommand command = new AeClipboardCommand(clipboard);
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add(AeClipboardCommand.VersionParameter, "9.0");
+            parameters.Add(AeClipboardCommand.FpsParameter, "24");
+            parameters.Add(AeClipboardCommand.FirstFrameParameter, "1");
+            parameters.Add(AeClipboardCommand.DirectParameter, "false");
+            AutomationResult result = command.Execute(CommandRequest(
+                new[] { "1", "", "25" }, parameters, 3, 1));
+
+            Assert(result.Succeeded && result.Changes.Count == 0,
+                "clipboard-only commands must not return cell changes");
+            Assert(clipboard.WriteCount == 1 && clipboard.Text.IndexOf("Adobe After Effects 9.0 Keyframe Data") >= 0,
+                "the sample must write AE keyframe data once");
+            Assert(clipboard.Text.IndexOf("\t0\t0\r\n") >= 0 && clipboard.Text.IndexOf("\t2\t1\r\n") >= 0,
+                "the sample must convert selected frame values to seconds and preserve row offsets");
+
+            AutomationResult invalid = command.Execute(CommandRequest(
+                new[] { "not-a-number" }, parameters, 1, 1));
+            Assert(!invalid.Succeeded && clipboard.WriteCount == 1,
+                "invalid cells must be rejected before touching the clipboard");
         }
 
         private static void ValidChangesAreAppliedOnce()
@@ -514,6 +540,18 @@ namespace AEIOU.Automation.Tests
                 get { return new AutomationCommandDescriptor("test.command", "Test", 1, 0, new AutomationParameterDefinition[0]); }
             }
             public AutomationResult Execute(AutomationRequest request) { return execute(); }
+        }
+
+        private sealed class FakeClipboardWriter : IAeClipboardWriter
+        {
+            public int WriteCount { get; private set; }
+            public string Text { get; private set; }
+
+            public void SetText(string text)
+            {
+                WriteCount++;
+                Text = text;
+            }
         }
 
         private sealed class ParameterCommand : IAutomationCommand
