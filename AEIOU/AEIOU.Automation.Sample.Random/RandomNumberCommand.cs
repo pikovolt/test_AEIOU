@@ -9,6 +9,9 @@ namespace AEIOU.Automation.Sample.Random
     public sealed class RandomNumberCommand : IAutomationCommand
     {
         public const string CommandId = "sample.random-number";
+        public const string MinimumParameter = "minimum";
+        public const string MaximumParameter = "maximum";
+        public const string StepParameter = "step";
         private readonly System.Random random;
 
         public RandomNumberCommand() : this(new System.Random()) { }
@@ -26,10 +29,12 @@ namespace AEIOU.Automation.Sample.Random
                 return new AutomationCommandDescriptor(CommandId, "ランダム整数",
                     AutomationContract.MajorVersion, AutomationContract.MinorVersion, new[]
                     {
-                        new AutomationParameterDefinition("minimum", "最小値", AutomationParameterType.Int32,
+                        new AutomationParameterDefinition(MinimumParameter, "最小値", AutomationParameterType.Int32,
                             "1", true, Int32.MinValue, Int32.MaxValue, null),
-                        new AutomationParameterDefinition("maximum", "最大値", AutomationParameterType.Int32,
-                            "100", true, Int32.MinValue, Int32.MaxValue, null)
+                        new AutomationParameterDefinition(MaximumParameter, "最大値", AutomationParameterType.Int32,
+                            "100", true, Int32.MinValue, Int32.MaxValue, null),
+                        new AutomationParameterDefinition(StepParameter, "ステップ数", AutomationParameterType.Int32,
+                            "1", true, 1, Int32.MaxValue, null)
                     });
             }
         }
@@ -39,18 +44,27 @@ namespace AEIOU.Automation.Sample.Random
             if (request == null) throw new ArgumentNullException("request");
             int minimum;
             int maximum;
-            if (!Int32.TryParse(request.Parameters["minimum"], NumberStyles.Integer,
+            int step;
+            string parameterValue;
+            if (!request.Parameters.TryGetValue(MinimumParameter, out parameterValue) ||
+                !Int32.TryParse(parameterValue, NumberStyles.Integer,
                     CultureInfo.InvariantCulture, out minimum) ||
-                !Int32.TryParse(request.Parameters["maximum"], NumberStyles.Integer,
-                    CultureInfo.InvariantCulture, out maximum))
-                return AutomationResult.Failure("最小値と最大値には整数を指定してください。");
+                !request.Parameters.TryGetValue(MaximumParameter, out parameterValue) ||
+                !Int32.TryParse(parameterValue, NumberStyles.Integer,
+                    CultureInfo.InvariantCulture, out maximum) ||
+                !request.Parameters.TryGetValue(StepParameter, out parameterValue) ||
+                !Int32.TryParse(parameterValue, NumberStyles.Integer,
+                    CultureInfo.InvariantCulture, out step))
+                return AutomationResult.Failure("最小値、最大値、ステップ数には整数を指定してください。");
             if (minimum > maximum)
                 return AutomationResult.Failure("最小値は最大値以下にしてください。");
+            if (step <= 0)
+                return AutomationResult.Failure("ステップ数には1以上を指定してください。");
 
             List<AutomationChange> changes = new List<AutomationChange>();
             AutomationSelection selection = request.Selection;
             for (int column = selection.Left; column < selection.Left + selection.ColumnCount; column++)
-                for (int row = selection.Top; row < selection.Top + selection.RowCount; row++)
+                for (int row = selection.Top; row < selection.Top + selection.RowCount; row += step)
                 {
                     long range = (long)maximum - minimum + 1L;
                     int value = (int)(minimum + (long)(random.NextDouble() * range));
