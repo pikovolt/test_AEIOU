@@ -31,7 +31,10 @@ namespace AEIOU
             IAutomationCommand command;
             if (registry == null || !registry.TryGet(commandId, out command))
                 return AutomationHostResult.Rejected("Automation command '" + commandId + "' is not registered.");
-            return Execute(command, request, target);
+            AutomationCommandDescriptor descriptor;
+            if (!registry.TryGetDescriptor(commandId, out descriptor))
+                return AutomationHostResult.Rejected("Automation command '" + commandId + "' has no descriptor.");
+            return Execute(command, descriptor, request, target);
         }
 
         public AutomationHostResult Execute(IAutomationCommand command, AutomationRequest request,
@@ -41,7 +44,18 @@ namespace AEIOU
             if (request == null) throw new ArgumentNullException("request");
             if (target == null) throw new ArgumentNullException("target");
 
-            AutomationCommandDescriptor descriptor = command.Descriptor;
+            AutomationCommandDescriptor descriptor;
+            try { descriptor = command.Descriptor; }
+            catch (Exception exception)
+            {
+                return AutomationHostResult.Faulted("unknown", exception);
+            }
+            return Execute(command, descriptor, request, target);
+        }
+
+        private AutomationHostResult Execute(IAutomationCommand command,
+            AutomationCommandDescriptor descriptor, AutomationRequest request, IAutomationChangeTarget target)
+        {
             if (descriptor == null)
                 return AutomationHostResult.Rejected("The command has no descriptor.");
             if (descriptor.ContractMajorVersion != AutomationContract.MajorVersion ||

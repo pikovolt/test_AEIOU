@@ -9,14 +9,31 @@ namespace AEIOU
     {
         private readonly Dictionary<string, IAutomationCommand> commands =
             new Dictionary<string, IAutomationCommand>(StringComparer.Ordinal);
+        private readonly Dictionary<string, AutomationCommandDescriptor> descriptors =
+            new Dictionary<string, AutomationCommandDescriptor>(StringComparer.Ordinal);
 
         public bool TryRegister(IAutomationCommand command, out string error)
         {
+            AutomationCommandDescriptor descriptor;
+            return TryRegister(command, out descriptor, out error);
+        }
+
+        /// <summary>Registers a command and returns the descriptor snapshot used for registration.</summary>
+        public bool TryRegister(IAutomationCommand command, out AutomationCommandDescriptor descriptor,
+            out string error)
+        {
             if (command == null) throw new ArgumentNullException("command");
-            AutomationCommandDescriptor descriptor = command.Descriptor;
+            descriptor = command.Descriptor;
             if (descriptor == null)
             {
                 error = "The command has no descriptor.";
+                return false;
+            }
+            if (descriptor.ContractMajorVersion != AutomationContract.MajorVersion ||
+                descriptor.ContractMinorVersion > AutomationContract.MinorVersion)
+            {
+                error = "Automation command '" + descriptor.Id + "' uses unsupported contract version " +
+                    descriptor.ContractMajorVersion + "." + descriptor.ContractMinorVersion + ".";
                 return false;
             }
             if (commands.ContainsKey(descriptor.Id))
@@ -25,6 +42,7 @@ namespace AEIOU
                 return false;
             }
             commands.Add(descriptor.Id, command);
+            descriptors.Add(descriptor.Id, descriptor);
             error = null;
             return true;
         }
@@ -33,6 +51,12 @@ namespace AEIOU
         {
             if (commandId == null) throw new ArgumentNullException("commandId");
             return commands.TryGetValue(commandId, out command);
+        }
+
+        public bool TryGetDescriptor(string commandId, out AutomationCommandDescriptor descriptor)
+        {
+            if (commandId == null) throw new ArgumentNullException("commandId");
+            return descriptors.TryGetValue(commandId, out descriptor);
         }
     }
 
