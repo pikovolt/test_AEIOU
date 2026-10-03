@@ -277,7 +277,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
-using AEIOU.Automation;
+using global::AEIOU.Automation;
 
 namespace AEIOU
 {

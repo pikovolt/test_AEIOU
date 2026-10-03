@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using AEIOU.Automation;
+using global::AEIOU.Automation;
 
 namespace AEIOU
 {

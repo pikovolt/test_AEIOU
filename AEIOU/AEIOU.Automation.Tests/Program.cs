@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using AEIOU.Automation;
+using global::AEIOU.Automation;
 
 namespace AEIOU.Automation.Tests
 {
