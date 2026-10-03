@@ -84,6 +84,9 @@
     <ProjectReference Include="..\AEIOU.Automation.Abstractions\AEIOU.Automation.Abstractions.csproj">
       <Project>{B275B027-369A-45F7-AF62-B1A492F96E91}</Project>
       <Name>AEIOU.Automation.Abstractions</Name>
+      <Aliases>global</Aliases>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <Private>true</Private>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
