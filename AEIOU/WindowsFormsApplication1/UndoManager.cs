@@ -34,6 +34,14 @@ namespace AEIOU
             }
         }
 
+        public bool TryUndo(GridViewManager manager, GridViewOperation expectedOperation)
+        {
+            if (_undoStack.Count == 0 || !Object.ReferenceEquals(
+                _undoStack[_undoStack.Count - 1], expectedOperation)) return false;
+            Undo(manager);
+            return true;
+        }
+
         public void Redo(GridViewManager manager)
         {
             if (_redoStack.Count > 0)

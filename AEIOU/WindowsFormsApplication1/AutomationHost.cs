@@ -83,6 +83,66 @@ namespace AEIOU
         bool TryApply(long expectedGeneration, IList<AutomationChange> changes, string operationName);
     }
 
+    /// <summary>Owns the last result of a modeless automation dialog and replaces only that result.</summary>
+    public sealed class AutomationSession
+    {
+        private readonly AutomationHost host;
+        private object lastApplication;
+
+        public AutomationSession(AutomationHost host)
+        {
+            if (host == null) throw new ArgumentNullException("host");
+            this.host = host;
+        }
+
+        public AutomationHostResult Execute(IAutomationCommand command, AutomationRequest request,
+            IAutomationSessionTarget target)
+        {
+            if (target == null) throw new ArgumentNullException("target");
+            SessionChangeTarget changeTarget = new SessionChangeTarget(target, lastApplication);
+            AutomationHostResult result = host.Execute(command, request, changeTarget);
+            if (result.Succeeded && changeTarget.Applied)
+                lastApplication = changeTarget.Application;
+            return result;
+        }
+
+        public void Close()
+        {
+            lastApplication = null;
+        }
+
+        private sealed class SessionChangeTarget : IAutomationChangeTarget
+        {
+            private readonly IAutomationSessionTarget target;
+            private readonly object previousApplication;
+
+            public SessionChangeTarget(IAutomationSessionTarget target, object previousApplication)
+            {
+                this.target = target;
+                this.previousApplication = previousApplication;
+            }
+
+            public bool Applied { get; private set; }
+            public object Application { get; private set; }
+
+            public bool TryApply(long expectedGeneration, IList<AutomationChange> changes, string operationName)
+            {
+                object application;
+                if (!target.TryReplace(expectedGeneration, previousApplication, changes,
+                    operationName, out application)) return false;
+                Applied = true;
+                Application = application;
+                return true;
+            }
+        }
+    }
+
+    public interface IAutomationSessionTarget
+    {
+        bool TryReplace(long expectedGeneration, object previousApplication,
+            IList<AutomationChange> changes, string operationName, out object application);
+    }
+
     public sealed class AutomationHostResult
     {
         private AutomationHostResult(bool succeeded, int appliedChangeCount, string error, string message, Exception exception)
