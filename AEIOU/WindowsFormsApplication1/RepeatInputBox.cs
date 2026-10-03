@@ -9,13 +9,30 @@ using System.Windows.Forms;
 
 namespace AEIOU
 {
+    public sealed class RepeatInputValues
+    {
+        public RepeatInputValues(string start, string end, string rowInterval,
+            string loop, string skip, string insert)
+        {
+            Start = start;
+            End = end;
+            RowInterval = rowInterval;
+            Loop = loop;
+            Skip = skip;
+            Insert = insert;
+        }
+
+        public string Start { get; private set; }
+        public string End { get; private set; }
+        public string RowInterval { get; private set; }
+        public string Loop { get; private set; }
+        public string Skip { get; private set; }
+        public string Insert { get; private set; }
+    }
+
     public partial class RepeatInputBox : Form
     {
-        // イベントデリゲートの定義
-        public delegate void RepeatInputEventHandler(object sender, EventArgs e);
-
-        // イベントの宣言
-        public event RepeatInputEventHandler OnRepeatInput;
+        public event Action<RepeatInputValues> OnRepeatInput;
         public RepeatInputBox()
         {
             InitializeComponent();
@@ -46,8 +63,9 @@ namespace AEIOU
         }
         private void buttonRepeat_Click(object sender, EventArgs e)
         {
-            // イベントを発火
-            OnRepeatInput?.Invoke(this, EventArgs.Empty);
+            Action<RepeatInputValues> handler = OnRepeatInput;
+            if (handler != null)
+                handler(new RepeatInputValues(Value1, Value2, Value3, Value4, Value5, Value6));
         }
     }
 }

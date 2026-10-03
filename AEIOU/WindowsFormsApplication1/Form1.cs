@@ -277,10 +277,11 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
+using global::AEIOU.Automation;
 
 namespace AEIOU
 {
-    public partial class Form1 : Form, IGridShortcutHandler
+    public partial class Form1 : Form, IGridShortcutHandler, IAutomationChangeTarget, IAutomationSessionTarget
     {
 	    //----------------------------------------------------------------------------------------
 	    // 配色
@@ -320,6 +321,9 @@ namespace AEIOU
         private GridMouseEventHandler gridMouseEventHandler;
         private readonly StsFileService stsFileService = new StsFileService();
         private readonly AfterEffectsDataService afterEffectsDataService = new AfterEffectsDataService();
+        private readonly AutomationRegistry automationRegistry;
+        private readonly AutomationHost automationHost;
+        private long automationGeneration;
 
         // 先行分離したサービス
         GridSelectionService gridSelectionService;
@@ -333,12 +337,16 @@ namespace AEIOU
 
         // 繰り返しダイアログ
         private RepeatInputBox _repeatInputDialog;
+        private AutomationSession _repeatAutomationSession;
 
         //----------------------------------------------------------------------------------------
         // コンストラクタ
         public Form1()
         {
+            automationRegistry = BuiltInAutomationRegistry.Create();
+            automationHost = new AutomationHost(1000000, automationRegistry);
             InitializeComponent();
+            LoadAutomationExtensions();
             gridViewManager.View = dataGridView1;
 
             // 自分のウィンドウハンドルを取得しておく
@@ -1459,39 +1467,190 @@ namespace AEIOU
             }
         }
 
-        //----------------------------------------------------------------------------------------
-        // 指定セルの値に対して、四則演算を行う（演算に成功した場合は計算結果を返す）
-        private bool TryGetArithmeticValue(CalcMode mode, int cellValue, int operand, out string calculatedValue)
+        private AutomationRequest CreateAutomationRequest(IDictionary<string, string> parameters)
         {
-            calculatedValue = null;
+            List<AutomationCell> cells = new List<AutomationCell>();
+            string failureReason;
+            for (int column = selectRange.Left; column <= selectRange.Right; column++)
+                for (int row = selectRange.Top; row <= selectRange.Bottom; row++)
+                {
+                    string value;
+                    if (!TryGetCellValue(column, row, out value, out failureReason)) value = String.Empty;
+                    cells.Add(new AutomationCell(row, column, value));
+                }
 
-            switch (mode)
+            return new AutomationRequest(GetSheetRowCount(), GetSheetColumnCount(), automationGeneration,
+                new AutomationSelection(selectRange.Top, selectRange.Left, selectRange.Height, selectRange.Width),
+                cells, parameters, setting.KaraCell);
+        }
+
+        private void ExecuteAutomationCommand(string commandId, IDictionary<string, string> parameters)
+        {
+            AutomationHostResult result = automationHost.Execute(commandId, CreateAutomationRequest(parameters), this);
+            if (!result.Succeeded)
             {
-                case CalcMode.Plus:
-                    calculatedValue = (cellValue + operand).ToString();
-                    return true;
-                case CalcMode.Minus:
-                    calculatedValue = (cellValue - operand).ToString();
-                    return true;
-                case CalcMode.Multiple:
-                    if (cellValue == 0)
-                    {
-                        return false;
-                    }
-
-                    calculatedValue = (cellValue * operand).ToString();
-                    return true;
-                case CalcMode.Divide:
-                    if (cellValue == 0)
-                    {
-                        return false;
-                    }
-
-                    calculatedValue = (cellValue / operand).ToString();
-                    return true;
-                default:
-                    return false;
+                MessageBox.Show(result.Error);
+                return;
             }
+            FinishWriteOperation(true);
+        }
+
+        private void LoadAutomationExtensions()
+        {
+            string applicationDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            AutomationExtensionLoadResult loadResult = new AutomationExtensionLoader().Load(
+                Path.Combine(applicationDirectory, "Extensions"), automationRegistry);
+            AutomationExtensionLoader.AppendDiagnostics(
+                Path.Combine(applicationDirectory, "automation-extensions.log"), loadResult.Diagnostics);
+            if (loadResult.Commands.Count == 0) return;
+
+            ToolStripMenuItem extensionsMenu = new ToolStripMenuItem("拡張自動処理");
+            foreach (AutomationCommandDescriptor descriptor in loadResult.Descriptors)
+            {
+                ToolStripMenuItem item = new ToolStripMenuItem(descriptor.DisplayName);
+                item.Tag = descriptor.Id;
+                item.Click += externalAutomationToolStripMenuItem_Click;
+                extensionsMenu.DropDownItems.Add(item);
+            }
+            int insertionIndex = contextMenuStrip1.Items.IndexOf(fourArithmeticOperationToolStripMenuItem) + 1;
+            contextMenuStrip1.Items.Insert(insertionIndex, extensionsMenu);
+        }
+
+        private void externalAutomationToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ToolStripMenuItem item = sender as ToolStripMenuItem;
+            AutomationCommandDescriptor descriptor;
+            if (item == null || !automationRegistry.TryGetDescriptor((string)item.Tag, out descriptor)) return;
+            IDictionary<string, string> parameters;
+            if (!TryCollectAutomationParameters(descriptor, out parameters)) return;
+            ExecuteAutomationCommand(descriptor.Id, parameters);
+        }
+
+        private bool TryCollectAutomationParameters(AutomationCommandDescriptor descriptor,
+            out IDictionary<string, string> parameters)
+        {
+            parameters = null;
+            Dictionary<string, Control> inputs = new Dictionary<string, Control>(StringComparer.Ordinal);
+            using (Form dialog = new Form())
+            using (TableLayoutPanel layout = new TableLayoutPanel())
+            {
+                dialog.Text = descriptor.DisplayName;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.AutoSize = true;
+                dialog.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                layout.AutoSize = true;
+                layout.ColumnCount = 2;
+                layout.Padding = new Padding(8);
+                dialog.Controls.Add(layout);
+
+                int row = 0;
+                foreach (AutomationParameterDefinition definition in descriptor.Parameters)
+                {
+                    Label label = new Label();
+                    label.Text = definition.DisplayName;
+                    label.AutoSize = true;
+                    label.Anchor = AnchorStyles.Left;
+                    Control input;
+                    if (definition.Type == AutomationParameterType.Boolean)
+                    {
+                        CheckBox checkBox = new CheckBox();
+                        bool checkedValue;
+                        Boolean.TryParse(definition.DefaultValue, out checkedValue);
+                        checkBox.Checked = checkedValue;
+                        input = checkBox;
+                    }
+                    else if (definition.Type == AutomationParameterType.Choice)
+                    {
+                        ComboBox comboBox = new ComboBox();
+                        comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+                        foreach (string choice in definition.Choices) comboBox.Items.Add(choice);
+                        int selected = comboBox.Items.IndexOf(definition.DefaultValue);
+                        comboBox.SelectedIndex = selected >= 0 ? selected : 0;
+                        input = comboBox;
+                    }
+                    else
+                    {
+                        TextBox textBox = new TextBox();
+                        textBox.Text = definition.DefaultValue ?? String.Empty;
+                        textBox.Width = 180;
+                        input = textBox;
+                    }
+                    layout.Controls.Add(label, 0, row);
+                    layout.Controls.Add(input, 1, row++);
+                    inputs.Add(definition.Id, input);
+                }
+
+                FlowLayoutPanel buttons = new FlowLayoutPanel();
+                buttons.AutoSize = true;
+                buttons.FlowDirection = FlowDirection.RightToLeft;
+                Button ok = new Button();
+                ok.Text = "OK";
+                ok.DialogResult = DialogResult.OK;
+                Button cancel = new Button();
+                cancel.Text = "キャンセル";
+                cancel.DialogResult = DialogResult.Cancel;
+                buttons.Controls.Add(ok);
+                buttons.Controls.Add(cancel);
+                layout.Controls.Add(buttons, 0, row);
+                layout.SetColumnSpan(buttons, 2);
+                dialog.AcceptButton = ok;
+                dialog.CancelButton = cancel;
+                if (dialog.ShowDialog(owner) != DialogResult.OK) return false;
+
+                Dictionary<string, string> collected = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (AutomationParameterDefinition definition in descriptor.Parameters)
+                {
+                    Control input = inputs[definition.Id];
+                    CheckBox checkBox = input as CheckBox;
+                    ComboBox comboBox = input as ComboBox;
+                    collected.Add(definition.Id, checkBox != null ? checkBox.Checked.ToString() :
+                        comboBox != null ? (string)comboBox.SelectedItem : input.Text);
+                }
+                parameters = collected;
+                return true;
+            }
+        }
+
+        public bool TryApply(long expectedGeneration, IList<AutomationChange> changes, string operationName)
+        {
+            if (expectedGeneration != automationGeneration) return false;
+            List<CellWriteEntry> writes = new List<CellWriteEntry>();
+            foreach (AutomationChange change in changes)
+                writes.Add(new CellWriteEntry(change.Row, change.Column, change.Value));
+            ApplyCellWrites(operationName, writes);
+            automationGeneration++;
+            return true;
+        }
+
+        public bool TryReplace(long expectedGeneration, object previousApplication,
+            IList<AutomationChange> changes, string operationName, out object application)
+        {
+            application = null;
+            if (expectedGeneration != automationGeneration) return false;
+            if (previousApplication != null)
+            {
+                GridViewOperation previousOperation = previousApplication as GridViewOperation;
+                if (previousOperation == null || !gridViewManager.TryUndo(previousOperation)) return false;
+            }
+
+            OperationGroup group = new OperationGroup(operationName);
+            foreach (AutomationChange change in changes)
+                group.AddOperation(new SetValueOperation(change.Row, change.Column, change.Value));
+            gridViewManager.BeginBatchUpdate();
+            try
+            {
+                gridViewManager.ExecuteOperation(group);
+            }
+            finally
+            {
+                gridViewManager.EndBatchUpdate();
+            }
+            application = group;
+            automationGeneration++;
+            return true;
         }
 
         //----------------------------------------------------------------------------------------
@@ -2521,151 +2680,59 @@ namespace AEIOU
             dialog.Value2 = "1";
             if (dialog.ShowDialog(this.owner) == System.Windows.Forms.DialogResult.OK)
             {
-                int start = 1;
-                int step = 1;
-                bool skip = false;
-                try
-                {
-                    start = int.Parse(dialog.Value1);
-                    step = int.Parse(dialog.Value2);
-                    skip = dialog.CheckValue1;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("入力された値を数値に変換できませんでした.");
-                    return;
-                }
-
-                int col = selectRange.Left;
-                int row = selectRange.Top;
-                int frm = start;
-                int frmStep = (skip == true) ? step : step / Math.Abs(step);
-                int cnt = selectRange.Height;
-                List<CellWriteEntry> writes = new List<CellWriteEntry>();
-
-                // 入力
-                for (int i = 0; i < cnt; i += Math.Abs(step))
-                {
-                    if (IsCellEmpty(col, row + i))
-                    {
-                        aryCellUsedCount[col]++;
-                    }
-
-                    writes.Add(new CellWriteEntry(row + i, col, frm.ToString()));
-
-                    //(*pColorBuf)[Col][Row + 1] = versionNumber;
-                    frm += frmStep;
-                }
-
-                ApplyCellWrites("連番作成", writes);
-
-                FinishWriteOperation(true);
-
+                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                parameters.Add(SequentialNumberCommand.StartParameter, dialog.Value1);
+                parameters.Add(SequentialNumberCommand.StepParameter, dialog.Value2);
+                parameters.Add(SequentialNumberCommand.SkipParameter, dialog.CheckValue1.ToString());
+                ExecuteAutomationCommand(SequentialNumberCommand.CommandId, parameters);
             }
         }
 
         //----------------------------------------------------------------------------------------
         // 連番作成(複数列、挿入番号、スキップ、ループ対応)
-        private void HandleRepeatInput(object sender, EventArgs e)
+        private void HandleRepeatInput(RepeatInputValues values)
         {
-            // 入力値を処理する
-            int start = int.Parse(((RepeatInputBox)sender).Value1);
-            int end = int.Parse(((RepeatInputBox)sender).Value2);
-            int step = int.Parse(((RepeatInputBox)sender).Value3);
-            int loop = int.Parse(((RepeatInputBox)sender).Value4);
-            int skip = int.Parse(((RepeatInputBox)sender).Value5) + 1;
-            string insert_str = ((RepeatInputBox)sender).Value6;
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add(RepeatNumberCommand.StartParameter, values.Start);
+            parameters.Add(RepeatNumberCommand.EndParameter, values.End);
+            parameters.Add(RepeatNumberCommand.RowIntervalParameter, values.RowInterval);
+            parameters.Add(RepeatNumberCommand.LoopParameter, values.Loop);
+            parameters.Add(RepeatNumberCommand.SkipParameter, values.Skip);
+            parameters.Add(RepeatNumberCommand.InsertParameter, values.Insert);
+            AutomationHostResult result = _repeatAutomationSession.Execute(RepeatNumberCommand.CommandId,
+                CreateAutomationRequest(parameters), this);
+            if (!result.Succeeded) MessageBox.Show(result.Error);
+            else FinishWriteOperation(true);
+        }
 
-            // 操作前に Undo（繰り返し実行を前提に、１つ前の操作を取り消す）
-            gridViewManager.Undo();
-
-            // 入力値を使用して処理を行う
+        private void HandleRepeatInputClosed(object sender, FormClosedEventArgs e)
+        {
+            RepeatInputBox dialog = sender as RepeatInputBox;
+            if (dialog != null)
             {
-                int count;
-
-                // 入力数: 開始#～終了#
-                // ※挿入番号がある場合、開始～終了番号と交互に入るので更に２倍
-                // ※スキップ数が有る場合、１／スキップ数に回数を減らす
-                // ※ループ回数は１回分の長さが決定したところで計算
-                count = end - start + 1;
-                if (insert_str != "")
-                {
-                    count *= 2;
-                }
-                if (skip > 1)
-                {
-                    count /= skip;
-                    count++;
-                    //挿入番号があり、カウントが奇数の場合は偶数に補正
-                    if (insert_str != "" && (count % 2) == 1)
-                    {
-                        count++;
-                    }
-                }
-                count *= loop;
-
-                List<CellWriteEntry> writes = new List<CellWriteEntry>();
-
-                //番号入力
-                int row = selectRange.Top;
-                for (int num = start, col = selectRange.Left; col <= selectRange.Right; col++)
-                {
-                    for (int i = 0; i < count; i++)
-                    {
-                        int targetRow = row + (i * step);
-                        string valueToWrite;
-
-                        if (insert_str == "")
-                        {
-                            //挿入番号なし
-                            valueToWrite = num.ToString();
-                            num += skip;
-                            if (num > end) num = start;
-                        }
-                        else if ((i % 2) == 0)
-                        {
-                            //挿入番号あり（開始＃～終了＃）
-                            //※連番と挿入番号が交互なのでカウンタを1/2にして番号計算
-                            valueToWrite = num.ToString();
-                            num += skip;
-                            if (num > end) num = start;
-                        }
-                        else
-                        {
-                            //挿入番号あり（挿入＃）
-                            valueToWrite = insert_str;
-                        }
-
-                        writes.Add(new CellWriteEntry(targetRow, col, valueToWrite));
-                        aryCellUsedCount[col]++;
-                        //(*pColorBuf)[Col][Row + (i * step)] = versionNumber;
-                    }
-                }
-
-                // 範囲クリアと反映を同一groupにまとめ、Undo境界を1操作に維持する
-                ExecuteWriteGroup("繰り返し", delegate
-                {
-                    deleteRect(selectRange, false);
-                    QueueCellWrites(writes);
-                });
-
-                FinishWriteOperation(true);
+                dialog.OnRepeatInput -= HandleRepeatInput;
+                dialog.FormClosed -= HandleRepeatInputClosed;
             }
+            if (Object.ReferenceEquals(_repeatInputDialog, dialog)) _repeatInputDialog = null;
+            if (_repeatAutomationSession != null) _repeatAutomationSession.Close();
+            _repeatAutomationSession = null;
         }
 
         //----------------------------------------------------------------------------------------
         // 連番作成(複数列、挿入番号、スキップ、ループ対応)
         private void repeatNumberToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // 操作を１つ入れる (カレントセルの値を同じ場所に上書き)
-            var col = selectRange.Left;
-            var row = selectRange.Top;
-            var operation = new SetValueOperation(row, col, GetCellValue(col, row));
-            gridViewManager.ExecuteOperation(operation);
+            if (_repeatInputDialog != null && !_repeatInputDialog.IsDisposed)
+            {
+                _repeatInputDialog.Activate();
+                return;
+            }
 
             // 繰り返しダイアログの表示
+            _repeatAutomationSession = new AutomationSession(automationHost);
             _repeatInputDialog = new RepeatInputBox();
             _repeatInputDialog.OnRepeatInput += HandleRepeatInput;
+            _repeatInputDialog.FormClosed += HandleRepeatInputClosed;
             _repeatInputDialog.Show();
         }
 
@@ -2679,43 +2746,10 @@ namespace AEIOU
             dialog.LabelName2 = "置換後";
             if (dialog.ShowDialog(this.owner) == System.Windows.Forms.DialogResult.OK)
             {
-                // 入力チェック
-                // (空白時は中止)
-                if (dialog.Value1 == "")
-                { MessageBox.Show("変換前指定がない."); return; }
-                if (dialog.Value2 == "")
-                { MessageBox.Show("変換後指定がない."); return; }
-
-                int Col, Row, Cnt;
-                String A = dialog.Value1;
-                String B = dialog.Value2;
-                Col = selectRange.Left;
-                Row = selectRange.Top;
-                Cnt = selectRange.Height;
-
-                List<CellWriteEntry> writes = new List<CellWriteEntry>();
-                string failureReason;
-                // 置き換え
-                for (int i = 0; i < Cnt; i++)
-                {
-                    string currentValue;
-                    if (!TryGetCellValue(Col, Row + i, out currentValue, out failureReason) || currentValue == "")
-                    {
-                        currentValue = string.Empty;
-                        continue;
-                    }
-
-                    // フレーム毎に値を調べて、変換前を見つけたら、変換後に書き換え
-                    if (currentValue == A)
-                    {
-                        writes.Add(new CellWriteEntry(Row + i, Col, B));
-                        //(*pColorBuf)[Col][Row + i] = versionNumber;
-                    }
-                }
-
-                ApplyCellWrites("置換", writes);
-
-                FinishWriteOperation(true);
+                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                parameters.Add(ReplaceCommand.BeforeParameter, dialog.Value1);
+                parameters.Add(ReplaceCommand.AfterParameter, dialog.Value2);
+                ExecuteAutomationCommand(ReplaceCommand.CommandId, parameters);
             }
         }
 
@@ -2723,52 +2757,7 @@ namespace AEIOU
         // 反転
         private void reverseToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //反転
-            int i, c, l, Col, Row, Cnt;
-            string failureReason;
-            Col = selectRange.Left;
-            Row = selectRange.Top;
-            Cnt = selectRange.Height;
-
-            //選択範囲内の記述を取得
-            int targetCount = 0;
-            String[] temp = new String[Cnt];
-            for(i = 0; i < Cnt; i++)
-            {
-                string val;
-                if (!TryGetCellValue(Col, Row + i, out val, out failureReason))
-                {
-                    val = string.Empty;
-                    continue;
-                }
-
-                if(val == "") continue;
-                temp[targetCount++] = val;
-            }
-
-            List<CellWriteEntry> writes = new List<CellWriteEntry>();
-            //選択範囲内の記述を逆順に適応
-            for (i = 0; i < Cnt; i++)
-            {
-                string currentValue;
-                if (!TryGetCellValue(Col, Row + i, out currentValue, out failureReason) || currentValue == "")
-                {
-                    currentValue = string.Empty;
-                    continue;
-                }
-
-                if (targetCount <= 0)
-                {
-                    break;
-                }
-
-                writes.Add(new CellWriteEntry(Row + i, Col, temp[--targetCount]));
-                //(*pColorBuf)[Col][Row + i] = versionNumber;
-            }
-
-            ApplyCellWrites("反転", writes);
-
-            FinishWriteOperation(true);
+            ExecuteAutomationCommand(ReverseCommand.CommandId, new Dictionary<string, string>());
         }
 
         //----------------------------------------------------------------------------------------
@@ -2781,81 +2770,13 @@ namespace AEIOU
             dialog.LabelName1 = "四則演算";
             if (dialog.ShowDialog(this.owner) == System.Windows.Forms.DialogResult.OK)
             {
-                String val = dialog.Value1.Trim();
-                CalcMode mode = CalcMode.None;
-
-                int len = val.Length;
-                char mark = (char)(val[0]);
-                switch (mark)
-                {
-                    case '+':
-                        mode = CalcMode.Plus;
-                        break;
-                    case '-':
-                        mode = CalcMode.Minus;
-                        break;
-                    case '*':
-                        mode = CalcMode.Multiple;
-                        break;
-                    case '/':
-                        mode = CalcMode.Divide;
-                        break;
-                    default:
-                        //エラー
-                        //１文字目は加減乗除記号が必要
-                        MessageBox.Show("１文字目には\"+-*/\"記号のいずれか１文字の入力が必要");
-                        return;
-                        //break;
-                }
-
-                int num = 0;
-                try
-                {
-                    num = int.Parse(val.Substring(1, len - 1));
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("入力された値を数値に変換できませんでした."); return;
-                }
-
-                Rect r = selectRange;
-                List<CellWriteEntry> arithmeticWrites = new List<CellWriteEntry>();
-                string failureReason;
-                for (int c = r.Left; c <= r.Right; c++)
-                {
-                    for (int i = r.Top; i <= r.Bottom; i++)
-                    {
-                        string currentValue;
-                        if (!TryGetCellValue(c, i, out currentValue, out failureReason) ||
-                            currentValue == "" ||
-                            currentValue == setting.KaraCell)
-                        {
-                            currentValue = string.Empty;
-                            continue;
-                        }
-
-                        int celNum = 0;
-                        try
-                        {
-                            celNum = int.Parse(currentValue);
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show("セルの値を数値に変換できませんでした.");
-                            return;
-                        }
-
-                        string nextValue;
-                        if (TryGetArithmeticValue(mode, celNum, num, out nextValue))
-                        {
-                            arithmeticWrites.Add(new CellWriteEntry(i, c, nextValue));
-                        }
-                    }
-                }
-
-                ApplyCellWrites("四則演算", arithmeticWrites);
-
-                FinishWriteOperation(true);
+                String value = dialog.Value1.Trim();
+                string operation = value.Length == 0 ? String.Empty : value.Substring(0, 1);
+                string operand = value.Length < 2 ? String.Empty : value.Substring(1);
+                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                parameters.Add(ArithmeticCommand.OperatorParameter, operation);
+                parameters.Add(ArithmeticCommand.OperandParameter, operand);
+                ExecuteAutomationCommand(ArithmeticCommand.CommandId, parameters);
             }
         }
 

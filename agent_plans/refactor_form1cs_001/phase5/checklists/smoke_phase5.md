@@ -1,38 +1,50 @@
 # Phase5 Smoke Checklist
 
+外部拡張の配置、ログ確認、障害時の切り戻しは
+[`../extension_operations.md`](../extension_operations.md) に従う。2026-10-03 の実施環境と
+未実施理由は [`../p5_007_completion.md`](../p5_007_completion.md) に記録した。
+
 ## A. 分離前 characterization（P5-001）
-- [ ] 連番: 正/負 step、skip on/off、空セル上書き、選択末尾。
-- [ ] 置換: 一致/不一致/空セル、空の置換前・置換後。
-- [ ] 反転: 全入力、空セル混在、入力1件、入力0件。
-- [ ] 四則演算: `+ - * /`、負数、カラセル、空セル、セル値0、除数0、非数値セル。
-- [ ] 繰り返し: 挿入値あり/なし、skip、loop、複数列、シート末尾。
-- [ ] モデルレス繰り返し: 初回、連続実行、閉じて再起動、Undo/Redo。
+- [x] 連番: 正/負 step、skip on/off、空セル上書き、選択末尾。
+- [x] 置換: 一致/不一致/空セル、空の置換前・置換後。
+- [x] 反転: 全入力、空セル混在、入力1件、入力0件。
+- [x] 四則演算: `+ - * /`、負数、カラセル、空セル、セル値0、除数0、非数値セル。
+- [x] 繰り返し: 挿入値あり/なし、skip、loop、複数列、シート末尾。
+- [x] モデルレス繰り返し: 初回、連続実行、閉じて再起動、Undo/Redo。
+
+P5-001 の期待値、再現手順、および互換維持/別修正の判断は
+[`../characterization_p5_001.md`](../characterization_p5_001.md) に固定した。
 
 ## B. Automation host
-- [ ] 正常な変更セットが1 write groupで全件適用される。
-- [ ] 空の変更セットで Undo 履歴と編集状態を不要に変更しない。
-- [ ] 範囲外セルを1件含む結果を全件拒否する。
-- [ ] 同一セルへの重複変更を全件拒否する。
-- [ ] null値、上限超過、シート世代不一致を全件拒否する。
-- [ ] command の例外発生時にセル変更が0件である。
-- [ ] 適用後のセル使用数、継続表示、再描画が既存経路と一致する。
+- [x] 正常な変更セットが1 write groupで全件適用される（in-memory prototype）。
+- [x] 空の変更セットで Undo 履歴と編集状態を不要に変更しない（in-memory prototype）。
+- [x] 範囲外セルを1件含む結果を全件拒否する（in-memory prototype）。
+- [x] 同一セルへの重複変更を全件拒否する（in-memory prototype）。
+- [x] null値、上限超過、シート世代不一致を全件拒否する（in-memory prototype）。
+- [x] command の例外発生時にセル変更が0件である（in-memory prototype）。
+- [x] 不明 command ID と descriptor に合わないパラメーターを実行前に拒否する。
+- [x] 適用後のセル使用数、継続表示、再描画が既存経路と一致する（単純変換3機能）。
 
 ## C. 組み込み6機能
 - [ ] 各メニューの表示名、ショートカット、ダイアログ初期値が変わらない。
-- [ ] 置換、反転、四則演算が registry/host 経由で動く。
-- [ ] 連番、繰り返しが registry/host 経由で動く。
+- [x] 置換、反転、四則演算が共通 host 経由で動く（registry 統一は P5-005）。
+- [x] 連番、繰り返しが共通 host 経由で動く（registry 統一は P5-005）。
 - [ ] 各操作の Undo 1回/Redo 1回で表示とモデルが一致する。
-- [ ] 繰り返し再実行が、当該 session の直前結果だけを置き換える。
+- [x] 繰り返し再実行が、当該 session の直前結果だけを置き換える（in-memory session test）。
+- [x] 全組み込み command が安定 ID で registry に登録され、メニューから ID 解決される。
+- [x] registry が重複 ID を既存登録の置換なしで拒否する。
 
 ## D. 外部拡張
-- [ ] `Extensions` が存在しない/空でも正常起動する。
-- [ ] 正常 DLL の command が1回だけ登録される。
-- [ ] 非 DLL、非実装型、abstract型を無視する。
-- [ ] 契約 major 不一致を拒否する。
-- [ ] 組み込み/外部および外部同士の重複 ID を拒否する。
-- [ ] 依存 DLL 不足、constructor 例外、実行例外が他コマンドへ波及しない。
-- [ ] 不正な変更セットを返す外部 command がシートを変更できない。
-- [ ] 外部 DLL を除去して再起動すると登録が消え、組み込み機能は維持される。
+- [x] 正常サンプル（ランダム整数）が公開契約だけを参照し、指定ステップ間隔で選択範囲の変更セットを返す（sample command test）。
+- [x] クリップボードサンプル（AEコピー）が選択した1列をAE形式へ変換し、セル変更なしで出力する（fake clipboard test）。
+- [x] `Extensions` が存在しない/空でも正常起動する（loader test）。
+- [x] 正常 DLL の command が1回だけ登録される（loader test）。
+- [x] 非 DLL、非実装型、abstract型を無視する（loader test）。
+- [x] 契約 major 不一致を拒否する（loader test）。
+- [x] 組み込み/外部および外部同士の重複 ID を拒否する（registry/loader test）。
+- [ ] 依存 DLL 不足、constructor 例外、実行例外が他コマンドへ波及しない（constructor/実行例外は loader/host test 済み。依存 DLL 不足の実 DLL smoke は未実施）。
+- [x] 不正な変更セットを返す外部 command がシートを変更できない（host test）。
+- [ ] 外部 DLL を除去して再起動すると登録が消え、組み込み機能は維持される（loader/registry test 済み。実 UI 再起動 smoke は未実施）。
 
 ## E. 非退行
 - [ ] STS 読込/保存。
