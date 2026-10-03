@@ -7,6 +7,7 @@ namespace AEIOU
 {
     public sealed class ReplaceCommand : IAutomationCommand
     {
+        public const string CommandId = "builtin.replace";
         public const string BeforeParameter = "before";
         public const string AfterParameter = "after";
 
@@ -14,7 +15,7 @@ namespace AEIOU
         {
             get
             {
-                return new AutomationCommandDescriptor("builtin.replace", "置換",
+                return new AutomationCommandDescriptor(CommandId, "置換",
                     AutomationContract.MajorVersion, AutomationContract.MinorVersion,
                     new[]
                     {
@@ -50,11 +51,12 @@ namespace AEIOU
 
     public sealed class ReverseCommand : IAutomationCommand
     {
+        public const string CommandId = "builtin.reverse";
         public AutomationCommandDescriptor Descriptor
         {
             get
             {
-                return new AutomationCommandDescriptor("builtin.reverse", "反転",
+                return new AutomationCommandDescriptor(CommandId, "反転",
                     AutomationContract.MajorVersion, AutomationContract.MinorVersion,
                     new AutomationParameterDefinition[0]);
             }
@@ -82,6 +84,7 @@ namespace AEIOU
 
     public sealed class ArithmeticCommand : IAutomationCommand
     {
+        public const string CommandId = "builtin.arithmetic";
         public const string OperatorParameter = "operator";
         public const string OperandParameter = "operand";
 
@@ -89,7 +92,7 @@ namespace AEIOU
         {
             get
             {
-                return new AutomationCommandDescriptor("builtin.arithmetic", "四則演算",
+                return new AutomationCommandDescriptor(CommandId, "四則演算",
                     AutomationContract.MajorVersion, AutomationContract.MinorVersion,
                     new[]
                     {
@@ -145,6 +148,7 @@ namespace AEIOU
 
     public sealed class SequentialNumberCommand : IAutomationCommand
     {
+        public const string CommandId = "builtin.sequential-number";
         public const string StartParameter = "start";
         public const string StepParameter = "step";
         public const string SkipParameter = "skip";
@@ -153,7 +157,7 @@ namespace AEIOU
         {
             get
             {
-                return new AutomationCommandDescriptor("builtin.sequential-number", "連番作成",
+                return new AutomationCommandDescriptor(CommandId, "連番作成",
                     AutomationContract.MajorVersion, AutomationContract.MinorVersion,
                     new[]
                     {
@@ -200,6 +204,7 @@ namespace AEIOU
 
     public sealed class RepeatNumberCommand : IAutomationCommand
     {
+        public const string CommandId = "builtin.repeat-number";
         public const string StartParameter = "start";
         public const string EndParameter = "end";
         public const string RowIntervalParameter = "row_interval";
@@ -211,7 +216,7 @@ namespace AEIOU
         {
             get
             {
-                return new AutomationCommandDescriptor("builtin.repeat-number", "繰り返し",
+                return new AutomationCommandDescriptor(CommandId, "繰り返し",
                     AutomationContract.MajorVersion, AutomationContract.MinorVersion,
                     new[]
                     {

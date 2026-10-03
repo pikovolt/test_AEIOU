@@ -18,6 +18,7 @@ P5-001 の期待値、再現手順、および互換維持/別修正の判断は
 - [x] 同一セルへの重複変更を全件拒否する（in-memory prototype）。
 - [x] null値、上限超過、シート世代不一致を全件拒否する（in-memory prototype）。
 - [x] command の例外発生時にセル変更が0件である（in-memory prototype）。
+- [x] 不明 command ID と descriptor に合わないパラメーターを実行前に拒否する。
 - [x] 適用後のセル使用数、継続表示、再描画が既存経路と一致する（単純変換3機能）。
 
 ## C. 組み込み6機能
@@ -26,6 +27,8 @@ P5-001 の期待値、再現手順、および互換維持/別修正の判断は
 - [x] 連番、繰り返しが共通 host 経由で動く（registry 統一は P5-005）。
 - [ ] 各操作の Undo 1回/Redo 1回で表示とモデルが一致する。
 - [x] 繰り返し再実行が、当該 session の直前結果だけを置き換える（in-memory session test）。
+- [x] 全組み込み command が安定 ID で registry に登録され、メニューから ID 解決される。
+- [x] registry が重複 ID を既存登録の置換なしで拒否する。
 
 ## D. 外部拡張
 - [ ] `Extensions` が存在しない/空でも正常起動する。
