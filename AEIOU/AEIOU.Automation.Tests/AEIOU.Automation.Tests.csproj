@@ -21,10 +21,16 @@
   <ItemGroup><Compile Include="Program.cs" /></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AEIOU.Automation.Abstractions\AEIOU.Automation.Abstractions.csproj">
-      <Project>{B275B027-369A-45F7-AF62-B1A492F96E91}</Project><Name>AEIOU.Automation.Abstractions</Name>
+      <Project>{B275B027-369A-45F7-AF62-B1A492F96E91}</Project>
+      <Name>AEIOU.Automation.Abstractions</Name>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <Private>true</Private>
     </ProjectReference>
     <ProjectReference Include="..\WindowsFormsApplication1\AEIOU.csproj">
-      <Project>{75C85D01-1B94-4BE3-BAA3-95CA99B2224F}</Project><Name>AEIOU</Name>
+      <Project>{75C85D01-1B94-4BE3-BAA3-95CA99B2224F}</Project>
+      <Name>AEIOU</Name>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <Private>true</Private>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
