@@ -277,10 +277,11 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
+using AEIOU.Automation;
 
 namespace AEIOU
 {
-    public partial class Form1 : Form, IGridShortcutHandler
+    public partial class Form1 : Form, IGridShortcutHandler, IAutomationChangeTarget
     {
 	    //----------------------------------------------------------------------------------------
 	    // 配色
@@ -320,6 +321,8 @@ namespace AEIOU
         private GridMouseEventHandler gridMouseEventHandler;
         private readonly StsFileService stsFileService = new StsFileService();
         private readonly AfterEffectsDataService afterEffectsDataService = new AfterEffectsDataService();
+        private readonly AutomationHost automationHost = new AutomationHost(1000000);
+        private long automationGeneration;
 
         // 先行分離したサービス
         GridSelectionService gridSelectionService;
@@ -1459,39 +1462,43 @@ namespace AEIOU
             }
         }
 
-        //----------------------------------------------------------------------------------------
-        // 指定セルの値に対して、四則演算を行う（演算に成功した場合は計算結果を返す）
-        private bool TryGetArithmeticValue(CalcMode mode, int cellValue, int operand, out string calculatedValue)
+        private AutomationRequest CreateAutomationRequest(IDictionary<string, string> parameters)
         {
-            calculatedValue = null;
+            List<AutomationCell> cells = new List<AutomationCell>();
+            string failureReason;
+            for (int column = selectRange.Left; column <= selectRange.Right; column++)
+                for (int row = selectRange.Top; row <= selectRange.Bottom; row++)
+                {
+                    string value;
+                    if (!TryGetCellValue(column, row, out value, out failureReason)) value = String.Empty;
+                    cells.Add(new AutomationCell(row, column, value));
+                }
 
-            switch (mode)
+            return new AutomationRequest(GetSheetRowCount(), GetSheetColumnCount(), automationGeneration,
+                new AutomationSelection(selectRange.Top, selectRange.Left, selectRange.Height, selectRange.Width),
+                cells, parameters, setting.KaraCell);
+        }
+
+        private void ExecuteAutomationCommand(IAutomationCommand command, IDictionary<string, string> parameters)
+        {
+            AutomationHostResult result = automationHost.Execute(command, CreateAutomationRequest(parameters), this);
+            if (!result.Succeeded)
             {
-                case CalcMode.Plus:
-                    calculatedValue = (cellValue + operand).ToString();
-                    return true;
-                case CalcMode.Minus:
-                    calculatedValue = (cellValue - operand).ToString();
-                    return true;
-                case CalcMode.Multiple:
-                    if (cellValue == 0)
-                    {
-                        return false;
-                    }
-
-                    calculatedValue = (cellValue * operand).ToString();
-                    return true;
-                case CalcMode.Divide:
-                    if (cellValue == 0)
-                    {
-                        return false;
-                    }
-
-                    calculatedValue = (cellValue / operand).ToString();
-                    return true;
-                default:
-                    return false;
+                MessageBox.Show(result.Error);
+                return;
             }
+            FinishWriteOperation(true);
+        }
+
+        public bool TryApply(long expectedGeneration, IList<AutomationChange> changes, string operationName)
+        {
+            if (expectedGeneration != automationGeneration) return false;
+            List<CellWriteEntry> writes = new List<CellWriteEntry>();
+            foreach (AutomationChange change in changes)
+                writes.Add(new CellWriteEntry(change.Row, change.Column, change.Value));
+            ApplyCellWrites(operationName, writes);
+            automationGeneration++;
+            return true;
         }
 
         //----------------------------------------------------------------------------------------
@@ -2679,43 +2686,10 @@ namespace AEIOU
             dialog.LabelName2 = "置換後";
             if (dialog.ShowDialog(this.owner) == System.Windows.Forms.DialogResult.OK)
             {
-                // 入力チェック
-                // (空白時は中止)
-                if (dialog.Value1 == "")
-                { MessageBox.Show("変換前指定がない."); return; }
-                if (dialog.Value2 == "")
-                { MessageBox.Show("変換後指定がない."); return; }
-
-                int Col, Row, Cnt;
-                String A = dialog.Value1;
-                String B = dialog.Value2;
-                Col = selectRange.Left;
-                Row = selectRange.Top;
-                Cnt = selectRange.Height;
-
-                List<CellWriteEntry> writes = new List<CellWriteEntry>();
-                string failureReason;
-                // 置き換え
-                for (int i = 0; i < Cnt; i++)
-                {
-                    string currentValue;
-                    if (!TryGetCellValue(Col, Row + i, out currentValue, out failureReason) || currentValue == "")
-                    {
-                        currentValue = string.Empty;
-                        continue;
-                    }
-
-                    // フレーム毎に値を調べて、変換前を見つけたら、変換後に書き換え
-                    if (currentValue == A)
-                    {
-                        writes.Add(new CellWriteEntry(Row + i, Col, B));
-                        //(*pColorBuf)[Col][Row + i] = versionNumber;
-                    }
-                }
-
-                ApplyCellWrites("置換", writes);
-
-                FinishWriteOperation(true);
+                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                parameters.Add(ReplaceCommand.BeforeParameter, dialog.Value1);
+                parameters.Add(ReplaceCommand.AfterParameter, dialog.Value2);
+                ExecuteAutomationCommand(new ReplaceCommand(), parameters);
             }
         }
 
@@ -2723,52 +2697,7 @@ namespace AEIOU
         // 反転
         private void reverseToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //反転
-            int i, c, l, Col, Row, Cnt;
-            string failureReason;
-            Col = selectRange.Left;
-            Row = selectRange.Top;
-            Cnt = selectRange.Height;
-
-            //選択範囲内の記述を取得
-            int targetCount = 0;
-            String[] temp = new String[Cnt];
-            for(i = 0; i < Cnt; i++)
-            {
-                string val;
-                if (!TryGetCellValue(Col, Row + i, out val, out failureReason))
-                {
-                    val = string.Empty;
-                    continue;
-                }
-
-                if(val == "") continue;
-                temp[targetCount++] = val;
-            }
-
-            List<CellWriteEntry> writes = new List<CellWriteEntry>();
-            //選択範囲内の記述を逆順に適応
-            for (i = 0; i < Cnt; i++)
-            {
-                string currentValue;
-                if (!TryGetCellValue(Col, Row + i, out currentValue, out failureReason) || currentValue == "")
-                {
-                    currentValue = string.Empty;
-                    continue;
-                }
-
-                if (targetCount <= 0)
-                {
-                    break;
-                }
-
-                writes.Add(new CellWriteEntry(Row + i, Col, temp[--targetCount]));
-                //(*pColorBuf)[Col][Row + i] = versionNumber;
-            }
-
-            ApplyCellWrites("反転", writes);
-
-            FinishWriteOperation(true);
+            ExecuteAutomationCommand(new ReverseCommand(), new Dictionary<string, string>());
         }
 
         //----------------------------------------------------------------------------------------
@@ -2781,81 +2710,13 @@ namespace AEIOU
             dialog.LabelName1 = "四則演算";
             if (dialog.ShowDialog(this.owner) == System.Windows.Forms.DialogResult.OK)
             {
-                String val = dialog.Value1.Trim();
-                CalcMode mode = CalcMode.None;
-
-                int len = val.Length;
-                char mark = (char)(val[0]);
-                switch (mark)
-                {
-                    case '+':
-                        mode = CalcMode.Plus;
-                        break;
-                    case '-':
-                        mode = CalcMode.Minus;
-                        break;
-                    case '*':
-                        mode = CalcMode.Multiple;
-                        break;
-                    case '/':
-                        mode = CalcMode.Divide;
-                        break;
-                    default:
-                        //エラー
-                        //１文字目は加減乗除記号が必要
-                        MessageBox.Show("１文字目には\"+-*/\"記号のいずれか１文字の入力が必要");
-                        return;
-                        //break;
-                }
-
-                int num = 0;
-                try
-                {
-                    num = int.Parse(val.Substring(1, len - 1));
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("入力された値を数値に変換できませんでした."); return;
-                }
-
-                Rect r = selectRange;
-                List<CellWriteEntry> arithmeticWrites = new List<CellWriteEntry>();
-                string failureReason;
-                for (int c = r.Left; c <= r.Right; c++)
-                {
-                    for (int i = r.Top; i <= r.Bottom; i++)
-                    {
-                        string currentValue;
-                        if (!TryGetCellValue(c, i, out currentValue, out failureReason) ||
-                            currentValue == "" ||
-                            currentValue == setting.KaraCell)
-                        {
-                            currentValue = string.Empty;
-                            continue;
-                        }
-
-                        int celNum = 0;
-                        try
-                        {
-                            celNum = int.Parse(currentValue);
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show("セルの値を数値に変換できませんでした.");
-                            return;
-                        }
-
-                        string nextValue;
-                        if (TryGetArithmeticValue(mode, celNum, num, out nextValue))
-                        {
-                            arithmeticWrites.Add(new CellWriteEntry(i, c, nextValue));
-                        }
-                    }
-                }
-
-                ApplyCellWrites("四則演算", arithmeticWrites);
-
-                FinishWriteOperation(true);
+                String value = dialog.Value1.Trim();
+                string operation = value.Length == 0 ? String.Empty : value.Substring(0, 1);
+                string operand = value.Length < 2 ? String.Empty : value.Substring(1);
+                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                parameters.Add(ArithmeticCommand.OperatorParameter, operation);
+                parameters.Add(ArithmeticCommand.OperandParameter, operand);
+                ExecuteAutomationCommand(new ArithmeticCommand(), parameters);
             }
         }
 
