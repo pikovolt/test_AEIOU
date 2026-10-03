@@ -102,6 +102,7 @@
     <Compile Include="GridFrameLabelFormatter.cs" />
     <Compile Include="GridKeyCommandDispatcher.cs" />
     <Compile Include="GridMoveSelectionCommand.cs" />
+    <Compile Include="GridValueInputCommand.cs" />
     <Compile Include="GridShortcutRouter.cs" />
     <Compile Include="GridCellValueService.cs" />
     <Compile Include="GridMouseEventHandler.cs" />

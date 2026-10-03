@@ -97,22 +97,10 @@ namespace AEIOU
 
         public void OnNumberKey(int keyValue, int keyCode)
         {
-            int normalizedKey = keyValue & 0x0ff;
-            if (normalizedKey >= 96 && normalizedKey <= 105)
+            if (gridValueInputCommand.HandleNumber(selectRange, keyValue, isFirstEdit))
             {
-                normalizedKey -= 96;
+                isCellEdit = true;
             }
-            else if (normalizedKey >= 48 && normalizedKey <= 57)
-            {
-                normalizedKey -= 48;
-            }
-            else
-            {
-                return;
-            }
-
-            gridCellValueService.InsertNumber(selectRange, normalizedKey, isFirstEdit, setting.IsAlwaysAppend);
-            isCellEdit = true;
         }
 
         public void OnJOrKKey(int keyCode)
@@ -156,26 +144,12 @@ namespace AEIOU
         }
         public void OnAddKey()
         {
-            gridCellValueService.IncrementValue(selectRange, setting.KaraCell);
-            this.dataGridView1.ClearSelection();
-            int len = cursorMoveWithNakaNuki();
-            if (len > 0)
-            {
-                selectRange = gridSelectionService.MoveSelectionDown(selectRange, len);
-            }
-            scrollingForward();
+            selectRange = gridValueInputCommand.HandleAdd(selectRange, cursorMoveWithNakaNuki);
         }
 
         public void OnSubtractKey()
         {
-            gridCellValueService.DecrementValue(selectRange, setting.KaraCell);
-            this.dataGridView1.ClearSelection();
-            int len = cursorMoveWithNakaNuki();
-            if (len > 0)
-            {
-                selectRange = gridSelectionService.MoveSelectionDown(selectRange, len);
-            }
-            scrollingForward();
+            selectRange = gridValueInputCommand.HandleSubtract(selectRange, cursorMoveWithNakaNuki);
         }
         public void OnDivideKey() 
         { 
@@ -184,17 +158,8 @@ namespace AEIOU
         
         public void OnDecimalKey() 
         {
-            gridCellValueService.InsertEmptyCell(selectRange, setting.KaraCell);
+            selectRange = gridValueInputCommand.HandleDecimal(selectRange, cursorMoveWithNakaNuki);
             isCellEdit = true;
-            this.dataGridView1.ClearSelection();
-            if (!setting.IsKaraNoMove) {
-                int len = cursorMoveWithNakaNuki();
-                if (len > 0)
-                {
-                    selectRange = gridSelectionService.MoveSelectionDown(selectRange, len);
-                }
-                scrollingForward();
-            }
         }
     }
 }
