@@ -1024,13 +1024,6 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
-        // フレーム表示文字列の生成
-        private String frmToSheet(int frm)
-        {
-            return gridFrameLabelFormatter.FrmToSheet(frm, addRange);
-        }
-
-        //----------------------------------------------------------------------------------------
         // 基準線描画位置の計算
         private SheetBorder calcBorderState(DataGridViewCellPaintingEventArgs e)
         {
@@ -1367,21 +1360,6 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
-        // セルの値が変化した場合のみ、書き込みをキューに追加する
-        private bool QueueCellWriteIfChanged(int row, int col, string value)
-        {
-            string normalizedValue = value ?? "";
-            string currentValue = GetCellValue(col, row);
-            if (currentValue == normalizedValue)
-            {
-                return false;
-            }
-
-            QueueCellWrite(row, col, normalizedValue);
-            return true;
-        }
-
-        //----------------------------------------------------------------------------------------
         // セルの値が変化した場合のみ、値を設定する
         private bool SetCellValueIfChanged(int col, int row, string value)
         {
@@ -1672,44 +1650,6 @@ namespace AEIOU
 
             return isCellEdit;
 
-        }
-
-        //----------------------------------------------------------------------------------------
-        // エンターキーによる削除処理
-        private void calcRect_with_enter()
-        {
-            // 選択範囲を取得
-            Rect rect = getSelectedRect();
-
-            // 選択範囲をクリア（※元実装の動作を維持）
-            dataGridView1.ClearSelection();
-
-            // 先頭位置の計算(※下端のはみ出しチェック)
-            int len = cursorMoveWithNakaNuki();
-            if (len > 0)
-            {
-                selectRange = gridSelectionService.MoveSelectionDown(rect, len);
-            }
-
-            isFirstEdit = true;
-
-            // 画面2/3より下に移動した場合の画面送り
-            scrollingForward();
-
-        }
-
-        //----------------------------------------------------------------------------------------
-        // 上方向のスクロール
-        private void scrollingRowBackward(int keyValue)
-        {
-            gridScrollService.ScrollRowBackward(keyValue);
-        }
-
-        //----------------------------------------------------------------------------------------
-        // 下方向のスクロール
-        private void scrollingRowForward(int keyValue)
-        {
-            gridScrollService.ScrollRowForward(keyValue);
         }
 
         //----------------------------------------------------------------------------------------
