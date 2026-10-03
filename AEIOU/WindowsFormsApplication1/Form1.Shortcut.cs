@@ -39,27 +39,23 @@ namespace AEIOU
         public void OnPageUp(int keyValue) { gridMoveSelectionCommand.HandlePageUp(); }
         public void OnPageDown(int keyValue) { gridMoveSelectionCommand.HandlePageDown(); }
         public void OnHome() { selectRange = gridMoveSelectionCommand.HandleHome(selectRange); }
-        public void OnLeftArrow(int keyValue)
+        public void OnLeftArrow(bool isShiftPressed)
         {
-            bool isShiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
             selectRange = gridMoveSelectionCommand.HandleLeftArrow(selectRange, isShiftPressed);
         }
 
-        public void OnUpArrow(int keyValue)
+        public void OnUpArrow(bool isShiftPressed)
         {
-            bool isShiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
             selectRange = gridMoveSelectionCommand.HandleUpArrow(selectRange, isShiftPressed);
         }
 
-        public void OnRightArrow(int keyValue)
+        public void OnRightArrow(bool isShiftPressed)
         {
-            bool isShiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
             selectRange = gridMoveSelectionCommand.HandleRightArrow(selectRange, isShiftPressed);
         }
 
-        public void OnDownArrow(int keyValue)
+        public void OnDownArrow(bool isShiftPressed)
         {
-            bool isShiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
             selectRange = gridMoveSelectionCommand.HandleDownArrow(selectRange, isShiftPressed);
         }
         
