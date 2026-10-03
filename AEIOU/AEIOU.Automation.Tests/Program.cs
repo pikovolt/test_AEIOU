@@ -17,6 +17,8 @@ namespace AEIOU.Automation.Tests
             Run("row delete calculations preserve values and write order", RowDeleteCalculationsPreserveBehavior);
             Run("row calculations clear without shifts at the sheet end", RowCalculationsHandleZeroMoveLength);
             Run("row calculations validate all inputs before reading", RowCalculationsValidateBeforeReading);
+            Run("cell write batches reject out-of-range coordinates", CellWriteBatchRejectsOutOfRangeCoordinates);
+            Run("cell write batches reject duplicate coordinates", CellWriteBatchRejectsDuplicateCoordinates);
             Run("valid changes are applied once", ValidChangesAreAppliedOnce);
             Run("empty changes do not open a write group", EmptyChangesDoNotApply);
             Run("out-of-range result is rejected atomically", OutOfRangeIsRejected);
@@ -110,6 +112,26 @@ namespace AEIOU.Automation.Tests
             AssertThrows(delegate { SheetRowEditCalculator.CreateDeleteRows(5, 1, 4, 2, reader); });
             AssertThrows(delegate { SheetRowEditCalculator.CreateInsertRows(5, 1, 0, 1, null); });
             Assert(reads == 0, "invalid input must be rejected before the snapshot is read");
+        }
+
+        private static void CellWriteBatchRejectsOutOfRangeCoordinates()
+        {
+            IList<CellWriteEntry> writes = new List<CellWriteEntry>
+            {
+                new CellWriteEntry(0, 0, "valid"),
+                new CellWriteEntry(5, 0, "invalid")
+            };
+            AssertThrows(delegate { CellWriteBatch.Validate(writes, 5, 2); });
+        }
+
+        private static void CellWriteBatchRejectsDuplicateCoordinates()
+        {
+            IList<CellWriteEntry> writes = new List<CellWriteEntry>
+            {
+                new CellWriteEntry(1, 1, "first"),
+                new CellWriteEntry(1, 1, "second")
+            };
+            AssertThrows(delegate { CellWriteBatch.Validate(writes, 5, 2); });
         }
 
         private static IList<CellWriteEntry> CalculateRows(
