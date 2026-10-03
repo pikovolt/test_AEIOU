@@ -5,7 +5,7 @@
 - [x] 行削除: 先頭/中間/末尾、1行/複数行で期待する座標・値・順序になる（calculator fixture）
 - [x] 移動長0では不要なシフトを書き出さず、必要なクリアだけを生成する（calculator fixture）
 - [x] null は境界仕様どおり正規化または拒否される（calculator fixture）
-- [ ] 重複座標・範囲外座標を適用前に拒否し、部分更新しない
+- [x] 重複座標・範囲外座標を適用前に拒否し、部分更新しない（batch validation fixture）
 - [x] calculator は WinForms、`Form1`、`DataGridView`、Undo 実装を参照しない（project/source dependency check）
 
 ## 行編集 — UI/Undo

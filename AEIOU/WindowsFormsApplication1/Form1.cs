@@ -877,8 +877,7 @@ namespace AEIOU
             IList<CellWriteEntry> writes = SheetRowEditCalculator.CreateInsertRows(
                 GetSheetRowCount(), GetSheetColumnCount(), Row, Count,
                 delegate(int row, int column) { return GetCellValue(column, row); });
-            ApplyCellWrites("行の挿入", writes);
-            FinishWriteOperation(true);
+            ApplyRowEdit("行の挿入", writes);
 
         }
 
@@ -889,8 +888,7 @@ namespace AEIOU
             IList<CellWriteEntry> writes = SheetRowEditCalculator.CreateDeleteRows(
                 GetSheetRowCount(), GetSheetColumnCount(), Row, Count,
                 delegate(int row, int column) { return GetCellValue(column, row); });
-            ApplyCellWrites("行の削除", writes);
-            FinishWriteOperation(true);
+            ApplyRowEdit("行の削除", writes);
 
         }
 
@@ -1365,7 +1363,11 @@ namespace AEIOU
         // 複数セルへの書き込みをグループ化して実行する
         private void ApplyCellWrites(string groupName, IList<CellWriteEntry> writes)
         {
-            if (writes == null || writes.Count == 0)
+            if (writes == null)
+            {
+                throw new ArgumentNullException("writes");
+            }
+            if (writes.Count == 0)
             {
                 return;
             }
@@ -1377,6 +1379,15 @@ namespace AEIOU
             {
                 QueueCellWrites(writes);
             });
+        }
+
+        //----------------------------------------------------------------------------------------
+        // 行編集の計算後は、検証済みの一覧を1 Undo group で適用してから
+        // isFirstEdit と継続記号の表示をまとめて更新する。
+        private void ApplyRowEdit(string groupName, IList<CellWriteEntry> writes)
+        {
+            ApplyCellWrites(groupName, writes);
+            FinishWriteOperation(true);
         }
 
         //----------------------------------------------------------------------------------------
