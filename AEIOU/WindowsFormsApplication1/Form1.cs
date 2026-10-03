@@ -1338,6 +1338,7 @@ namespace AEIOU
         // 複数セルへの書き込みをグループ化して実行する
         private void ExecuteWriteGroup(string groupName, Action action)
         {
+            gridViewManager.BeginBatchUpdate();
             gridViewManager.BeginGroup(groupName);
             try
             {
@@ -1345,7 +1346,14 @@ namespace AEIOU
             }
             finally
             {
-                gridViewManager.EndGroup();
+                try
+                {
+                    gridViewManager.EndGroup();
+                }
+                finally
+                {
+                    gridViewManager.EndBatchUpdate();
+                }
             }
         }
 
