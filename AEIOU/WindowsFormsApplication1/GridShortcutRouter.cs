@@ -10,10 +10,10 @@ namespace AEIOU
         void OnPageUp(int keyValue);
         void OnPageDown(int keyValue);
         void OnHome();
-        void OnLeftArrow(int keyValue);
-        void OnUpArrow(int keyValue);
-        void OnRightArrow(int keyValue);
-        void OnDownArrow(int keyValue);
+        void OnLeftArrow(bool isShiftPressed);
+        void OnUpArrow(bool isShiftPressed);
+        void OnRightArrow(bool isShiftPressed);
+        void OnDownArrow(bool isShiftPressed);
         void OnInsert();
         void OnDelete(int keyValue);
         void OnNumberKey(int keyValue, int keyCode);
@@ -34,7 +34,7 @@ namespace AEIOU
             this.handler = handler;
         }
 
-        public bool Route(int keyValue, int keyCode)
+        public bool Route(int keyValue, int keyCode, bool isShiftPressed)
         {
             switch (keyValue & 0x0ff)
             {
@@ -59,19 +59,19 @@ namespace AEIOU
                     return true;
 
                 case 37:    // ←
-                    handler.OnLeftArrow(keyValue);
+                    handler.OnLeftArrow(isShiftPressed);
                     return true;
 
                 case 38:    //↑
-                    handler.OnUpArrow(keyValue);
+                    handler.OnUpArrow(isShiftPressed);
                     return true;
 
                 case 39:    // →
-                    handler.OnRightArrow(keyValue);
+                    handler.OnRightArrow(isShiftPressed);
                     return true;
 
                 case 40:    // ↓
-                    handler.OnDownArrow(keyValue);
+                    handler.OnDownArrow(isShiftPressed);
                     return true;
 
                 case 45:    // Insert

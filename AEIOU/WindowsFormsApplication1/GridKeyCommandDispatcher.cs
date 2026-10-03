@@ -56,7 +56,7 @@ namespace AEIOU
             }
 
             convertedKeyValue = inputInterpreter.ConvertKeyValue(e);
-            if (shortcutRouter.Route(convertedKeyValue, e.KeyValue))
+            if (shortcutRouter.Route(convertedKeyValue, e.KeyValue, e.Shift))
             {
                 return GridDispatchResult.GridCommand;
             }
