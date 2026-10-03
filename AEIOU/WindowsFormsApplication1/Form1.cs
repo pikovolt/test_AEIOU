@@ -1289,27 +1289,17 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
-        // 列全体のコピー
-        private void CopyColumn(int sourceCol, int destinationCol, int rowCount)
+        // 列編集 calculator が作成した snapshot を順番どおり反映する
+        private void ApplyColumnWrites(IList<ColumnWriteEntry> writes, int rowCount)
         {
-            aryCellUsedCount[destinationCol] = aryCellUsedCount[sourceCol];
-            SetHeaderValue(destinationCol, GetHeaderValue(sourceCol));
-
-            for (int row = 0; row < rowCount; row++)
+            foreach (ColumnWriteEntry write in writes)
             {
-                SetCellValue(destinationCol, row, GetCellValue(sourceCol, row));
-            }
-        }
-
-        //----------------------------------------------------------------------------------------
-        // 列全体のクリア
-        private void ClearColumn(int col, int rowCount)
-        {
-            aryCellUsedCount[col] = 0;
-            SetHeaderValue(col, "");
-            for (int row = 0; row < rowCount; row++)
-            {
-                SetCellValue(col, row, "");
+                aryCellUsedCount[write.Column] = write.UsedCount;
+                SetHeaderValue(write.Column, write.Header);
+                for (int row = 0; row < rowCount; row++)
+                {
+                    SetCellValue(write.Column, row, write.GetValue(row));
+                }
             }
         }
 
@@ -2560,6 +2550,7 @@ namespace AEIOU
 
             // カレントセルの位置を保存
             int col = dataGridView1.CurrentCell.ColumnIndex;
+            int originalColumnCount = GetSheetColumnCount();
 
             // グリッドサイズを変更
             resizeDataGridView1(setting.ColLength + 1, setting.RowLength);
@@ -2567,18 +2558,14 @@ namespace AEIOU
             // ウィンドウ位置調整
             adjustWindowSize();
 
-            // カレントセルの位置を空ける
-            {
-                // カレントセル位置を空けるように位置をずらす
-                int firstColIndex = GetSheetColumnCount() - 2;
-                int rowCount = GetSheetRowCount();
-                for (int i = firstColIndex; i >= col; i--)
-                {
-                    CopyColumn(i, i + 1, rowCount);
-                }
-                // 開いた場所を空欄にする
-                ClearColumn(col, rowCount);
-            }
+            // resize が旧列を同じ index に復元した後で snapshot を作り、反映する。
+            int rowCount = GetSheetRowCount();
+            IList<ColumnWriteEntry> writes = SheetColumnEditCalculator.CreateInsertColumn(
+                rowCount, originalColumnCount, col,
+                delegate(int row, int column) { return GetCellValue(column, row); },
+                delegate(int column) { return GetHeaderValue(column); },
+                delegate(int column) { return aryCellUsedCount[column]; });
+            ApplyColumnWrites(writes, rowCount);
 
             // アンドゥ履歴をフラッシュ
             flushUndoHistory();
@@ -2595,15 +2582,16 @@ namespace AEIOU
 
             // カレントセルの位置を詰める
             int col = dataGridView1.CurrentCell.ColumnIndex;
-            {
-                // カレントセル位置を埋めるように位置をずらす
-                int rowCount = GetSheetRowCount();
-                int lastShiftTarget = GetSheetColumnCount() - 1;
-                for (int i = col; i < lastShiftTarget; i++)
-                {
-                    CopyColumn(i + 1, i, rowCount);
-                }
-            }
+            int rowCount = GetSheetRowCount();
+            int columnCount = GetSheetColumnCount();
+
+            // 削除対象を resize で失う前に snapshot を作り、左詰めを反映する。
+            IList<ColumnWriteEntry> writes = SheetColumnEditCalculator.CreateDeleteColumn(
+                rowCount, columnCount, col,
+                delegate(int row, int column) { return GetCellValue(column, row); },
+                delegate(int column) { return GetHeaderValue(column); },
+                delegate(int column) { return aryCellUsedCount[column]; });
+            ApplyColumnWrites(writes, rowCount);
 
             // グリッドサイズを変更
             resizeDataGridView1(setting.ColLength - 1, setting.RowLength);

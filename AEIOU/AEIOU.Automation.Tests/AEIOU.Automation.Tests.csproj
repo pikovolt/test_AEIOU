@@ -43,6 +43,9 @@
     <Compile Include="..\WindowsFormsApplication1\SheetEditContracts.cs">
       <Link>SheetEditContracts.cs</Link>
     </Compile>
+    <Compile Include="..\WindowsFormsApplication1\SheetColumnEditCalculator.cs">
+      <Link>SheetColumnEditCalculator.cs</Link>
+    </Compile>
     <Compile Include="..\WindowsFormsApplication1\SheetRowEditCalculator.cs">
       <Link>SheetRowEditCalculator.cs</Link>
     </Compile>
