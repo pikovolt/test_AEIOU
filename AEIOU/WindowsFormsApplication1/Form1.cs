@@ -1177,15 +1177,6 @@ namespace AEIOU
         }
 
         //----------------------------------------------------------------------------------------
-        // セルが空かどうか
-        private bool IsCellEmpty(int col, int row)
-        {
-            string value;
-            string failureReason;
-            return !TryGetCellValue(col, row, out value, out failureReason) || value == "";
-        }
-
-        //----------------------------------------------------------------------------------------
         // セルの値の設定
         private bool IsValidCellIndex(int col, int row)
         {
