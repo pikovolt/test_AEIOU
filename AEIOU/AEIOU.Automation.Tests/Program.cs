@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
-using global::AEIOU.Automation;
+using System.IO;
+using System.Reflection;
+using AEIOU.Automation;
 
 namespace AEIOU.Automation.Tests
 {
@@ -20,6 +22,7 @@ namespace AEIOU.Automation.Tests
             Run("command exception is isolated", CommandExceptionIsIsolated);
             Run("built-in commands resolve through registry", BuiltInsResolveThroughRegistry);
             Run("registry rejects duplicate IDs", RegistryRejectsDuplicateIds);
+            Run("registry keeps the registered descriptor snapshot", RegistryKeepsDescriptorSnapshot);
             Run("host rejects unknown IDs", HostRejectsUnknownIds);
             Run("host validates descriptor parameters", HostValidatesDescriptorParameters);
             Run("replace matches only the left column exactly", ReplaceMatchesLeftColumnExactly);
@@ -34,6 +37,8 @@ namespace AEIOU.Automation.Tests
             Run("repeat number handles insert skip loop and columns", RepeatNumberHandlesParameters);
             Run("repeat number clears selection and rejects invalid ranges", RepeatNumberClearsAndValidates);
             Run("automation session replaces only its last result", AutomationSessionReplacesOnlyItsLastResult);
+            Run("extension discovery isolates failures and registers valid commands", ExtensionDiscoveryIsolatesFailures);
+            Run("extension discovery rejects duplicate IDs", ExtensionDiscoveryRejectsDuplicates);
             Console.WriteLine(failures == 0 ? "All automation host tests passed." : failures + " test(s) failed.");
             return failures == 0 ? 0 : 1;
         }
@@ -122,6 +127,23 @@ namespace AEIOU.Automation.Tests
                 "first registration should succeed");
             Assert(!registry.TryRegister(Command(delegate { return AutomationResult.Success(new AutomationChange[0], null); }), out error) &&
                 error.IndexOf("already registered") >= 0, "duplicate ID should be rejected without replacement");
+        }
+
+        private static void RegistryKeepsDescriptorSnapshot()
+        {
+            AutomationRegistry registry = new AutomationRegistry();
+            ChangingDescriptorCommand command = new ChangingDescriptorCommand();
+            string error;
+            Assert(registry.TryRegister(command, out error), "registration should read the descriptor once");
+            AutomationCommandDescriptor descriptor;
+            Assert(registry.TryGetDescriptor(ChangingDescriptorCommand.CommandId, out descriptor) &&
+                descriptor.Id == ChangingDescriptorCommand.CommandId,
+                "the registry should expose the descriptor accepted during registration");
+            FakeTarget target = new FakeTarget(7);
+            AutomationHostResult result = new AutomationHost(10, registry).Execute(
+                ChangingDescriptorCommand.CommandId, Request(), target);
+            Assert(result.Succeeded && command.DescriptorReadCount == 1,
+                "registered execution must not invoke extension descriptor code again");
         }
 
         private static void HostRejectsUnknownIds()
@@ -295,6 +317,72 @@ namespace AEIOU.Automation.Tests
                 "an intervening operation must prevent a session from undoing arbitrary history");
         }
 
+        private static void ExtensionDiscoveryIsolatesFailures()
+        {
+            string directory = CreateExtensionDirectory();
+            try
+            {
+                AutomationExtensionLoadResult missing = new AutomationExtensionLoader().Load(
+                    Path.Combine(directory, "missing"), new AutomationRegistry());
+                Assert(missing.Commands.Count == 0 && missing.Diagnostics.Count == 0,
+                    "a missing Extensions directory should be harmless");
+                File.WriteAllText(Path.Combine(directory, "broken.dll"), "not an assembly");
+                File.WriteAllText(Path.Combine(directory, "ignored.txt"), "not searched");
+                string nested = Path.Combine(directory, "nested");
+                Directory.CreateDirectory(nested);
+                File.Copy(Assembly.GetExecutingAssembly().Location, Path.Combine(nested, "ignored.dll"));
+                AutomationRegistry registry = BuiltInAutomationRegistry.Create();
+                AutomationExtensionLoadResult loaded = new AutomationExtensionLoader().Load(directory, registry);
+                IAutomationCommand command;
+                Assert(loaded.Commands.Count == 2, "valid and runtime-fault commands should be registered");
+                Assert(registry.TryGet(DiscoveryCommand.CommandId, out command), "valid external command should resolve");
+                Assert(!registry.TryGet(IncompatibleDiscoveryCommand.CommandId, out command),
+                    "incompatible major versions must not register");
+                Assert(loaded.Diagnostics.Count >= 3, "broken DLL, constructor, and contract failures should be diagnosed");
+
+                FakeTarget target = new FakeTarget(7);
+                AutomationHostResult valid = new AutomationHost(10, registry).Execute(
+                    DiscoveryCommand.CommandId, Request(), target);
+                Assert(valid.Succeeded && target.ApplyCount == 1, "discovered command should execute through the host");
+                AutomationHostResult faulted = new AutomationHost(10, registry).Execute(
+                    RuntimeFaultDiscoveryCommand.CommandId, Request(), target);
+                Assert(!faulted.Succeeded && faulted.Exception is InvalidOperationException && target.ApplyCount == 1,
+                    "external execution failure must not write or escape");
+            }
+            finally { TryDeleteDirectory(directory); }
+        }
+
+        private static void ExtensionDiscoveryRejectsDuplicates()
+        {
+            string directory = CreateExtensionDirectory();
+            try
+            {
+                AutomationRegistry registry = BuiltInAutomationRegistry.Create();
+                AutomationExtensionLoader loader = new AutomationExtensionLoader();
+                AutomationExtensionLoadResult first = loader.Load(directory, registry);
+                AutomationExtensionLoadResult second = loader.Load(directory, registry);
+                Assert(first.Commands.Count == 2 && second.Commands.Count == 0,
+                    "a repeated discovery must not replace registered IDs");
+                Assert(second.Diagnostics.Count >= 2, "duplicate IDs should be diagnosed");
+            }
+            finally { TryDeleteDirectory(directory); }
+        }
+
+        private static string CreateExtensionDirectory()
+        {
+            string directory = Path.Combine(Path.GetTempPath(), "aeiou-extension-tests-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            File.Copy(Assembly.GetExecutingAssembly().Location, Path.Combine(directory, "fixtures.dll"));
+            return directory;
+        }
+
+        private static void TryDeleteDirectory(string directory)
+        {
+            try { Directory.Delete(directory, true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+
         private static AutomationResult Arithmetic(string operation, string operand, string[] values)
         {
             return new ArithmeticCommand().Execute(CommandRequest(values,
@@ -403,6 +491,26 @@ namespace AEIOU.Automation.Tests
             }
         }
 
+        private sealed class ChangingDescriptorCommand : IAutomationCommand
+        {
+            public const string CommandId = "test.changing-descriptor";
+            public int DescriptorReadCount;
+            public AutomationCommandDescriptor Descriptor
+            {
+                get
+                {
+                    DescriptorReadCount++;
+                    if (DescriptorReadCount > 1) throw new InvalidOperationException("descriptor read twice");
+                    return new AutomationCommandDescriptor(CommandId, "Changing descriptor", 1, 0,
+                        new AutomationParameterDefinition[0]);
+                }
+            }
+            public AutomationResult Execute(AutomationRequest request)
+            {
+                return AutomationResult.Success(new AutomationChange[0], null);
+            }
+        }
+
         private sealed class FakeTarget : IAutomationChangeTarget
         {
             private readonly long generation;
@@ -439,5 +547,47 @@ namespace AEIOU.Automation.Tests
                 return true;
             }
         }
+    }
+
+    public sealed class DiscoveryCommand : IAutomationCommand
+    {
+        public const string CommandId = "test.external.valid";
+        public AutomationCommandDescriptor Descriptor { get { return DescriptorFor(CommandId, 1); } }
+        public AutomationResult Execute(AutomationRequest request)
+        {
+            return AutomationResult.Success(new[] { new AutomationChange(0, 0, "external") }, null);
+        }
+        internal static AutomationCommandDescriptor DescriptorFor(string id, int major)
+        {
+            return new AutomationCommandDescriptor(id, "External fixture", major, 0,
+                new AutomationParameterDefinition[0]);
+        }
+    }
+
+    public sealed class IncompatibleDiscoveryCommand : IAutomationCommand
+    {
+        public const string CommandId = "test.external.incompatible";
+        public AutomationCommandDescriptor Descriptor { get { return DiscoveryCommand.DescriptorFor(CommandId, 2); } }
+        public AutomationResult Execute(AutomationRequest request) { return AutomationResult.Success(new AutomationChange[0], null); }
+    }
+
+    public sealed class ConstructorFaultDiscoveryCommand : IAutomationCommand
+    {
+        public ConstructorFaultDiscoveryCommand() { throw new InvalidOperationException("constructor fixture"); }
+        public AutomationCommandDescriptor Descriptor { get { return DiscoveryCommand.DescriptorFor("test.external.constructor", 1); } }
+        public AutomationResult Execute(AutomationRequest request) { return AutomationResult.Success(new AutomationChange[0], null); }
+    }
+
+    public sealed class RuntimeFaultDiscoveryCommand : IAutomationCommand
+    {
+        public const string CommandId = "test.external.runtime";
+        public AutomationCommandDescriptor Descriptor { get { return DiscoveryCommand.DescriptorFor(CommandId, 1); } }
+        public AutomationResult Execute(AutomationRequest request) { throw new InvalidOperationException("runtime fixture"); }
+    }
+
+    public abstract class AbstractDiscoveryCommand : IAutomationCommand
+    {
+        public abstract AutomationCommandDescriptor Descriptor { get; }
+        public abstract AutomationResult Execute(AutomationRequest request);
     }
 }

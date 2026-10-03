@@ -31,14 +31,14 @@ P5-001 の期待値、再現手順、および互換維持/別修正の判断は
 - [x] registry が重複 ID を既存登録の置換なしで拒否する。
 
 ## D. 外部拡張
-- [ ] `Extensions` が存在しない/空でも正常起動する。
-- [ ] 正常 DLL の command が1回だけ登録される。
-- [ ] 非 DLL、非実装型、abstract型を無視する。
-- [ ] 契約 major 不一致を拒否する。
-- [ ] 組み込み/外部および外部同士の重複 ID を拒否する。
-- [ ] 依存 DLL 不足、constructor 例外、実行例外が他コマンドへ波及しない。
-- [ ] 不正な変更セットを返す外部 command がシートを変更できない。
-- [ ] 外部 DLL を除去して再起動すると登録が消え、組み込み機能は維持される。
+- [x] `Extensions` が存在しない/空でも正常起動する（loader test）。
+- [x] 正常 DLL の command が1回だけ登録される（loader test）。
+- [x] 非 DLL、非実装型、abstract型を無視する（loader test）。
+- [x] 契約 major 不一致を拒否する（loader test）。
+- [x] 組み込み/外部および外部同士の重複 ID を拒否する（registry/loader test）。
+- [ ] 依存 DLL 不足、constructor 例外、実行例外が他コマンドへ波及しない（constructor/実行例外は loader/host test 済み。依存 DLL 不足の実 DLL smoke は未実施）。
+- [x] 不正な変更セットを返す外部 command がシートを変更できない（host test）。
+- [ ] 外部 DLL を除去して再起動すると登録が消え、組み込み機能は維持される（loader/registry test 済み。実 UI 再起動 smoke は未実施）。
 
 ## E. 非退行
 - [ ] STS 読込/保存。

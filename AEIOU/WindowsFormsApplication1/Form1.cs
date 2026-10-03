@@ -346,6 +346,7 @@ namespace AEIOU
             automationRegistry = BuiltInAutomationRegistry.Create();
             automationHost = new AutomationHost(1000000, automationRegistry);
             InitializeComponent();
+            LoadAutomationExtensions();
             gridViewManager.View = dataGridView1;
 
             // 自分のウィンドウハンドルを取得しておく
@@ -1492,6 +1493,125 @@ namespace AEIOU
                 return;
             }
             FinishWriteOperation(true);
+        }
+
+        private void LoadAutomationExtensions()
+        {
+            string applicationDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            AutomationExtensionLoadResult loadResult = new AutomationExtensionLoader().Load(
+                Path.Combine(applicationDirectory, "Extensions"), automationRegistry);
+            AutomationExtensionLoader.AppendDiagnostics(
+                Path.Combine(applicationDirectory, "automation-extensions.log"), loadResult.Diagnostics);
+            if (loadResult.Commands.Count == 0) return;
+
+            ToolStripMenuItem extensionsMenu = new ToolStripMenuItem("拡張自動処理");
+            foreach (AutomationCommandDescriptor descriptor in loadResult.Descriptors)
+            {
+                ToolStripMenuItem item = new ToolStripMenuItem(descriptor.DisplayName);
+                item.Tag = descriptor.Id;
+                item.Click += externalAutomationToolStripMenuItem_Click;
+                extensionsMenu.DropDownItems.Add(item);
+            }
+            int insertionIndex = contextMenuStrip1.Items.IndexOf(fourArithmeticOperationToolStripMenuItem) + 1;
+            contextMenuStrip1.Items.Insert(insertionIndex, extensionsMenu);
+        }
+
+        private void externalAutomationToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ToolStripMenuItem item = sender as ToolStripMenuItem;
+            AutomationCommandDescriptor descriptor;
+            if (item == null || !automationRegistry.TryGetDescriptor((string)item.Tag, out descriptor)) return;
+            IDictionary<string, string> parameters;
+            if (!TryCollectAutomationParameters(descriptor, out parameters)) return;
+            ExecuteAutomationCommand(descriptor.Id, parameters);
+        }
+
+        private bool TryCollectAutomationParameters(AutomationCommandDescriptor descriptor,
+            out IDictionary<string, string> parameters)
+        {
+            parameters = null;
+            Dictionary<string, Control> inputs = new Dictionary<string, Control>(StringComparer.Ordinal);
+            using (Form dialog = new Form())
+            using (TableLayoutPanel layout = new TableLayoutPanel())
+            {
+                dialog.Text = descriptor.DisplayName;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.AutoSize = true;
+                dialog.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                layout.AutoSize = true;
+                layout.ColumnCount = 2;
+                layout.Padding = new Padding(8);
+                dialog.Controls.Add(layout);
+
+                int row = 0;
+                foreach (AutomationParameterDefinition definition in descriptor.Parameters)
+                {
+                    Label label = new Label();
+                    label.Text = definition.DisplayName;
+                    label.AutoSize = true;
+                    label.Anchor = AnchorStyles.Left;
+                    Control input;
+                    if (definition.Type == AutomationParameterType.Boolean)
+                    {
+                        CheckBox checkBox = new CheckBox();
+                        bool checkedValue;
+                        Boolean.TryParse(definition.DefaultValue, out checkedValue);
+                        checkBox.Checked = checkedValue;
+                        input = checkBox;
+                    }
+                    else if (definition.Type == AutomationParameterType.Choice)
+                    {
+                        ComboBox comboBox = new ComboBox();
+                        comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+                        foreach (string choice in definition.Choices) comboBox.Items.Add(choice);
+                        int selected = comboBox.Items.IndexOf(definition.DefaultValue);
+                        comboBox.SelectedIndex = selected >= 0 ? selected : 0;
+                        input = comboBox;
+                    }
+                    else
+                    {
+                        TextBox textBox = new TextBox();
+                        textBox.Text = definition.DefaultValue ?? String.Empty;
+                        textBox.Width = 180;
+                        input = textBox;
+                    }
+                    layout.Controls.Add(label, 0, row);
+                    layout.Controls.Add(input, 1, row++);
+                    inputs.Add(definition.Id, input);
+                }
+
+                FlowLayoutPanel buttons = new FlowLayoutPanel();
+                buttons.AutoSize = true;
+                buttons.FlowDirection = FlowDirection.RightToLeft;
+                Button ok = new Button();
+                ok.Text = "OK";
+                ok.DialogResult = DialogResult.OK;
+                Button cancel = new Button();
+                cancel.Text = "キャンセル";
+                cancel.DialogResult = DialogResult.Cancel;
+                buttons.Controls.Add(ok);
+                buttons.Controls.Add(cancel);
+                layout.Controls.Add(buttons, 0, row);
+                layout.SetColumnSpan(buttons, 2);
+                dialog.AcceptButton = ok;
+                dialog.CancelButton = cancel;
+                if (dialog.ShowDialog(owner) != DialogResult.OK) return false;
+
+                Dictionary<string, string> collected = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (AutomationParameterDefinition definition in descriptor.Parameters)
+                {
+                    Control input = inputs[definition.Id];
+                    CheckBox checkBox = input as CheckBox;
+                    ComboBox comboBox = input as ComboBox;
+                    collected.Add(definition.Id, checkBox != null ? checkBox.Checked.ToString() :
+                        comboBox != null ? (string)comboBox.SelectedItem : input.Text);
+                }
+                parameters = collected;
+                return true;
+            }
         }
 
         public bool TryApply(long expectedGeneration, IList<AutomationChange> changes, string operationName)
