@@ -315,6 +315,7 @@ namespace AEIOU
         private GridShortcutRouter gridShortcutRouter;
         private GridKeyCommandDispatcher gridKeyCommandDispatcher;
         private GridMoveSelectionCommand gridMoveSelectionCommand;
+        private GridValueInputCommand gridValueInputCommand;
         private GridCellValueService gridCellValueService;
         private GridMouseEventHandler gridMouseEventHandler;
 
@@ -449,8 +450,9 @@ namespace AEIOU
             gridInputInterpreter = new GridInputInterpreter(setting.keys);
             gridShortcutRouter = new GridShortcutRouter(this); // Initialize GridShortcutRouter here
             gridKeyCommandDispatcher = new GridKeyCommandDispatcher(gridInputInterpreter, gridShortcutRouter, tryExecuteShortcut);
-            gridMoveSelectionCommand = new GridMoveSelectionCommand(dataGridView1, setting, gridSelectionService, gridScrollService);
             gridCellValueService = new GridCellValueService(gridViewManager, GetCellValue, checkCellValue, (col) => aryCellUsedCount[col]++);
+            gridMoveSelectionCommand = new GridMoveSelectionCommand(dataGridView1, setting, gridSelectionService, gridScrollService);
+            gridValueInputCommand = new GridValueInputCommand(dataGridView1, setting, gridCellValueService, gridSelectionService, gridScrollService);
             gridMouseEventHandler = new GridMouseEventHandler(gridViewManager, copyToBuf, cutToBuf, copyToCell, getSelectedRect);
             continuityStateService = new ContinuityStateService(setting, GetCellValue);
             continuityStateService.Reinitialize(GetSheetColumnCount(), GetSheetRowCount());
