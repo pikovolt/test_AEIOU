@@ -297,7 +297,9 @@ namespace AEIOU
         private static bool TryInt(AutomationRequest request, string id, out int value)
         {
             string text;
-            return request.Parameters.TryGetValue(id, out text) && Int32.TryParse(text, out value);
+            value = 0;
+            if (!request.Parameters.TryGetValue(id, out text)) return false;
+            return Int32.TryParse(text, out value);
         }
 
         private static string Key(int row, int column)
