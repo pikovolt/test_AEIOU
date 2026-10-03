@@ -18,6 +18,13 @@ namespace AEIOU.Automation.Tests
             Run("change limit is rejected atomically", ChangeLimitIsRejected);
             Run("generation mismatch is rejected atomically", GenerationMismatchIsRejected);
             Run("command exception is isolated", CommandExceptionIsIsolated);
+            Run("replace matches only the left column exactly", ReplaceMatchesLeftColumnExactly);
+            Run("replace rejects empty values", ReplaceRejectsEmptyValues);
+            Run("reverse preserves empty positions", ReversePreservesEmptyPositions);
+            Run("arithmetic handles all operators and ignored cells", ArithmeticHandlesOperatorsAndIgnoredCells);
+            Run("arithmetic rejects invalid cells atomically", ArithmeticRejectsInvalidCellsAtomically);
+            Run("arithmetic rejects division by zero", ArithmeticRejectsDivisionByZero);
+            Run("arithmetic ignores division by zero for ignored cells", ArithmeticIgnoresDivisionByZeroForIgnoredCells);
             Console.WriteLine(failures == 0 ? "All automation host tests passed." : failures + " test(s) failed.");
             return failures == 0 ? 0 : 1;
         }
@@ -80,6 +87,106 @@ namespace AEIOU.Automation.Tests
             FakeTarget target = new FakeTarget(7);
             AutomationHostResult result = Host().Execute(Command(delegate { throw new InvalidOperationException("boom"); }), Request(), target);
             Assert(!result.Succeeded && result.Exception is InvalidOperationException && target.ApplyCount == 0, "exception must not escape or write");
+        }
+
+        private static void ReplaceMatchesLeftColumnExactly()
+        {
+            AutomationResult result = new ReplaceCommand().Execute(CommandRequest(
+                new[] { "1", "10", "1", "", "1", "1", "1", "1" },
+                Parameters(ReplaceCommand.BeforeParameter, "1", ReplaceCommand.AfterParameter, "X")));
+            Assert(result.Succeeded && result.Changes.Count == 2, "only exact matches in the left column should change");
+            Assert(result.Changes[0].Row == 0 && result.Changes[0].Column == 0 && result.Changes[0].Value == "X", "first match expected");
+            Assert(result.Changes[1].Row == 2 && result.Changes[1].Column == 0 && result.Changes[1].Value == "X", "second match expected");
+        }
+
+        private static void ReplaceRejectsEmptyValues()
+        {
+            AutomationResult missingBefore = new ReplaceCommand().Execute(CommandRequest(
+                new[] { "1" }, Parameters(ReplaceCommand.BeforeParameter, "", ReplaceCommand.AfterParameter, "X"), 1, 1));
+            AutomationResult missingAfter = new ReplaceCommand().Execute(CommandRequest(
+                new[] { "1" }, Parameters(ReplaceCommand.BeforeParameter, "1", ReplaceCommand.AfterParameter, ""), 1, 1));
+            Assert(!missingBefore.Succeeded && !missingAfter.Succeeded, "both empty parameters must be rejected");
+        }
+
+        private static void ReversePreservesEmptyPositions()
+        {
+            AutomationResult result = new ReverseCommand().Execute(CommandRequest(
+                new[] { "1", "", "2", "", "3", "A", "B", "C", "D", "E" },
+                new Dictionary<string, string>(), 5, 2));
+            Assert(result.Succeeded && result.Changes.Count == 3, "only populated cells in the left column should be written");
+            Assert(result.Changes[0].Row == 0 && result.Changes[0].Value == "3", "first value should be reversed");
+            Assert(result.Changes[1].Row == 2 && result.Changes[1].Value == "2", "empty positions should remain empty");
+            Assert(result.Changes[2].Row == 4 && result.Changes[2].Value == "1", "last value should be reversed");
+        }
+
+        private static void ArithmeticHandlesOperatorsAndIgnoredCells()
+        {
+            AutomationResult added = Arithmetic("+", "3", new[] { "1", "-2", "", "KARA" });
+            AutomationResult subtracted = Arithmetic("-", "3", new[] { "1", "-2", "", "KARA" });
+            AutomationResult multiplied = Arithmetic("*", "4", new[] { "2", "-3", "0", "KARA" });
+            AutomationResult divided = Arithmetic("/", "2", new[] { "5", "-5", "0", "KARA" });
+            Assert(Values(added) == "4,1", "addition values differ");
+            Assert(Values(subtracted) == "-2,-5", "subtraction values differ");
+            Assert(Values(multiplied) == "8,-12", "multiplication should skip zero and KARA");
+            Assert(Values(divided) == "2,-2", "integer division should skip zero and KARA");
+        }
+
+        private static void ArithmeticRejectsInvalidCellsAtomically()
+        {
+            AutomationResult result = Arithmetic("+", "1", new[] { "1", "X", "2" });
+            Assert(!result.Succeeded && result.Changes.Count == 0, "a nonnumeric cell must reject the entire result");
+        }
+
+        private static void ArithmeticRejectsDivisionByZero()
+        {
+            AutomationResult result = Arithmetic("/", "0", new[] { "1", "0", "KARA" });
+            Assert(!result.Succeeded && result.Changes.Count == 0, "division by zero must be a validation failure");
+        }
+
+        private static void ArithmeticIgnoresDivisionByZeroForIgnoredCells()
+        {
+            AutomationResult result = Arithmetic("/", "0", new[] { "0", "", "KARA" });
+            Assert(result.Succeeded && result.Changes.Count == 0, "zero, empty and KARA cells should be ignored before division");
+        }
+
+        private static AutomationResult Arithmetic(string operation, string operand, string[] values)
+        {
+            return new ArithmeticCommand().Execute(CommandRequest(values,
+                Parameters(ArithmeticCommand.OperatorParameter, operation, ArithmeticCommand.OperandParameter, operand),
+                values.Length, 1));
+        }
+
+        private static string Values(AutomationResult result)
+        {
+            List<string> values = new List<string>();
+            foreach (AutomationChange change in result.Changes) values.Add(change.Value);
+            return String.Join(",", values.ToArray());
+        }
+
+        private static Dictionary<string, string> Parameters(string firstKey, string firstValue,
+            string secondKey, string secondValue)
+        {
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add(firstKey, firstValue);
+            parameters.Add(secondKey, secondValue);
+            return parameters;
+        }
+
+        private static AutomationRequest CommandRequest(string[] values, IDictionary<string, string> parameters)
+        {
+            return CommandRequest(values, parameters, 4, 2);
+        }
+
+        private static AutomationRequest CommandRequest(string[] values, IDictionary<string, string> parameters,
+            int rows, int columns)
+        {
+            List<AutomationCell> cells = new List<AutomationCell>();
+            int index = 0;
+            for (int column = 0; column < columns; column++)
+                for (int row = 0; row < rows; row++)
+                    cells.Add(new AutomationCell(row, column, values[index++]));
+            return new AutomationRequest(rows, columns, 1, new AutomationSelection(0, 0, rows, columns),
+                cells, parameters, "KARA");
         }
 
         private static void AssertRejectedWithoutWrites(IEnumerable<AutomationChange> changes)
