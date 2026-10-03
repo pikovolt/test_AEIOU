@@ -144,6 +144,7 @@
     </Compile>
     <Compile Include="Settings.cs" />
     <Compile Include="SheetEditContracts.cs" />
+    <Compile Include="SheetRowEditCalculator.cs" />
     <Compile Include="StsFileService.cs" />
     <Compile Include="TimingCell.cs" />
     <Compile Include="TimingColumn.cs" />
