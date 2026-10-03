@@ -31,6 +31,7 @@ P5-001 の期待値、再現手順、および互換維持/別修正の判断は
 - [x] registry が重複 ID を既存登録の置換なしで拒否する。
 
 ## D. 外部拡張
+- [x] 正常サンプル（ランダム整数）が公開契約だけを参照し、選択範囲全体の変更セットを返す（sample command test）。
 - [x] `Extensions` が存在しない/空でも正常起動する（loader test）。
 - [x] 正常 DLL の command が1回だけ登録される（loader test）。
 - [x] 非 DLL、非実装型、abstract型を無視する（loader test）。

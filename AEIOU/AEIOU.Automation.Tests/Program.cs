@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using AEIOU.Automation;
+using AEIOU.Automation.Sample.Random;
 
 namespace AEIOU.Automation.Tests
 {
@@ -39,8 +40,34 @@ namespace AEIOU.Automation.Tests
             Run("automation session replaces only its last result", AutomationSessionReplacesOnlyItsLastResult);
             Run("extension discovery isolates failures and registers valid commands", ExtensionDiscoveryIsolatesFailures);
             Run("extension discovery rejects duplicate IDs", ExtensionDiscoveryRejectsDuplicates);
+            Run("random sample fills the complete selection", RandomSampleFillsCompleteSelection);
             Console.WriteLine(failures == 0 ? "All automation host tests passed." : failures + " test(s) failed.");
             return failures == 0 ? 0 : 1;
+        }
+
+        private static void RandomSampleFillsCompleteSelection()
+        {
+            AutomationRequest request = new AutomationRequest(4, 5, 1,
+                new AutomationSelection(1, 2, 2, 3), new AutomationCell[0],
+                new Dictionary<string, string> { { "minimum", "-7" }, { "maximum", "-7" } }, String.Empty);
+            RandomNumberCommand command = new RandomNumberCommand();
+            AutomationResult result = command.Execute(request);
+
+            Assert(result.Succeeded && result.Changes.Count == 6,
+                "the sample must produce one change for every selected cell");
+            HashSet<string> coordinates = new HashSet<string>();
+            foreach (AutomationChange change in result.Changes)
+            {
+                Assert(change.Value == "-7", "inclusive equal bounds must produce that value");
+                coordinates.Add(change.Row + ":" + change.Column);
+            }
+            Assert(coordinates.Count == 6 && coordinates.Contains("1:2") && coordinates.Contains("2:4"),
+                "the changes must cover the selection without duplicates");
+
+            AutomationRequest invalid = new AutomationRequest(1, 1, 1,
+                new AutomationSelection(0, 0, 1, 1), new AutomationCell[0],
+                new Dictionary<string, string> { { "minimum", "2" }, { "maximum", "1" } }, String.Empty);
+            Assert(!command.Execute(invalid).Succeeded, "minimum greater than maximum must be rejected");
         }
 
         private static void ValidChangesAreAppliedOnce()
