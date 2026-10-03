@@ -12,12 +12,12 @@ P5-001 の期待値、再現手順、および互換維持/別修正の判断は
 [`../characterization_p5_001.md`](../characterization_p5_001.md) に固定した。
 
 ## B. Automation host
-- [ ] 正常な変更セットが1 write groupで全件適用される。
-- [ ] 空の変更セットで Undo 履歴と編集状態を不要に変更しない。
-- [ ] 範囲外セルを1件含む結果を全件拒否する。
-- [ ] 同一セルへの重複変更を全件拒否する。
-- [ ] null値、上限超過、シート世代不一致を全件拒否する。
-- [ ] command の例外発生時にセル変更が0件である。
+- [x] 正常な変更セットが1 write groupで全件適用される（in-memory prototype）。
+- [x] 空の変更セットで Undo 履歴と編集状態を不要に変更しない（in-memory prototype）。
+- [x] 範囲外セルを1件含む結果を全件拒否する（in-memory prototype）。
+- [x] 同一セルへの重複変更を全件拒否する（in-memory prototype）。
+- [x] null値、上限超過、シート世代不一致を全件拒否する（in-memory prototype）。
+- [x] command の例外発生時にセル変更が0件である（in-memory prototype）。
 - [ ] 適用後のセル使用数、継続表示、再描画が既存経路と一致する。
 
 ## C. 組み込み6機能
