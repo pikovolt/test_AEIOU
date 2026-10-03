@@ -1,7 +1,7 @@
-# refactor_form1cs_001 運用規約（Phase5 計画）
+# refactor_form1cs_001 運用規約（Phase6 計画）
 
 ## 目的
-このディレクトリは `Form1.cs` リファクタリング計画の公式ソースとする。Phase4 までの成果を履歴として保持し、現在は Phase5（自動処理の外部拡張基盤）の計画を正本とする。
+このディレクトリは `Form1.cs` リファクタリング計画の公式ソースとする。Phase5 までの成果と未完了項目を履歴として保持し、現在は Phase6（シート編集計算の分離）の計画を正本とする。
 
 ## 運用原則
 - **1タスク = 1PR** を厳守する。
@@ -9,11 +9,15 @@
 - 実装前に対象タスクの完了条件・回帰観点を確認する。
 - PR では対象タスクIDを明記し、スコープ外変更を含めない。
 
-## ドキュメント構成（Phase5 正本）
-- `phase5/overview.md`: Phase5 の目的、段階導入方針、依存関係。
-- `phase5/extension_contract.md`: 拡張契約、ホスト境界、互換性・障害分離方針。
-- `phase5/tasks/README.md`: 実装前調査を含むタスク分割と Gate。
-- `phase5/checklists/smoke_phase5.md`: 自動処理および拡張読み込みの回帰観点。
+## ドキュメント構成（Phase6 正本）
+- `phase6/overview.md`: Phase6 の目的、責務境界、段階導入方針、Phase5 からの持ち越し。
+- `phase6/tasks/README.md`: 実装前 characterization を含むタスク分割と Gate。
+- `phase6/checklists/smoke_phase6.md`: 行・列編集、Undo、関連範囲の回帰観点。
+
+## Phase5 の扱い
+- Phase5 は作業を一旦終了し、`phase5/` を実装成果および残件の参照元として保持する。
+- Windows 実機で未実施のビルド、Automation tests、UI smoke、クリーン環境での拡張配置確認は完了扱いにしない。詳細は `phase5/p5_007_completion.md` と `phase5/checklists/smoke_phase5.md` を参照する。
+- Phase6 の変更が Automation host/registry に触れる場合は Phase5 の契約と smoke を回帰条件に含めるが、Phase5 残件の解消を Phase6 着手の前提にはしない。
 
 ## Phase4 完了資産
 - `phase4/overview.md`: Phase4 の目的・依存関係・優先順位。
@@ -24,8 +28,8 @@
 - `phase4/decision_log.md`: Phase4 の方針変更記録。
 
 ## 履歴資産（参照のみ）
-- `phase2/`, `phase3/`, `phase4/` は履歴資産として保持する。
-- Phase2〜Phase4 への追記は、証跡整合に必要な修正（誤記修正・判定整合）に限定する。
+- `phase2/`, `phase3/`, `phase4/`, `phase5/` は履歴資産として保持する。
+- Phase2〜Phase5 への追記は、証跡整合、残件の実施記録、誤記修正・判定整合に限定する。
 
 ## `plans/` 側の取り扱い
 `plans/` 以下には重複記述を置かず、`agent_plans/` 側への参照リンクのみを配置する。
